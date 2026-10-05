@@ -1,6 +1,6 @@
 # SIPU
 
-SIPO es una plataforma de intermediación laboral que inicia enfocada en prácticas estudiantiles y está diseñada para evolucionar hacia una bolsa de empleo general y, posteriormente, una agencia pública de empleo.
+SIPU es una plataforma de intermediación laboral que inicia enfocada en prácticas estudiantiles y está diseñada para evolucionar hacia una bolsa de empleo general y, posteriormente, una agencia pública de empleo.
 
 ## Alcance por fases
 
