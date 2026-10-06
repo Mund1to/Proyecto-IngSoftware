@@ -60,11 +60,32 @@ JWT_EXPIRES_IN=7d
 
 La base de datos se conecta en `backend/src/config/database.js` desde `DATABASE_URL`. El backend intentará comprobar la conexión al arrancar, pero no fallará si la DB no está todavía disponible, con el fin de permitir un arranque más cómodo durante la fase inicial.
 
-## Siguientes pasos reales
+## Estado de implementación
+
+### Completado
 
 - crear una base de datos local `sipu`;
 - ejecutar `backend/database/schema.sql`;
 - probar la conexión con `/api/db-check`;
 - implementar autenticación real usando `bcrypt` y `jsonwebtoken`;
 - crear endpoints de registro y login;
-- crear el resto del CRUD de ofertas y postulaciones.
+- proteger rutas con middleware JWT;
+- consultar el usuario autenticado mediante `GET /api/profile/me`.
+
+### Pendiente
+
+- registrar perfiles de estudiante y organización durante el alta;
+- crear el CRUD de ofertas de práctica;
+- crear el flujo de postulaciones;
+- conectar el frontend con la API;
+- ejecutar una verificación completa del MVP.
+
+## Endpoints disponibles
+
+| Método | Ruta | Protección | Función |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/register` | Pública | Registra un usuario y asigna el rol `USUARIO`. |
+| `POST` | `/api/auth/login` | Pública | Valida credenciales y emite un JWT. |
+| `GET` | `/api/profile/me` | Bearer JWT | Devuelve los datos del usuario autenticado. |
+| `GET` | `/api/db-check` | Pública | Comprueba la conexión con PostgreSQL. |
+

@@ -263,6 +263,23 @@ La estructura de autenticación quedó en los archivos:
 
 Se añadió además la configuración de dependencias `bcrypt` y `jsonwebtoken` al proyecto del backend para permitir el registro y login reales sin depender de datos temporales.
 
+### 12.5. Middleware JWT y perfil autenticado
+
+La segunda entrega de la Fase 1 añadió protección de rutas y una primera operación autenticada:
+
+- `backend/src/middleware/auth.middleware.js` valida el encabezado `Authorization: Bearer <token>`.
+- El mismo middleware expone `requireRole(...)` para las siguientes historias basadas en permisos.
+- `backend/src/routes/profile.routes.js` publica `GET /api/profile/me`.
+- `backend/src/controllers/profile.controller.js` consulta el usuario y sus roles/perfiles desde PostgreSQL.
+- `backend/src/server.js` registra el nuevo grupo de rutas bajo `/api/profile`.
+
+La validación ejecutada sobre el backend local confirmó:
+
+- registro HTTP `201`;
+- consulta de perfil autenticado HTTP `200`;
+- rechazo sin token HTTP `401`;
+- conexión PostgreSQL correcta durante el arranque.
+
 ## 13. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.
