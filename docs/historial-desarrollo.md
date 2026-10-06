@@ -244,6 +244,25 @@ Los siguientes pasos reales son:
 - crear la gestión de ofertas y postulaciones;
 - conectar el frontend con estos endpoints.
 
+### 12.4. Implementación real de autenticación
+
+Durante la rama `feature/fase-1-autenticacion` se dejó preparada la autenticación con persistencia real en PostgreSQL. La API ya es capaz de:
+
+- registrar un usuario con email, nombre completo y contraseña;
+- comprobar si el email ya existe;
+- hash de la contraseña con `bcrypt`;
+- asignar el rol `USUARIO` al crear la cuenta;
+- emitir un JWT con `jsonwebtoken` para el flujo de login;
+- validar credenciales y devolver el usuario autenticado con su token.
+
+La estructura de autenticación quedó en los archivos:
+
+- `backend/src/controllers/auth.controller.js`
+- `backend/src/config/env.js`
+- `backend/src/server.js`
+
+Se añadió además la configuración de dependencias `bcrypt` y `jsonwebtoken` al proyecto del backend para permitir el registro y login reales sin depender de datos temporales.
+
 ## 13. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.
