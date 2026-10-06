@@ -3,7 +3,11 @@ import { AppState, Role, Screen } from "../App";
 import ArdyMark from "../components/ArdyMark";
 import UniversityLogo from "../components/UniversityLogo";
 
-type Props = { navigate: (screen: Screen, extra?: Partial<AppState>) => void };
+type Props = {
+  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  login?: (email: string, password: string) => Promise<void>;
+  register?: (payload: Record<string, unknown>) => Promise<void>;
+};
 type View = "login" | "register" | "forgot";
 
 const roles: { id: Role; title: string; description: string }[] = [
@@ -18,7 +22,7 @@ const home: Record<Role, Screen> = {
   external: "external-dashboard",
 };
 
-export default function AuthScreen({ navigate }: Props) {
+export default function AuthScreen({ navigate, login, register }: Props) {
   const [view, setView] = useState<View>("login");
   const [role, setRole] = useState<Role>("student");
   const [email, setEmail] = useState("");
@@ -36,7 +40,7 @@ export default function AuthScreen({ navigate }: Props) {
     setSent(false);
   };
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
     if (!email.includes("@")) return setError("Ingresa un correo válido.");
@@ -49,11 +53,31 @@ export default function AuthScreen({ navigate }: Props) {
       if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password))
         return setError("La contraseña debe cumplir todos los requisitos.");
       if (password !== confirm) return setError("Las contraseñas no coinciden.");
-      navigate(home[role], { role });
+
+      try {
+        if (register) {
+          await register({
+            email,
+            password,
+            nombreCompleto: name,
+            profileType: role === "student" ? "ESTUDIANTE" : role === "company" ? "ORGANIZACION" : "CANDIDATO_EXTERNO",
+            ...(role === "company" ? { razonSocial: name, descripcion: "Empresa registrada desde SIPU" } : {}),
+          });
+        }
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : "No se pudo crear la cuenta.");
+      }
       return;
     }
     if (!password) return setError("Ingresa tu contraseña.");
-    setChooseProfile(true);
+
+    try {
+      if (login) {
+        await login(email, password);
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "No se pudo iniciar sesión.");
+    }
   };
 
   return (

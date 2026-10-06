@@ -14,11 +14,11 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
   if (!offer) return null;
 
   const closed = +new Date(offer.closeDate) < Date.now();
-  const submit = () => { applyToOffer(offer); setApplied(true); setConfirming(false); setSuccess(true); };
+  const submit = async () => { await applyToOffer(offer); setApplied(true); setConfirming(false); setSuccess(true); };
 
   return (
     <div className="app-shell">
-      <NavBar role="student" navigate={navigate} activeScreen="student-dashboard" />
+      <NavBar role="student" navigate={navigate} activeScreen="student-dashboard" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} onLogout={() => navigate("auth")} />
       <main className="container detail-page">
         <button className="back-button" onClick={() => navigate("student-dashboard")}>← Volver a ofertas</button>
         <section className="detail-header">

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppState, Screen, COMPANY_CANDIDATES } from "../App";
 import NavBar from "../components/NavBar";
+import { api } from "../lib/api";
 
 type Props = {
   state: AppState;
@@ -21,11 +22,43 @@ const avatarGradients = [
   "linear-gradient(135deg, #0f766e 0%, #0d6b63 100%)",
 ];
 
+const mapStatus = (status?: string): "En revisión" | "Aceptada" | "Rechazada" => {
+  switch (status) {
+    case "ACEPTADA":
+      return "Aceptada";
+    case "RECHAZADA":
+      return "Rechazada";
+    default:
+      return "En revisión";
+  }
+};
+
 export default function CompanyApplicants({ state, navigate, updateCandidateStatus }: Props) {
   const offer = state.selectedCompanyOffer;
-  const candidates = state.candidates;
+  const [candidates, setCandidates] = useState(state.candidates);
   const [selected, setSelected] = useState<(typeof COMPANY_CANDIDATES)[0] | null>(null);
   const [filter, setFilter] = useState<"Todos" | "En revisión" | "Aceptada" | "Rechazada">("Todos");
+
+  useEffect(() => {
+    if (!offer || !state.token) return;
+
+    api.getApplicationsForOffer(String(offer.id), state.token)
+      .then((response) => {
+        const mapped = (response.applications ?? []).map((item) => ({
+          id: Number(item.id),
+          name: item.postulante_nombre ?? item.nombre ?? "Estudiante",
+          career: "Perfil SIPU",
+          semester: "Sin dato",
+          gpa: "—",
+          city: "Bogotá",
+          appliedDate: (item.created_at ?? new Date().toISOString()).slice(0, 10),
+          status: mapStatus(item.estado),
+          skills: ["Perfil SIPU"],
+        }));
+        setCandidates(mapped.length ? mapped : state.candidates);
+      })
+      .catch(() => setCandidates(state.candidates));
+  }, [offer, state.token]);
 
   const filtered = candidates.filter((c) => filter === "Todos" || c.status === filter);
   const counts = {
@@ -36,7 +69,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="company" navigate={navigate} activeScreen="company-applicants" />
+      <NavBar role="company" navigate={navigate} activeScreen="company-applicants" userName={state.currentUser?.nombreCompleto ?? "Empresa"} onLogout={() => navigate("auth")} />
 
       {/* Header */}
       <div

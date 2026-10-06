@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { AppState, Application, OFFERS, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
+import { api } from "../lib/api";
 
 type Props = {
   state: AppState;
@@ -54,8 +56,42 @@ const logoStyle: Record<string, string> = {
 
 const steps = ["Enviada", "En revisión", "Aceptada"] as const;
 
+const mapApplicationStatus = (status?: string): Application["status"] => {
+  switch (status) {
+    case "EN_REVISION":
+      return "En revisión";
+    case "ACEPTADA":
+      return "Aceptada";
+    case "RECHAZADA":
+      return "Rechazada";
+    case "PRESELECCIONADA":
+      return "En revisión";
+    default:
+      return "Enviada";
+  }
+};
+
 export default function StudentApplications({ state, navigate }: Props) {
-  const apps = state.applications;
+  const [apps, setApps] = useState<Application[]>(state.applications);
+
+  useEffect(() => {
+    if (!state.token) return;
+
+    api.getMyApplications(state.token)
+      .then((response) => {
+        const mapped = (response.applications ?? []).map((item) => ({
+          id: Number(item.id),
+          offerId: Number(item.oferta_id ?? item.offerId ?? 0),
+          offerTitle: item.oferta_titulo ?? item.offerTitle ?? "Oferta",
+          company: item.empresa ?? item.company ?? "Empresa",
+          appliedDate: (item.created_at ?? item.appliedDate ?? new Date().toISOString()).slice(0, 10),
+          status: mapApplicationStatus(item.estado ?? item.status),
+        }));
+        setApps(mapped.length ? mapped : state.applications);
+      })
+      .catch(() => setApps(state.applications));
+  }, [state.token]);
+
   const counts = {
     total: apps.length,
     active: apps.filter((a) => a.status === "Enviada" || a.status === "En revisión").length,
@@ -65,7 +101,7 @@ export default function StudentApplications({ state, navigate }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="student" navigate={navigate} activeScreen="student-applications" />
+      <NavBar role="student" navigate={navigate} activeScreen="student-applications" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} onLogout={() => navigate("auth")} />
 
       {/* Header */}
       <div

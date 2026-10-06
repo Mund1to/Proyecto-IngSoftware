@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Role, Screen } from "../App";
 import UniversityLogo from "./UniversityLogo";
 
-type Props = { role: Role; navigate: (screen: Screen) => void; activeScreen: Screen };
+type Props = { role: Role; navigate: (screen: Screen) => void; activeScreen: Screen; userName?: string; onLogout?: () => void };
 
 const links: Record<Role, { label: string; screen: Screen }[]> = {
   student: [
@@ -23,10 +23,10 @@ const links: Record<Role, { label: string; screen: Screen }[]> = {
 
 const home: Record<Role, Screen> = { student: "student-dashboard", company: "company-dashboard", external: "external-dashboard" };
 
-export default function NavBar({ role, navigate, activeScreen }: Props) {
+export default function NavBar({ role, navigate, activeScreen, userName, onLogout }: Props) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState(false);
-  const name = role === "student" ? "Laura C." : role === "company" ? "Bancolombia" : "Carlos P.";
+  const name = userName ?? (role === "student" ? "Laura C." : role === "company" ? "Bancolombia" : "Carlos P.");
 
   return (
     <header className="topbar">
@@ -56,7 +56,7 @@ export default function NavBar({ role, navigate, activeScreen }: Props) {
             )}
           </div>
           <span className="user-chip">{name}</span>
-          <button className="icon-button" aria-label="Cerrar sesión" onClick={() => navigate("auth")}><ExitIcon /></button>
+          <button className="icon-button" aria-label="Cerrar sesión" onClick={() => { if (onLogout) onLogout(); else navigate("auth"); }}><ExitIcon /></button>
           <button className="menu-button" aria-label="Abrir menú" aria-expanded={open} onClick={() => setOpen(!open)}>Menú</button>
         </div>
       </div>

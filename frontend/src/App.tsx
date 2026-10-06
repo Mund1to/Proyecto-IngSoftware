@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api, type ApiUser } from "./lib/api";
 import AuthScreen from "./screens/AuthScreen";
 import StudentDashboard from "./screens/StudentDashboard";
 import OfferDetail from "./screens/OfferDetail";
@@ -25,6 +26,14 @@ export type Screen =
   | "external-job-detail"
   | "external-profile"
   | "external-applications";
+
+export type UserSession = {
+  id: number;
+  email: string;
+  nombreCompleto: string;
+  profileTypes: string[];
+  roles: string[];
+};
 
 // ── Internship offers (for students) ────────────────────────────────────────
 
@@ -429,11 +438,25 @@ export const COMPANY_CANDIDATES = [
   { id: 4, name: "Juan Sebastián López", career: "Ciencias de la Computación", semester: "9°", gpa: "3.7", city: "Bogotá", appliedDate: "2026-09-05", status: "Rechazada" as const, skills: ["C++", "Java", "Algoritmos"] },
 ];
 
-// ── App state ─────────────────────────────────────────────────────────────────
+const profileTypeToRole = (profileType?: string): Role => {
+  if (profileType === "ORGANIZACION") return "company";
+  if (profileType === "CANDIDATO_EXTERNO") return "external";
+  return "student";
+};
+
+const mapUserToSession = (user: ApiUser): UserSession => ({
+  id: Number(user.id),
+  email: user.email,
+  nombreCompleto: user.nombreCompleto,
+  profileTypes: user.profileTypes ?? user.perfiles?.map((profile) => profile.tipo ?? "ESTUDIANTE") ?? ["ESTUDIANTE"],
+  roles: user.roles ?? ["USUARIO"],
+});
 
 export type AppState = {
   screen: Screen;
   role: Role | null;
+  token: string | null;
+  currentUser: UserSession | null;
   selectedOffer: Offer | null;
   selectedJob: Job | null;
   selectedCompanyOffer: Offer | null;
@@ -443,31 +466,125 @@ export type AppState = {
 };
 
 export default function App() {
-  const [state, setState] = useState<AppState>({
-    screen: "auth",
-    role: null,
-    selectedOffer: null,
-    selectedJob: null,
-    selectedCompanyOffer: null,
-    applications: APPLICATIONS_DATA,
-    jobApplications: JOB_APPLICATIONS_DATA,
-    candidates: COMPANY_CANDIDATES,
+  const [state, setState] = useState<AppState>(() => {
+    const storedToken = localStorage.getItem("sipu-token");
+    const storedUser = localStorage.getItem("sipu-user");
+    return {
+      screen: "auth",
+      role: null,
+      token: storedToken,
+      currentUser: storedUser ? JSON.parse(storedUser) as UserSession : null,
+      selectedOffer: null,
+      selectedJob: null,
+      selectedCompanyOffer: null,
+      applications: APPLICATIONS_DATA,
+      jobApplications: JOB_APPLICATIONS_DATA,
+      candidates: COMPANY_CANDIDATES,
+    };
   });
+
+  useEffect(() => {
+    if (state.token) {
+      localStorage.setItem("sipu-token", state.token);
+    } else {
+      localStorage.removeItem("sipu-token");
+    }
+  }, [state.token]);
+
+  useEffect(() => {
+    if (state.currentUser) {
+      localStorage.setItem("sipu-user", JSON.stringify(state.currentUser));
+    } else {
+      localStorage.removeItem("sipu-user");
+    }
+  }, [state.currentUser]);
+
+  useEffect(() => {
+    if (!state.token) return;
+
+    api.getCurrentUser(state.token)
+      .then((data) => {
+        const user = mapUserToSession(data.user);
+        setState((current) => ({
+          ...current,
+          currentUser: user,
+          role: profileTypeToRole(user.profileTypes[0]),
+          screen: profileTypeToRole(user.profileTypes[0]) === "company" ? "company-dashboard" : "student-dashboard",
+        }));
+      })
+      .catch(() => {
+        setState((current) => ({ ...current, token: null, currentUser: null, role: null, screen: "auth" }));
+      });
+  }, [state.token]);
 
   const navigate = (screen: Screen, extra?: Partial<AppState>) => {
     setState((s) => ({ ...s, screen, ...extra }));
     window.scrollTo({ top: 0 });
   };
 
-  const applyToOffer = (offer: Offer) => {
-    if (state.applications.find((a) => a.offerId === offer.id)) return;
-    setState((s) => ({
-      ...s,
-      applications: [
-        { id: Date.now(), offerId: offer.id, offerTitle: offer.title, company: offer.company, appliedDate: new Date().toISOString().slice(0, 10), status: "Enviada" },
-        ...s.applications,
-      ],
+  const login = async (email: string, password: string) => {
+    const response = await api.login({ email, password });
+    const user = mapUserToSession(response.user);
+    const nextRole = profileTypeToRole(user.profileTypes[0]);
+
+    setState((current) => ({
+      ...current,
+      token: response.token,
+      currentUser: user,
+      role: nextRole,
+      screen: nextRole === "company" ? "company-dashboard" : nextRole === "external" ? "external-dashboard" : "student-dashboard",
     }));
+  };
+
+  const register = async (payload: Record<string, unknown>) => {
+    const response = await api.register(payload);
+    const user = mapUserToSession(response.user);
+    const nextRole = profileTypeToRole(user.profileTypes[0]);
+
+    setState((current) => ({
+      ...current,
+      token: response.token,
+      currentUser: user,
+      role: nextRole,
+      screen: nextRole === "company" ? "company-dashboard" : nextRole === "external" ? "external-dashboard" : "student-dashboard",
+    }));
+  };
+
+  const logout = () => {
+    setState((current) => ({
+      ...current,
+      token: null,
+      currentUser: null,
+      role: null,
+      screen: "auth",
+    }));
+  };
+
+  const applyToOffer = async (offer: Offer) => {
+    if (!state.token) return;
+    if (state.applications.find((a) => a.offerId === offer.id)) return;
+
+    try {
+      const response = await api.applyToOffer(String(offer.id), state.token, { cartaPresentacion: `Postulación a ${offer.title}` });
+      const createdApp = response.application;
+
+      setState((s) => ({
+        ...s,
+        applications: [
+          {
+            id: Number(createdApp?.id ?? Date.now()),
+            offerId: Number(offer.id),
+            offerTitle: offer.title,
+            company: offer.company,
+            appliedDate: new Date().toISOString().slice(0, 10),
+            status: "Enviada",
+          },
+          ...s.applications,
+        ],
+      }));
+    } catch (error) {
+      console.error("applyToOffer failed:", error);
+    }
   };
 
   const applyToJob = (job: Job) => {
@@ -481,11 +598,18 @@ export default function App() {
     }));
   };
 
-  const updateCandidateStatus = (id: number, status: "Aceptada" | "Rechazada") => {
-    setState((s) => ({ ...s, candidates: s.candidates.map((c) => (c.id === id ? { ...c, status } : c)) }));
+  const updateCandidateStatus = async (id: number, status: "Aceptada" | "Rechazada") => {
+    if (!state.token) return;
+
+    try {
+      await api.updateApplicationStatus(id, status === "Aceptada" ? "ACEPTADA" : "RECHAZADA", state.token);
+      setState((s) => ({ ...s, candidates: s.candidates.map((c) => (c.id === id ? { ...c, status } : c)) }));
+    } catch (error) {
+      console.error("updateCandidateStatus failed:", error);
+    }
   };
 
-  const props = { state, navigate, applyToOffer, applyToJob, updateCandidateStatus };
+  const props = { state, navigate, applyToOffer, applyToJob, updateCandidateStatus, login, register, logout };
 
   switch (state.screen) {
     case "auth":               return <AuthScreen {...props} />;

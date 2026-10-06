@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppState, Offer, OFFERS, Screen } from "../App";
 import NavBar from "../components/NavBar";
+import { api } from "../lib/api";
 import { formatDate } from "./StudentDashboard";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
@@ -16,13 +17,39 @@ const initial: Draft = {
   salary: "", closeDate: "", contact: "",
 };
 
-export default function CompanyDashboard({ navigate }: Props) {
-  const offers = OFFERS.filter((offer) => offer.company === "Bancolombia");
+const toUiOffer = (offer: any): Offer => ({
+  id: Number(offer.id),
+  title: offer.titulo ?? offer.title ?? "Oferta",
+  company: offer.empresa ?? offer.company ?? "Empresa",
+  logo: (offer.empresa ?? offer.company ?? "E").slice(0, 2).toUpperCase(),
+  city: offer.ubicacion ?? offer.city ?? "Bogotá",
+  area: offer.area ?? "Tecnología",
+  modality: (offer.modalidad ?? "Híbrida") as Offer["modality"],
+  closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
+  salary: offer.remuneracion ? `$${Number(offer.remuneracion).toLocaleString("es-CO")}/mes` : "A convenir",
+  description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
+  requirements: Array.isArray(offer.requirements) && offer.requirements.length ? offer.requirements : [offer.descripcion ?? "Disponibilidad para práctica."],
+  applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
+});
+
+export default function CompanyDashboard({ state, navigate }: Props) {
+  const [offers, setOffers] = useState<Offer[]>(OFFERS.filter((offer) => offer.company === "Bancolombia"));
   const [creating, setCreating] = useState(false);
   const [preview, setPreview] = useState(false);
   const [published, setPublished] = useState(false);
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!state.token) return;
+
+    api.getMyOffers(state.token)
+      .then((response) => {
+        const mapped = (response.offers ?? []).map(toUiOffer);
+        setOffers(mapped.length ? mapped : OFFERS.filter((offer) => offer.company === "Bancolombia"));
+      })
+      .catch(() => setOffers(OFFERS.filter((offer) => offer.company === "Bancolombia")));
+  }, [state.token]);
 
   const update = (key: keyof Draft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
   const validate = () => {
@@ -34,9 +61,32 @@ export default function CompanyDashboard({ navigate }: Props) {
     setPreview(true);
   };
 
+  const publishOffer = async () => {
+    if (!state.token) return;
+    const payload = {
+      titulo: draft.title,
+      descripcion: draft.description,
+      tipo: "PRACTICA",
+      estado: "PUBLICADA",
+      ubicacion: draft.city,
+      modalidad: draft.modality,
+      fechaPublicacion: new Date().toISOString(),
+      fechaCierre: draft.closeDate ? new Date(draft.closeDate).toISOString() : null,
+    };
+
+    try {
+      const response = await api.createOffer(payload, state.token);
+      const created = toUiOffer(response.offer);
+      setOffers((current) => [created, ...current]);
+      setPublished(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo publicar la oferta.");
+    }
+  };
+
   if (creating) return (
     <div className="app-shell">
-      <NavBar role="company" navigate={navigate} activeScreen="company-dashboard" />
+      <NavBar role="company" navigate={navigate} activeScreen="company-dashboard" userName={state.currentUser?.nombreCompleto ?? "Empresa"} onLogout={() => navigate("auth")} />
       <main className="container publish-page">
         <button className="back-button" onClick={() => { setCreating(false); setPreview(false); }}>← Volver al panel</button>
         {published ? (
@@ -52,7 +102,7 @@ export default function CompanyDashboard({ navigate }: Props) {
               <h3>Requisitos</h3><ul className="check-list"><li>{draft.program}</li><li>{draft.skills}</li><li>{draft.experience}</li></ul>
               <h3>Condiciones</h3><p>{draft.duration} · {draft.schedule} · Cierre {formatDate(draft.closeDate)}</p>
             </section>
-            <div className="publish-actions"><button className="button secondary" onClick={() => setPreview(false)}>Volver a editar</button><button className="button secondary" onClick={() => alert("Borrador guardado")}>Guardar borrador</button><button className="button primary" onClick={() => setPublished(true)}>Publicar oferta</button></div>
+            <div className="publish-actions"><button className="button secondary" onClick={() => setPreview(false)}>Volver a editar</button><button className="button secondary" onClick={() => alert("Borrador guardado")}>Guardar borrador</button><button className="button primary" onClick={() => void publishOffer()}>Publicar oferta</button></div>
           </>
         ) : (
           <>

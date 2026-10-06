@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppState, Offer, OFFERS, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
+import { api } from "../lib/api";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Sort = "recent" | "closing" | "salary";
@@ -10,6 +11,21 @@ const cities = ["Todas", "Bogotá", "Medellín", "Cali", "Sopó, Cundinamarca"];
 const areas = ["Todas", "Tecnología", "Marketing", "Contabilidad", "Recursos Humanos", "Producción"];
 const modalities = ["Todas", "Presencial", "Remota", "Híbrida"];
 
+const toUiOffer = (offer: any): Offer => ({
+  id: Number(offer.id),
+  title: offer.titulo ?? offer.title ?? "Oferta",
+  company: offer.empresa ?? offer.company ?? "Empresa",
+  logo: (offer.empresa ?? offer.company ?? "E").slice(0, 2).toUpperCase(),
+  city: offer.ubicacion ?? offer.city ?? "Bogotá",
+  area: offer.area ?? "Tecnología",
+  modality: (offer.modalidad ?? "Híbrida") as Offer["modality"],
+  closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
+  salary: offer.remuneracion ? `$${Number(offer.remuneracion).toLocaleString("es-CO")}/mes` : "A convenir",
+  description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
+  requirements: Array.isArray(offer.requirements) && offer.requirements.length ? offer.requirements : [offer.descripcion ?? "Disponibilidad para práctica."],
+  applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
+});
+
 export default function StudentDashboard({ state, navigate }: Props) {
   const [city, setCity] = useState("Todas");
   const [area, setArea] = useState("Todas");
@@ -17,8 +33,18 @@ export default function StudentDashboard({ state, navigate }: Props) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
   const [saved, setSaved] = useState<number[]>([]);
+  const [offers, setOffers] = useState<Offer[]>(OFFERS);
 
-  const filtered = useMemo(() => OFFERS.filter((offer) =>
+  useEffect(() => {
+    api.getOffers()
+      .then((response) => {
+        const mapped = (response.offers ?? []).map(toUiOffer);
+        setOffers(mapped.length ? mapped : OFFERS);
+      })
+      .catch(() => setOffers(OFFERS));
+  }, []);
+
+  const filtered = useMemo(() => offers.filter((offer) =>
     (city === "Todas" || offer.city === city) &&
     (area === "Todas" || offer.area === area) &&
     (modality === "Todas" || offer.modality === modality) &&
@@ -36,7 +62,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
 
   return (
     <div className="app-shell">
-      <NavBar role="student" navigate={navigate} activeScreen="student-dashboard" />
+      <NavBar role="student" navigate={navigate} activeScreen="student-dashboard" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} onLogout={() => navigate("auth")} />
       <main>
         <section className="page-hero">
           <div className="container">
