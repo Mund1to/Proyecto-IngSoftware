@@ -2,8 +2,10 @@ import cors from 'cors';
 import express from 'express';
 import { env } from './config/env.js';
 import { pool, testDatabaseConnection } from './config/database.js';
+import applicationsRouter from './routes/applications.routes.js';
 import authRouter from './routes/auth.routes.js';
 import healthRouter from './routes/health.routes.js';
+import offersRouter from './routes/offers.routes.js';
 import profileRouter from './routes/profile.routes.js';
 
 const app = express();
@@ -13,6 +15,8 @@ app.use(express.json());
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/profile', profileRouter);
+app.use('/api/offers', offersRouter);
+app.use('/api/applications', applicationsRouter);
 
 app.get('/api/db-check', async (_request, response) => {
   const result = await testDatabaseConnection();

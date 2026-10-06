@@ -70,15 +70,17 @@ La base de datos se conecta en `backend/src/config/database.js` desde `DATABASE_
 - implementar autenticación real usando `bcrypt` y `jsonwebtoken`;
 - crear endpoints de registro y login;
 - proteger rutas con middleware JWT;
-- consultar el usuario autenticado mediante `GET /api/profile/me`.
-
-### Pendiente
-
+- consultar el usuario autenticado mediante `GET /api/profile/me`;
 - registrar perfiles de estudiante y organización durante el alta;
 - crear el CRUD de ofertas de práctica;
 - crear el flujo de postulaciones;
+- verificar el MVP con peticiones reales a la API local.
+
+### Pendiente
+
 - conectar el frontend con la API;
-- ejecutar una verificación completa del MVP.
+- completar una capa de validación UX adicional en la interfaz;
+- revisar flujos avanzados de negocio y estados de oferta más complejos.
 
 ## Endpoints disponibles
 
@@ -88,4 +90,14 @@ La base de datos se conecta en `backend/src/config/database.js` desde `DATABASE_
 | `POST` | `/api/auth/login` | Pública | Valida credenciales y emite un JWT. |
 | `GET` | `/api/profile/me` | Bearer JWT | Devuelve los datos del usuario autenticado. |
 | `GET` | `/api/db-check` | Pública | Comprueba la conexión con PostgreSQL. |
+| `GET` | `/api/offers` | Pública | Lista las ofertas públicas y activas. |
+| `GET` | `/api/offers/mine` | Bearer JWT + organización | Lista las ofertas creadas por la organización autenticada. |
+| `POST` | `/api/offers` | Bearer JWT + organización | Crea una oferta para la organización autenticada. |
+| `GET` | `/api/offers/:id` | Pública | Detalla una oferta concreta. |
+| `PATCH` | `/api/offers/:id` | Bearer JWT + organización | Actualiza una oferta propia. |
+| `DELETE` | `/api/offers/:id` | Bearer JWT + organización | Elimina una oferta propia. |
+| `GET` | `/api/applications/me` | Bearer JWT + estudiante | Lista las postulaciones del estudiante autenticado. |
+| `GET` | `/api/applications/offers/:offerId` | Bearer JWT + organización | Lista postulaciones recibidas para una oferta propia. |
+| `POST` | `/api/applications/offers/:offerId` | Bearer JWT + estudiante | Registra una postulación para una oferta pública. |
+| `PATCH` | `/api/applications/:id/status` | Bearer JWT + organización | Cambia el estado de una postulación. |
 

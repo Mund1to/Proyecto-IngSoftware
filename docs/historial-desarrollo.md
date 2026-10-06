@@ -280,6 +280,28 @@ La validación ejecutada sobre el backend local confirmó:
 - rechazo sin token HTTP `401`;
 - conexión PostgreSQL correcta durante el arranque.
 
+### 12.6. Gestión de ofertas y postulaciones
+
+Durante la continuación de la Fase 1 se añadieron los módulos de negocio del MVP para prácticas universitarias:
+
+- `backend/src/controllers/offers.controller.js` implementa crear, listar, consultar, actualizar y eliminar ofertas.
+- `backend/src/controllers/applications.controller.js` gestiona la postulación del estudiante y el cambio de estado por parte de la empresa.
+- `backend/src/routes/offers.routes.js` y `backend/src/routes/applications.routes.js` exponen los endpoints del modelo de negocio.
+- `backend/src/server.js` monta ambos grupos bajo `/api/offers` y `/api/applications`.
+
+Los flujos verificados mediante peticiones reales contra la API local fueron:
+
+- registro de una empresa autenticada;
+- creación de una oferta pública con validación de permisos;
+- listado público de ofertas;
+- registro de un estudiante autenticado;
+- postulación a una oferta con `cartaPresentacion`;
+- consulta de postulaciones del estudiante;
+- consulta de postulaciones recibidas por la empresa;
+- actualización de estado de la postulación a `PRESELECCIONADA`.
+
+La validación ejecutada devolvió respuestas con `201`/`200` y confirmó que la lógica de negocio del MVP funciona con PostgreSQL real.
+
 ## 13. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.
