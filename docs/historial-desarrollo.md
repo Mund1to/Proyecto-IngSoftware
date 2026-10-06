@@ -203,6 +203,47 @@ Antes de iniciar una historia:
 
 7. Tras la revisión y el merge, elimine la rama de trabajo si ya no se necesita.
 
-## 12. Regla para mantener la documentación
+## 12. Inicio de la Fase 1
+
+La Fase 1 se inició en la rama `feature/fase-1-autenticacion` con la configuración necesaria para conectar la API a PostgreSQL y preparar el primer bloque funcional del MVP.
+
+### 12.1. Conexión a PostgreSQL
+
+Se añadieron los siguientes elementos:
+
+- `backend/src/config/env.js`: carga `dotenv` y expone las variables de entorno del proyecto.
+- `backend/src/config/database.js`: crea un `Pool` de PostgreSQL usando `DATABASE_URL`.
+- `backend/src/server.js`: comprueba la conexión al arrancar y expone el endpoint `/api/db-check`.
+- `.env.example`: incorpora `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET` y `JWT_EXPIRES_IN`.
+
+La conexión se hace mediante la cadena:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sipu
+```
+
+Esto permite crear una base local llamada `sipu` y apuntar la API a ella. El cliente oficial de PostgreSQL para Node.js es `pg`, que proporciona el `Pool` de conexiones y la ejecución de consultas.
+
+### 12.2. Qué hace la conexión en práctica
+
+En este punto, la API no inserta ni consulta todavía datos reales, pero ya tiene la base técnica para hacerlo. El flujo es el siguiente:
+
+1. La aplicación carga `.env`.
+2. `config/database.js` construye un `Pool` con la URL de conexión.
+3. El servidor ejecuta `SELECT NOW()` al iniciar si `DATABASE_URL` existe.
+4. Si la conexión falla, se registra un warning y se deja el sistema en estado preparado para continuar con la implementación de autenticación.
+
+### 12.3. Siguientes objetivos de la Fase 1
+
+Los siguientes pasos reales son:
+
+- crear la base `sipu` localmente;
+- ejecutar el esquema `backend/database/schema.sql`;
+- probar la conexión con `GET /api/db-check`;
+- implementar registro e inicio de sesión con `bcrypt` y JWT;
+- crear la gestión de ofertas y postulaciones;
+- conectar el frontend con estos endpoints.
+
+## 13. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.

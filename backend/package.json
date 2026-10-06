@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "cors": "latest",
-    "express": "latest"
+    "dotenv": "^18.0.5",
+    "express": "latest",
+    "pg": "^8.23.1"
   }
 }
