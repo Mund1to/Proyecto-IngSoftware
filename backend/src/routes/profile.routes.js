@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getCurrentUserController,
   updateCurrentUserController,
+  updateExternalProfileController,
   updateOrganizationProfileController,
   updateStudentProfileController,
 } from '../controllers/profile.controller.js';
@@ -13,5 +14,6 @@ profileRouter.get('/me', authenticate, getCurrentUserController);
 profileRouter.put('/me', authenticate, updateCurrentUserController);
 profileRouter.put('/student', authenticate, updateStudentProfileController);
 profileRouter.put('/organization', authenticate, updateOrganizationProfileController);
+profileRouter.put('/external', authenticate, updateExternalProfileController);
 
 export default profileRouter;

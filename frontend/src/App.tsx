@@ -550,6 +550,20 @@ export default function App() {
     }));
   };
 
+  const updateExternalProfile = async (payload: Record<string, unknown>) => {
+    if (!state.token) return;
+
+    try {
+      const response = await api.updateExternalProfile(payload, state.token);
+      setState((current) => ({
+        ...current,
+        currentUser: mapUserToSession(response.user),
+      }));
+    } catch (error) {
+      console.error("updateExternalProfile failed:", error);
+    }
+  };
+
   const logout = () => {
     setState((current) => ({
       ...current,
@@ -609,7 +623,7 @@ export default function App() {
     }
   };
 
-  const props = { state, navigate, applyToOffer, applyToJob, updateCandidateStatus, login, register, logout };
+  const props = { state, navigate, applyToOffer, applyToJob, updateCandidateStatus, updateExternalProfile, login, register, logout };
 
   switch (state.screen) {
     case "auth":               return <AuthScreen {...props} />;

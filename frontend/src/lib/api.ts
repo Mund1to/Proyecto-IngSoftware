@@ -20,6 +20,8 @@ export type ApiUser = {
     descripcion?: string | null;
     sitioWeb?: string | null;
     ubicacion?: string | null;
+    resumen?: string | null;
+    disponibilidad?: string | null;
     verificada?: boolean;
     cvUrl?: string | null;
   }>;
@@ -75,6 +77,12 @@ export const api = {
 
   updateStudentProfile: async (payload: Record<string, unknown>, token: string) =>
     request<{ ok: boolean; user: ApiUser }>(`/profile/student`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }, token),
+
+  updateExternalProfile: async (payload: Record<string, unknown>, token: string) =>
+    request<{ ok: boolean; user: ApiUser }>(`/profile/external`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     }, token),

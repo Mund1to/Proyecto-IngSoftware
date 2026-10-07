@@ -226,3 +226,39 @@ export async function updateOrganizationProfileController(request, response) {
     return response.status(500).json({ ok: false, message: 'No se pudo actualizar el perfil de organización.' });
   }
 }
+
+export async function updateExternalProfileController(request, response) {
+  const payload = request.body ?? {};
+
+  try {
+    const result = await pool.query(
+      `UPDATE perfiles_candidato pc
+       SET resumen = COALESCE($1, pc.resumen),
+           ubicacion = COALESCE($2, pc.ubicacion),
+           disponibilidad = COALESCE($3, pc.disponibilidad),
+           cv_url = COALESCE($4, pc.cv_url)
+       FROM perfiles p
+       WHERE pc.perfil_id = p.id
+         AND p.usuario_id = $5
+         AND p.tipo = 'CANDIDATO_EXTERNO'
+       RETURNING pc.perfil_id`,
+      [
+        toNullableString(getBodyValue(payload, ['resumen'])),
+        toNullableString(getBodyValue(payload, ['ubicacion'])),
+        toNullableString(getBodyValue(payload, ['disponibilidad'])),
+        toNullableString(getBodyValue(payload, ['cvUrl', 'cv_url'])),
+        request.auth.sub,
+      ]
+    );
+
+    if (result.rowCount === 0) {
+      return response.status(404).json({ ok: false, message: 'No existe un perfil de candidato externo para este usuario.' });
+    }
+
+    const user = await findUserProfile(request.auth.sub);
+    return response.json({ ok: true, user: serializeUser(user) });
+  } catch (error) {
+    console.error('updateExternalProfileController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudo actualizar el perfil de candidato externo.' });
+  }
+}
