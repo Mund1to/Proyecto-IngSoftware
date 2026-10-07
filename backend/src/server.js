@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { env } from './config/env.js';
 import { pool, testDatabaseConnection } from './config/database.js';
+import { initializeDatabaseSchema } from './config/migrate.js';
 import applicationsRouter from './routes/applications.routes.js';
 import authRouter from './routes/auth.routes.js';
 import healthRouter from './routes/health.routes.js';
@@ -28,6 +29,14 @@ app.get('/api/db-check', async (_request, response) => {
   return response.json({ ok: true, now: result.now });
 });
 
+app.get('/api/init-db', async (_request, response) => {
+  const result = await initializeDatabaseSchema();
+  if (!result.ok) {
+    return response.status(500).json(result);
+  }
+  return response.json(result);
+});
+
 app.listen(env.port, async () => {
   console.log(`SIPU backend listening on port ${env.port}`);
 
@@ -40,6 +49,7 @@ app.listen(env.port, async () => {
 
   if (dbCheck.ok) {
     console.log('PostgreSQL connected successfully.');
+    await initializeDatabaseSchema();
   } else {
     console.warn(`PostgreSQL connection failed: ${dbCheck.message}`);
   }
