@@ -505,11 +505,12 @@ export default function App() {
     api.getCurrentUser(state.token)
       .then((data) => {
         const user = mapUserToSession(data.user);
+        const nextRole = profileTypeToRole(user.profileTypes[0]);
         setState((current) => ({
           ...current,
           currentUser: user,
-          role: profileTypeToRole(user.profileTypes[0]),
-          screen: profileTypeToRole(user.profileTypes[0]) === "company" ? "company-dashboard" : "student-dashboard",
+          role: nextRole,
+          screen: nextRole === "company" ? "company-dashboard" : nextRole === "external" ? "external-dashboard" : "student-dashboard",
         }));
       })
       .catch(() => {

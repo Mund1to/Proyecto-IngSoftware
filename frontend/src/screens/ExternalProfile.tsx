@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppState, Screen } from "../App";
 import NavBar from "../components/NavBar";
 
-type Props = { state: AppState; navigate: (screen: Screen) => void };
+type Props = {
+  state: AppState;
+  navigate: (screen: Screen) => void;
+  updateExternalProfile?: (payload: Record<string, unknown>) => Promise<void>;
+};
 
 const tabs = [
   { id: "info", label: "Info personal" },
@@ -12,10 +16,19 @@ const tabs = [
 ] as const;
 type Tab = (typeof tabs)[number]["id"];
 
-export default function ExternalProfile({ state, navigate }: Props) {
+export default function ExternalProfile({ state, navigate, updateExternalProfile }: Props) {
   const [cvUploaded, setCvUploaded] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("info");
   const completeness = 85;
+
+  const user = state.currentUser;
+  const initials = (user?.nombreCompleto || "Candidato Externo")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
@@ -24,7 +37,10 @@ export default function ExternalProfile({ state, navigate }: Props) {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-[#0d2240]">Mi Perfil</h1>
-          <button className="text-sm font-semibold text-[#16a34a] flex items-center gap-1.5 hover:underline">
+          <button
+            onClick={() => setActiveTab("info")}
+            className="text-sm font-semibold text-[#16a34a] flex items-center gap-1.5 hover:underline"
+          >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
@@ -46,7 +62,7 @@ export default function ExternalProfile({ state, navigate }: Props) {
             {/* "Profesional externo" badge */}
             <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-[#60a5fa]/20 border border-[#60a5fa]/30 px-3 py-1.5 rounded-full">
               <span className="w-2 h-2 rounded-full bg-[#60a5fa]" />
-              <span className="text-[#93c5fd] text-xs font-semibold">Profesional externo</span>
+              <span className="text-[#93c5fd] text-xs font-semibold">Candidato externo</span>
             </div>
           </div>
 
@@ -57,37 +73,32 @@ export default function ExternalProfile({ state, navigate }: Props) {
                   className="w-20 h-20 rounded-2xl border-4 border-white flex items-center justify-center shadow-lg"
                   style={{ background: "linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)" }}
                 >
-                  <span className="text-white font-bold text-2xl">CA</span>
+                  <span className="text-white font-bold text-2xl">{initials || "CE"}</span>
                 </div>
-                <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border border-[#e2e8f0] rounded-full flex items-center justify-center shadow-sm hover:bg-[#f8fafc]">
-                  <svg className="w-3.5 h-3.5 text-[#64748b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  </svg>
-                </button>
               </div>
 
               <div className="flex-1 min-w-0 sm:pb-1">
-                <h2 className="text-xl font-bold text-[#0d2240]">Carlos Andrés Pérez Rojas</h2>
-                <p className="text-[#64748b] text-sm font-medium">Desarrollador Full Stack · 4 años de experiencia</p>
+                <h2 className="text-xl font-bold text-[#0d2240]">{user?.nombreCompleto ?? "Candidato Externo"}</h2>
+                <p className="text-[#64748b] text-sm font-medium">Bolsa de Empleo General</p>
                 <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-[#94a3b8]">
                   <span className="flex items-center gap-1">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Bogotá, Colombia
+                    Colombia
                   </span>
                   <span className="flex items-center gap-1">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    carlos.perez@correo.com
+                    {user?.email ?? "correo@ejemplo.com"}
                   </span>
                   <span className="flex items-center gap-1">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    Disponible de inmediato
+                    Disponible para contratación
                   </span>
                 </div>
               </div>
@@ -98,8 +109,8 @@ export default function ExternalProfile({ state, navigate }: Props) {
                   {cvUploaded ? (
                     <>
                       <div className="text-[#16a34a] text-2xl mb-1">📄</div>
-                      <p className="text-xs font-bold text-[#16a34a]">HV_Carlos.pdf</p>
-                      <p className="text-[10px] text-[#64748b] mt-0.5">Ago 20, 2026</p>
+                      <p className="text-xs font-bold text-[#16a34a]">HV_Registrada.pdf</p>
+                      <p className="text-[10px] text-[#64748b] mt-0.5">Perfil Activo</p>
                       <label className="mt-1.5 block text-[11px] text-[#0d2240] font-semibold hover:underline cursor-pointer">
                         Actualizar CV
                         <input type="file" accept=".pdf" className="hidden" onChange={() => setCvUploaded(true)} />
@@ -134,7 +145,7 @@ export default function ExternalProfile({ state, navigate }: Props) {
                 />
               </div>
               <p className="text-xs text-[#94a3b8] mt-2">
-                💡 Agrega una descripción personal y tu LinkedIn para llegar al 100%
+                💡 Mantén tu información actualizada para recibir mejores ofertas laborales.
               </p>
             </div>
           </div>
@@ -158,7 +169,7 @@ export default function ExternalProfile({ state, navigate }: Props) {
             ))}
           </div>
           <div className="p-7">
-            {activeTab === "info" && <ExternalInfoTab />}
+            {activeTab === "info" && <ExternalInfoTab state={state} onSave={updateExternalProfile} />}
             {activeTab === "experience" && <ExternalExperienceTab />}
             {activeTab === "education" && <ExternalEducationTab />}
             {activeTab === "skills" && <ExternalSkillsTab />}
@@ -169,43 +180,116 @@ export default function ExternalProfile({ state, navigate }: Props) {
   );
 }
 
-function ExternalInfoTab() {
+function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Record<string, unknown>) => Promise<void> }) {
+  const [nombre, setNombre] = useState(state.currentUser?.nombreCompleto ?? "");
+  const [telefono, setTelefono] = useState(state.currentUser?.telefono ?? "");
+  const [ubicacion, setUbicacion] = useState("Bogotá, Colombia");
+  const [disponibilidad, setDisponibilidad] = useState("Inmediata");
+  const [resumen, setResumen] = useState("Profesional capacitado y orientado al logro, con experiencia en proyectos y trabajo colaborativo.");
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (state.currentUser?.nombreCompleto) {
+      setNombre(state.currentUser.nombreCompleto);
+    }
+  }, [state.currentUser]);
+
+  const handleSave = async () => {
+    if (!onSave) return;
+    setLoading(true);
+    try {
+      await onSave({
+        nombreCompleto: nombre,
+        telefono,
+        ubicacion,
+        disponibilidad,
+        resumen,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
-        {[
-          { label: "Nombre completo", value: "Carlos Andrés Pérez Rojas" },
-          { label: "Documento de identidad", value: "CC 79.845.320" },
-          { label: "Teléfono", value: "+57 300 412 7890" },
-          { label: "Correo electrónico", value: "carlos.perez@correo.com" },
-          { label: "Ciudad de residencia", value: "Bogotá, Cundinamarca" },
-          { label: "Pretensión salarial", value: "$6.000.000 – $9.000.000" },
-        ].map((f) => (
-          <div key={f.label}>
-            <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">{f.label}</label>
-            <input
-              type="text" defaultValue={f.value}
-              className="w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white focus:ring-3 focus:ring-[#0d2240]/8"
-              style={{ outline: "none" }}
-            />
-          </div>
-        ))}
+        <div>
+          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Nombre completo</label>
+          <input
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white focus:ring-3 focus:ring-[#0d2240]/8"
+            style={{ outline: "none" }}
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Correo electrónico</label>
+          <input
+            type="text"
+            value={state.currentUser?.email ?? ""}
+            disabled
+            className="w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-gray-100 text-sm text-[#64748b] cursor-not-allowed"
+            style={{ outline: "none" }}
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Teléfono de contacto</label>
+          <input
+            type="text"
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            placeholder="+57 300 000 0000"
+            className="w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white focus:ring-3 focus:ring-[#0d2240]/8"
+            style={{ outline: "none" }}
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Ciudad de residencia / Ubicación</label>
+          <input
+            type="text"
+            value={ubicacion}
+            onChange={(e) => setUbicacion(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white focus:ring-3 focus:ring-[#0d2240]/8"
+            style={{ outline: "none" }}
+          />
+        </div>
         <div className="sm:col-span-2">
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Descripción profesional</label>
+          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Disponibilidad</label>
+          <input
+            type="text"
+            value={disponibilidad}
+            onChange={(e) => setDisponibilidad(e.target.value)}
+            placeholder="Inmediata / A convenir"
+            className="w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white focus:ring-3 focus:ring-[#0d2240]/8"
+            style={{ outline: "none" }}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Resumen / Perfil laboral</label>
           <textarea
             rows={3}
-            defaultValue="Desarrollador Full Stack con 4 años de experiencia en React, Node.js y arquitecturas cloud. Apasionado por construir productos digitales de alto impacto."
+            value={resumen}
+            onChange={(e) => setResumen(e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] resize-none focus:border-[#0d2240] focus:bg-white focus:ring-3 focus:ring-[#0d2240]/8"
             style={{ outline: "none" }}
           />
         </div>
       </div>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {saved && <span className="text-sm font-semibold text-[#16a34a]">✓ ¡Cambios guardados con éxito!</span>}
         <button
-          className="px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90"
+          onClick={handleSave}
+          disabled={loading}
+          className="px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-50"
           style={{ background: "linear-gradient(135deg, #0d2240 0%, #163456 100%)" }}
         >
-          Guardar cambios
+          {loading ? "Guardando..." : "Guardar cambios"}
         </button>
       </div>
     </div>

@@ -1,8 +1,8 @@
 import { pool } from '../config/database.js';
 
-async function getCurrentStudentProfileId(userId) {
+async function getCurrentCandidateProfileId(userId) {
   const result = await pool.query(
-    `SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo = 'ESTUDIANTE' LIMIT 1`,
+    `SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo IN ('ESTUDIANTE', 'CANDIDATO_EXTERNO') ORDER BY CASE WHEN tipo = 'CANDIDATO_EXTERNO' THEN 1 ELSE 2 END ASC LIMIT 1`,
     [userId]
   );
 
@@ -19,21 +19,21 @@ async function getOfferOwnerProfileId(offerId) {
 }
 
 export async function listMyApplicationsController(request, response) {
-  const studentProfileId = await getCurrentStudentProfileId(request.auth.sub);
+  const candidateProfileId = await getCurrentCandidateProfileId(request.auth.sub);
 
-  if (!studentProfileId) {
-    return response.status(403).json({ ok: false, message: 'Solo un estudiante puede ver sus postulaciones.' });
+  if (!candidateProfileId) {
+    return response.status(403).json({ ok: false, message: 'Solo un candidato o estudiante puede ver sus postulaciones.' });
   }
 
   try {
     const result = await pool.query(
-      `SELECT p.*, o.titulo AS oferta_titulo, org.razon_social AS empresa
+      `SELECT p.*, o.titulo AS oferta_titulo, o.tipo AS oferta_tipo, o.modalidad, o.ubicacion, org.razon_social AS empresa
        FROM postulaciones p
        INNER JOIN ofertas o ON o.id = p.oferta_id
        INNER JOIN organizaciones org ON org.perfil_id = o.organizacion_id
        WHERE p.candidato_id = $1
        ORDER BY p.created_at DESC`,
-      [studentProfileId]
+      [candidateProfileId]
     );
 
     return response.json({ ok: true, applications: result.rows });
@@ -62,10 +62,14 @@ export async function listApplicationsForOfferController(request, response) {
 
   try {
     const result = await pool.query(
-      `SELECT p.*, u.nombre_completo AS postulante_nombre, u.email AS postulante_email
+      `SELECT p.*, u.nombre_completo AS postulante_nombre, u.email AS postulante_email, u.telefono AS postulante_telefono,
+              pf.tipo AS perfil_tipo, pe.programa_academico, pe.semestre, pe.universidad,
+              pc.resumen, pc.ubicacion AS candidato_ubicacion, pc.disponibilidad, pc.cv_url
        FROM postulaciones p
        INNER JOIN perfiles pf ON pf.id = p.candidato_id
        INNER JOIN usuarios u ON u.id = pf.usuario_id
+       LEFT JOIN perfiles_estudiante pe ON pe.perfil_id = pf.id
+       LEFT JOIN perfiles_candidato pc ON pc.perfil_id = pf.id
        WHERE p.oferta_id = $1
        ORDER BY p.created_at DESC`,
       [offerId]
@@ -80,10 +84,10 @@ export async function listApplicationsForOfferController(request, response) {
 
 export async function applyToOfferController(request, response) {
   const { offerId } = request.params;
-  const studentProfileId = await getCurrentStudentProfileId(request.auth.sub);
+  const candidateProfileId = await getCurrentCandidateProfileId(request.auth.sub);
 
-  if (!studentProfileId) {
-    return response.status(403).json({ ok: false, message: 'Solo un estudiante puede postularse.' });
+  if (!candidateProfileId) {
+    return response.status(403).json({ ok: false, message: 'Debes contar con un perfil de candidato o estudiante para postularte.' });
   }
 
   try {
@@ -102,7 +106,7 @@ export async function applyToOfferController(request, response) {
 
     const existingApplication = await pool.query(
       `SELECT id FROM postulaciones WHERE oferta_id = $1 AND candidato_id = $2`,
-      [offerId, studentProfileId]
+      [offerId, candidateProfileId]
     );
 
     if (existingApplication.rowCount > 0) {
@@ -116,7 +120,7 @@ export async function applyToOfferController(request, response) {
       `INSERT INTO postulaciones (oferta_id, candidato_id, estado, carta_presentacion)
        VALUES ($1, $2, 'ENVIADA', $3)
        RETURNING *`,
-      [offerId, studentProfileId, coverLetter]
+      [offerId, candidateProfileId, coverLetter]
     );
 
     return response.status(201).json({ ok: true, application: result.rows[0] });

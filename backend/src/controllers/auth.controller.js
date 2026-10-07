@@ -189,6 +189,21 @@ export async function registerController(request, response) {
       );
     }
 
+    if (profileType === 'CANDIDATO_EXTERNO') {
+      await client.query(
+        `INSERT INTO perfiles_candidato
+          (perfil_id, resumen, ubicacion, disponibilidad, cv_url)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          profile.id,
+          getBodyValue(profilePayload, ['resumen']) ?? null,
+          getBodyValue(profilePayload, ['ubicacion']) ?? null,
+          getBodyValue(profilePayload, ['disponibilidad']) ?? null,
+          getBodyValue(profilePayload, ['cvUrl', 'cv_url']) ?? null,
+        ]
+      );
+    }
+
     await client.query('COMMIT');
 
     const roles = [role.nombre];

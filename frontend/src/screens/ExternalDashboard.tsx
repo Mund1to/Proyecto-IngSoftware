@@ -82,7 +82,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
             </span>
           </div>
           <h1 className="text-white text-3xl font-bold mb-1 tracking-tight">
-            Hola, Carlos 👋
+            Hola, {state.currentUser?.nombreCompleto?.split(" ")[0] ?? "Candidato"} 👋
           </h1>
           <p className="text-white/50 text-sm mb-7">
             Encuentra empleos en las mejores empresas del país. Abierto a todos los profesionales.
