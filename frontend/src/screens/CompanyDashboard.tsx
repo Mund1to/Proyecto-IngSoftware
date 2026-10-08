@@ -8,13 +8,15 @@ type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppSt
 type Draft = {
   title: string; area: string; description: string; program: string; semester: string; skills: string;
   experience: string; languages: string; city: string; modality: Offer["modality"]; duration: string;
-  schedule: string; salary: string; closeDate: string; contact: string;
+  schedule: string; salary: string; salaryMin: string; salaryMax: string; closeDate: string; contact: string;
+  offerType: "PRACTICA" | "EMPLEO" | "EMPLEO_PUBLICO";
 };
 
 const initial: Draft = {
   title: "", area: "Tecnología", description: "", program: "", semester: "", skills: "", experience: "No requerida",
   languages: "", city: "Bogotá", modality: "Híbrida", duration: "6 meses", schedule: "Lunes a viernes",
-  salary: "", closeDate: "", contact: "",
+  salary: "", salaryMin: "", salaryMax: "", closeDate: "", contact: "",
+  offerType: "PRACTICA",
 };
 
 const toUiOffer = (offer: any): Offer => ({
@@ -53,7 +55,11 @@ export default function CompanyDashboard({ state, navigate }: Props) {
 
   const update = (key: keyof Draft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
   const validate = () => {
-    if (!draft.title || !draft.description || !draft.program || !draft.skills || !draft.city || !draft.salary || !draft.closeDate || !draft.contact) {
+    const salaryOk = draft.offerType === "PRACTICA"
+      ? Boolean(draft.salary)
+      : Boolean(draft.salaryMin && draft.salaryMax);
+
+    if (!draft.title || !draft.description || !draft.program || !draft.skills || !draft.city || !salaryOk || !draft.closeDate || !draft.contact) {
       setError("Completa todos los campos obligatorios antes de continuar.");
       return;
     }
@@ -66,12 +72,14 @@ export default function CompanyDashboard({ state, navigate }: Props) {
     const payload = {
       titulo: draft.title,
       descripcion: draft.description,
-      tipo: "PRACTICA",
+      tipo: draft.offerType,
       estado: "PUBLICADA",
       ubicacion: draft.city,
       modalidad: draft.modality,
       fechaPublicacion: new Date().toISOString(),
       fechaCierre: draft.closeDate ? new Date(draft.closeDate).toISOString() : null,
+      remuneracion: draft.offerType === "PRACTICA" ? Number(draft.salary) : Number(draft.salaryMin),
+      remuneracionMaxima: draft.offerType === "PRACTICA" ? null : Number(draft.salaryMax),
     };
 
     try {
@@ -97,7 +105,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
             <section className="preview-card">
               <span className="status status-abierta">Abierta</span>
               <h2>{draft.title}</h2><p className="verified">Bancolombia <span>✓ Empresa verificada</span></p>
-              <div className="detail-tags"><span>{draft.city}</span><span>{draft.modality}</span><span>{draft.area}</span><span>{draft.salary} COP</span></div>
+              <div className="detail-tags"><span>{draft.city}</span><span>{draft.modality}</span><span>{draft.area}</span><span>{draft.offerType}</span><span>{draft.offerType === "PRACTICA" ? `${draft.salary} COP` : `${draft.salaryMin} - ${draft.salaryMax} COP`}</span></div>
               <h3>Descripción</h3><p>{draft.description}</p>
               <h3>Requisitos</h3><ul className="check-list"><li>{draft.program}</li><li>{draft.skills}</li><li>{draft.experience}</li></ul>
               <h3>Condiciones</h3><p>{draft.duration} · {draft.schedule} · Cierre {formatDate(draft.closeDate)}</p>
@@ -106,7 +114,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
           </>
         ) : (
           <>
-            <div className="page-title"><p className="eyebrow">Paso 1 de 2</p><h1>Crear oferta de práctica</h1><p>Los campos marcados con * son obligatorios.</p></div>
+            <div className="page-title"><p className="eyebrow">Paso 1 de 2</p><h1>Crear oferta {draft.offerType === "PRACTICA" ? "de práctica" : draft.offerType === "EMPLEO" ? "laboral" : "pública"}</h1><p>Los campos marcados con * son obligatorios.</p></div>
             <form className="publish-form" onSubmit={(event) => { event.preventDefault(); validate(); }}>
               <FormSection title="Información del cargo" description="Describe la oportunidad con claridad.">
                 <Input label="Título del cargo *" value={draft.title} onChange={(value) => update("title", value)} />
@@ -125,7 +133,14 @@ export default function CompanyDashboard({ state, navigate }: Props) {
                 <Select label="Modalidad *" value={draft.modality} options={["Presencial", "Remota", "Híbrida"]} onChange={(value) => update("modality", value)} />
                 <Input label="Duración" value={draft.duration} onChange={(value) => update("duration", value)} />
                 <Input label="Horario" value={draft.schedule} onChange={(value) => update("schedule", value)} />
-                <Input label="Remuneración mensual COP *" value={draft.salary} onChange={(value) => update("salary", value)} />
+                {draft.offerType === "PRACTICA" ? (
+                  <Input label="Remuneración mensual COP *" value={draft.salary} onChange={(value) => update("salary", value)} />
+                ) : (
+                  <>
+                    <Input label="Salario mínimo COP *" value={draft.salaryMin} onChange={(value) => update("salaryMin", value)} />
+                    <Input label="Salario máximo COP *" value={draft.salaryMax} onChange={(value) => update("salaryMax", value)} />
+                  </>
+                )}
               </FormSection>
               <FormSection title="Publicación" description="Define vigencia y persona de contacto.">
                 <Input label="Fecha de cierre *" value={draft.closeDate} type="date" onChange={(value) => update("closeDate", value)} />

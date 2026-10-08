@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppState, Job, JOBS, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
+import { api } from "../lib/api";
 
 type Props = {
   state: AppState;
@@ -39,15 +40,44 @@ const logoStyle: Record<string, string> = {
 const fmt = (n: number) =>
   "$" + (n >= 1000000 ? (n / 1000000).toFixed(1).replace(".0", "") + "M" : (n / 1000) + "K");
 
+const mapOfferToJob = (offer: any): Job => ({
+  id: Number(offer.id),
+  title: offer.titulo ?? offer.title ?? "Oferta",
+  company: offer.empresa ?? offer.company ?? "Empresa",
+  logo: (offer.empresa ?? offer.company ?? "E").slice(0, 2).toUpperCase(),
+  city: offer.ubicacion ?? offer.city ?? "Bogotá",
+  area: offer.area ?? "General",
+  modality: (offer.modalidad ?? "Híbrida") as Job["modality"],
+  type: offer.tipo === "PRACTICA" ? "Tiempo completo" : (offer.tipo === "EMPLEO_PUBLICO" ? "Contrato" : "Tiempo completo"),
+  closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
+  salaryMin: Number(offer.remuneracion ?? offer.salaryMin ?? 3000000),
+  salaryMax: Number(offer.remuneracionMaxima ?? offer.salaryMax ?? 5000000),
+  experience: offer.experiencia ?? "1+ años",
+  description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
+  requirements: Array.isArray(offer.requirements) && offer.requirements.length ? offer.requirements : [offer.descripcion ?? "Requisitos disponibles al aplicar."],
+  benefits: Array.isArray(offer.benefits) && offer.benefits.length ? offer.benefits : ["Plan de carrera", "Seguro médico", "Auxilio de alimentación"],
+  applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
+});
+
 export default function ExternalDashboard({ state, navigate }: Props) {
+  const [jobs, setJobs] = useState<Job[]>(JOBS);
   const [area, setArea] = useState("Todas");
   const [modality, setModality] = useState("Todas");
   const [type, setType] = useState("Todos");
   const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    api.getOffers()
+      .then((response) => {
+        const offers = (response.offers ?? []).filter((offer) => offer.estado === "PUBLICADA");
+        setJobs(offers.length ? offers.map(mapOfferToJob) : JOBS);
+      })
+      .catch(() => setJobs(JOBS));
+  }, []);
+
   const applied = state.jobApplications.map((a) => a.jobId);
 
-  const filtered = JOBS.filter((j) => {
+  const filtered = jobs.filter((j) => {
     if (area !== "Todas" && j.area !== area) return false;
     if (modality !== "Todas" && j.modality !== modality) return false;
     if (type !== "Todos" && j.type !== type) return false;
@@ -91,9 +121,9 @@ export default function ExternalDashboard({ state, navigate }: Props) {
           {/* Stats pills */}
           <div className="flex flex-wrap gap-3 mb-7">
             {[
-              { label: "Vacantes activas", value: JOBS.length },
-              { label: "Empresas", value: new Set(JOBS.map(j => j.company)).size },
-              { label: "Ciudades", value: new Set(JOBS.map(j => j.city)).size },
+              { label: "Vacantes activas", value: jobs.length },
+              { label: "Empresas", value: new Set(jobs.map(j => j.company)).size },
+              { label: "Ciudades", value: new Set(jobs.map(j => j.city)).size },
             ].map((s) => (
               <div key={s.label} className="flex items-center gap-2 bg-white/8 border border-white/10 rounded-xl px-4 py-2 text-sm">
                 <span className="text-white font-bold tabular">{s.value}</span>

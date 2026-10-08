@@ -602,15 +602,22 @@ export default function App() {
     }
   };
 
-  const applyToJob = (job: Job) => {
+  const applyToJob = async (job: Job) => {
+    if (!state.token) return;
     if (state.jobApplications.find((a) => a.jobId === job.id)) return;
-    setState((s) => ({
-      ...s,
-      jobApplications: [
-        { id: Date.now(), jobId: job.id, jobTitle: job.title, company: job.company, appliedDate: new Date().toISOString().slice(0, 10), status: "Enviada" },
-        ...s.jobApplications,
-      ],
-    }));
+
+    try {
+      await api.applyToOffer(String(job.id), state.token, { cartaPresentacion: `Postulación a ${job.title}` });
+      setState((s) => ({
+        ...s,
+        jobApplications: [
+          { id: Date.now(), jobId: job.id, jobTitle: job.title, company: job.company, appliedDate: new Date().toISOString().slice(0, 10), status: "Enviada" },
+          ...s.jobApplications,
+        ],
+      }));
+    } catch (error) {
+      console.error("applyToJob failed:", error);
+    }
   };
 
   const updateCandidateStatus = async (id: number, status: "Aceptada" | "Rechazada") => {
