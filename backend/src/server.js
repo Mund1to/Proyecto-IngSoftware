@@ -37,6 +37,15 @@ app.get('/api/init-db', async (_request, response) => {
   return response.json(result);
 });
 
+app.use('/api', (_request, response) => {
+  response.status(404).json({ ok: false, message: 'Ruta no encontrada.' });
+});
+
+app.use((error, _request, response, _next) => {
+  console.error('Unhandled error:', error);
+  response.status(500).json({ ok: false, message: 'Error interno del servidor.' });
+});
+
 app.listen(env.port, async () => {
   console.log(`SIPU backend listening on port ${env.port}`);
 

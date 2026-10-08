@@ -1,4 +1,5 @@
 import { pool } from '../config/database.js';
+import { getOrganizationProfileId } from '../utils/profiles.js';
 
 async function getCurrentCandidateProfileId(userId) {
   const result = await pool.query(
@@ -51,12 +52,9 @@ export async function listApplicationsForOfferController(request, response) {
     return response.status(404).json({ ok: false, message: 'Oferta no encontrada.' });
   }
 
-  const currentUserProfileId = await pool.query(
-    `SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo = 'ORGANIZACION' LIMIT 1`,
-    [request.auth.sub]
-  );
+  const currentUserProfileId = await getOrganizationProfileId(request.auth.sub);
 
-  if (currentUserProfileId.rows[0]?.id !== ownerProfileId) {
+  if (currentUserProfileId !== ownerProfileId) {
     return response.status(403).json({ ok: false, message: 'No tienes permisos para ver estas postulaciones.' });
   }
 
@@ -157,12 +155,9 @@ export async function updateApplicationStatusController(request, response) {
     }
 
     const app = applicationResult.rows[0];
-    const organizationProfileId = await pool.query(
-      `SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo = 'ORGANIZACION' LIMIT 1`,
-      [request.auth.sub]
-    );
+    const organizationProfileId = await getOrganizationProfileId(request.auth.sub);
 
-    if (organizationProfileId.rows[0]?.id !== app.organizacion_id) {
+    if (organizationProfileId !== app.organizacion_id) {
       return response.status(403).json({ ok: false, message: 'No tienes permisos para cambiar el estado de esta postulación.' });
     }
 

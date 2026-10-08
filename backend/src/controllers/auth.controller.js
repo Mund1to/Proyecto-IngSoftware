@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/database.js';
 import { env } from '../config/env.js';
+import { getBodyValue } from '../utils/payload.js';
 
 const PROFILE_TYPES = new Map([
   ['student', 'ESTUDIANTE'],
@@ -15,16 +16,6 @@ const PROFILE_TYPES = new Map([
 
 function normalizeEmail(value) {
   return String(value ?? '').trim().toLowerCase();
-}
-
-function getBodyValue(payload, keys) {
-  for (const key of keys) {
-    if (Object.prototype.hasOwnProperty.call(payload, key) && payload[key] !== undefined && payload[key] !== null) {
-      return payload[key];
-    }
-  }
-
-  return undefined;
 }
 
 function getProfilePayload(payload) {

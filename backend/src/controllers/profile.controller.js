@@ -1,26 +1,6 @@
 import { pool } from '../config/database.js';
-
-function getBodyValue(payload, keys) {
-  for (const key of keys) {
-    if (Object.prototype.hasOwnProperty.call(payload, key) && payload[key] !== undefined && payload[key] !== null) {
-      return payload[key];
-    }
-  }
-
-  return undefined;
-}
-
-function toNullableString(value) {
-  if (value === undefined || value === null || String(value).trim() === '') {
-    return null;
-  }
-
-  return String(value).trim();
-}
-
-function hasBodyValue(payload, keys) {
-  return keys.some((key) => Object.prototype.hasOwnProperty.call(payload, key));
-}
+import { getOrganizationProfileId } from '../utils/profiles.js';
+import { getBodyValue, hasBodyValue, toNullableString } from '../utils/payload.js';
 
 function mapProfile(profile) {
   return {
@@ -154,9 +134,7 @@ export async function updateCurrentUserController(request, response) {
     console.error('updateCurrentUserController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo actualizar el usuario.' });
   }
-}
-
-export async function updateStudentProfileController(request, response) {
+}export async function updateStudentProfileController(request, response) {
   const payload = request.body ?? {};
   const universityKeys = ['universidad'];
   const programKeys = ['programaAcademico', 'programa_academico'];

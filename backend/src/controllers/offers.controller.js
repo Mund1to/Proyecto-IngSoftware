@@ -1,51 +1,14 @@
 import { pool } from '../config/database.js';
+import { getOrganizationProfileId } from '../utils/profiles.js';
+import {
+  getBodyValue,
+  normalizeNumber,
+  normalizeString,
+  normalizeStringList,
+} from '../utils/payload.js';
 
-function getBodyValue(payload, keys) {
-  for (const key of keys) {
-    if (Object.prototype.hasOwnProperty.call(payload, key) && payload[key] !== undefined && payload[key] !== null) {
-      return payload[key];
-    }
-  }
-
-  return undefined;
-}
-
-function normalizeString(value) {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  const text = String(value).trim();
-  return text === '' ? null : text;
-}
-
-function normalizeNumber(value) {
-  if (value === undefined || value === null || value === '') {
-    return null;
-  }
-
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : null;
-}
-
-function normalizeStringList(value) {
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
-  }
-
-  return typeof value === 'string'
-    ? value.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean)
-    : [];
-}
-
-async function getOrganizationProfileId(userId) {
-  const result = await pool.query(
-    `SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo = 'ORGANIZACION' LIMIT 1`,
-    [userId]
-  );
-
-  return result.rows[0]?.id ?? null;
-}
+const OFFER_TYPES = ['PRACTICA', 'EMPLEO', 'EMPLEO_PUBLICO'];
+const OFFER_STATUSES = ['BORRADOR', 'PUBLICADA', 'CERRADA', 'CANCELADA'];
 
 export async function listOffersController(_request, response) {
   try {
@@ -142,14 +105,14 @@ export async function createOfferController(request, response) {
     });
   }
 
-  if (!['PRACTICA', 'EMPLEO', 'EMPLEO_PUBLICO'].includes(type.toUpperCase())) {
+  if (!OFFER_TYPES.includes(type.toUpperCase())) {
     return response.status(400).json({
       ok: false,
       message: 'El tipo de oferta debe ser PRACTICA, EMPLEO o EMPLEO_PUBLICO.',
     });
   }
 
-  if (!['BORRADOR', 'PUBLICADA', 'CERRADA', 'CANCELADA'].includes(status.toUpperCase())) {
+  if (!OFFER_STATUSES.includes(status.toUpperCase())) {
     return response.status(400).json({
       ok: false,
       message: 'El estado de la oferta no es válido.',
@@ -243,11 +206,11 @@ export async function updateOfferController(request, response) {
       return response.status(404).json({ ok: false, message: 'No se encontró una oferta propia para actualizar.' });
     }
 
-    if (type && !['PRACTICA', 'EMPLEO', 'EMPLEO_PUBLICO'].includes(String(type).toUpperCase())) {
+    if (type && !OFFER_TYPES.includes(String(type).toUpperCase())) {
       return response.status(400).json({ ok: false, message: 'El tipo de oferta no es válido.' });
     }
 
-    if (status && !['BORRADOR', 'PUBLICADA', 'CERRADA', 'CANCELADA'].includes(String(status).toUpperCase())) {
+    if (status && !OFFER_STATUSES.includes(String(status).toUpperCase())) {
       return response.status(400).json({ ok: false, message: 'El estado de la oferta no es válido.' });
     }
 
