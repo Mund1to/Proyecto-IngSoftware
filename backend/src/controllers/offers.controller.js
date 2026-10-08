@@ -10,6 +10,90 @@ import {
 const OFFER_TYPES = ['PRACTICA', 'EMPLEO', 'EMPLEO_PUBLICO'];
 const OFFER_STATUSES = ['BORRADOR', 'PUBLICADA', 'CERRADA', 'CANCELADA'];
 
+// #20 HU-16: recomienda ofertas publicadas ordenadas por afinidad con el perfil.
+// La puntuación combina área, ubicación, requisitos y tipo de oferta. No excluye
+// ofertas: las ordena, para que el candidato siempre vea todo el catálogo.
+function scoreOffer(offer, profile) {
+  let score = 0;
+
+  const normalize = (value) => String(value ?? '').trim().toLowerCase();
+  const area = normalize(offer.area);
+  const city = normalize(offer.ubicacion);
+  const offerType = normalize(offer.tipo);
+  const requirements = Array.isArray(offer.requisitos) ? offer.requisitos.map(normalize) : [];
+
+  const profileArea = normalize(profile.programa_academico ?? profile.resumen);
+  const profileCity = normalize(profile.ubicacion);
+  const profileSkills = String(profile.resumen ?? '')
+    .split(/[,\n]/)
+    .map(normalize)
+    .filter(Boolean);
+
+  // Coincidencia exacta de área vale más que coincidencia parcial.
+  if (area && profileArea) {
+    if (area === profileArea) score += 40;
+    else if (area.includes(profileArea) || profileArea.includes(area)) score += 25;
+  }
+
+  // Ubicación: misma ciudad suma.
+  if (city && profileCity && city === profileCity) score += 25;
+
+  // Requisitos que el candidato ya menciona en su resumen/habilidades.
+  score += requirements.filter((req) => profileSkills.some((skill) => req.includes(skill))).length * 15;
+
+  // Un estudiante puntúa más alto en prácticas; un externo, en empleos.
+  const isStudent = profile.tipo === 'ESTUDIANTE';
+  if (isStudent && offerType === 'practica') score += 20;
+  if (!isStudent && (offerType === 'empleo' || offerType === 'empleo_publico')) score += 20;
+
+  return score;
+}
+
+export async function listRecommendedOffersController(request, response) {
+  try {
+    const profileResult = await pool.query(
+      `SELECT p.tipo, pe.programa_academico, pc.resumen, pc.ubicacion
+       FROM perfiles p
+       LEFT JOIN perfiles_estudiante pe ON pe.perfil_id = p.id
+       LEFT JOIN perfiles_candidato pc ON pc.perfil_id = p.id
+       WHERE p.usuario_id = $1 AND p.tipo IN ('ESTUDIANTE', 'CANDIDATO_EXTERNO')
+       ORDER BY CASE WHEN p.tipo = 'CANDIDATO_EXTERNO' THEN 1 ELSE 2 END ASC
+       LIMIT 1`,
+      [request.auth.sub]
+    );
+
+    if (profileResult.rowCount === 0) {
+      return response.status(403).json({
+        ok: false,
+        message: 'Debes contar con un perfil de candidato o estudiante para recibir recomendaciones.',
+      });
+    }
+
+    const profile = profileResult.rows[0];
+
+    const result = await pool.query(
+      `SELECT o.*, org.razon_social AS empresa, org.verificada
+       FROM ofertas o
+       INNER JOIN organizaciones org ON org.perfil_id = o.organizacion_id
+       WHERE o.estado = 'PUBLICADA'
+       ORDER BY o.created_at DESC`
+    );
+
+    // Las organizaciones verificadas reciben un pequeño empujón de confianza.
+    const ranked = result.rows
+      .map((offer) => ({
+        ...offer,
+        recommendationScore: scoreOffer(offer, profile) + (offer.verificada ? 5 : 0),
+      }))
+      .sort((a, b) => b.recommendationScore - a.recommendationScore);
+
+    return response.json({ ok: true, offers: ranked });
+  } catch (error) {
+    console.error('listRecommendedOffersController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudieron generar las recomendaciones.' });
+  }
+}
+
 export async function listOffersController(_request, response) {
   try {
     const result = await pool.query(
