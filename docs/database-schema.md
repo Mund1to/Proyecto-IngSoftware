@@ -58,6 +58,8 @@ erDiagram
 | Estado de postulación | `ENVIADA`, `EN_REVISION`, `PRESELECCIONADA`, `RECHAZADA`, `RETIRADA`, `ACEPTADA` |
 | Estado de verificación | `PENDIENTE`, `APROBADA`, `RECHAZADA` |
 
+La verificación de una organización se registra en `verificaciones` (historial) y se refleja en el indicador `organizaciones.verificada`. Aprobar una verificación activa ese indicador; rechazarla lo desactiva.
+
 ## Ejecutar el esquema localmente
 
 1. Instale PostgreSQL 15 o superior y cree una base de datos denominada `sipu`.
@@ -72,6 +74,12 @@ erDiagram
 
    ```bash
    psql -U postgres -d sipu -f backend/database/migrations/20261008_offer_details.sql
+   ```
+
+   Y la migración de verificación de organizaciones:
+
+   ```bash
+   psql -U postgres -d sipu -f backend/database/migrations/20261008_organization_verification.sql
    ```
 
 5. Verifique la instalación en `psql`:

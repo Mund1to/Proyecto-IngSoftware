@@ -77,8 +77,11 @@ La respuesta esperada es:
 src/
 ├── controllers/  # Lógica de los endpoints
 ├── routes/       # Definición de rutas HTTP
+├── middleware/   # Autenticación y roles
+├── utils/        # Helpers compartidos (payload, perfiles)
 └── server.js     # Configuración de Express
 
 database/
-└── schema.sql    # Esquema PostgreSQL inicial
+├── schema.sql    # Esquema PostgreSQL inicial
+└── migrations/   # Migraciones aditivas (detalles de oferta, verificación)
 ```
