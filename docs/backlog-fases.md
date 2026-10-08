@@ -54,14 +54,16 @@ El perfil laboral debe contemplar experiencia, formación, habilidades, ubicaci�
 
 **Objetivo:** ampliar la conexión entre candidatos y organizaciones empleadoras.
 
-- #14 HU-10: Publicar ofertas de empleo general.
-- #16 HU-12: Gestionar tipos de oferta.
-- #17 HU-13: Verificar empresas y empleadores.
-- #20 HU-16: Recomendar ofertas según perfil.
+- #14 HU-10: Publicar ofertas de empleo general. ✅ Completada
+- #16 HU-12: Gestionar tipos de oferta. ✅ Completada
+- #17 HU-13: Verificar empresas y empleadores. ✅ Completada
+- #20 HU-16: Recomendar ofertas según perfil. ✅ Completada
 
 Los tipos de oferta iniciales serán `PRACTICA`, `EMPLEO` y `EMPLEO_PUBLICO`. Se podrá añadir `FORMACION` posteriormente.
 
 **Criterio de salida:** las organizaciones pueden publicar ofertas clasificadas y los candidatos reciben resultados relevantes según su perfil.
+
+El detalle de cierre está en [`informe-cierre-fase-3.md`](informe-cierre-fase-3.md).
 
 ## Fase 4 — Agencia pública de empleo
 
@@ -99,8 +101,8 @@ Los tipos de oferta iniciales serán `PRACTICA`, `EMPLEO` y `EMPLEO_PUBLICO`. Se
 
 ### Futura
 
-- #17, #18
-- #20, #21
+- #18
+- #21
 
 ## Roles del sistema
 

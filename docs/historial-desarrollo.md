@@ -302,6 +302,43 @@ Los flujos verificados mediante peticiones reales contra la API local fueron:
 
 La validación ejecutada devolvió respuestas con `201`/`200` y confirmó que la lógica de negocio del MVP funciona con PostgreSQL real.
 
-## 13. Regla para mantener la documentación
+## 13. Fase 2 — Candidatos externos
+
+Se añadió el flujo para personas que no son estudiantes. Un usuario puede registrarse con tipo de perfil `CANDIDATO_EXTERNO` y completar su perfil laboral.
+
+- `registerController` acepta el tipo de perfil y crea la fila correspondiente en `perfiles_candidato`.
+- `profile.controller.js` expone `PUT /api/profile/external` para editar resumen, ubicación, disponibilidad y CV.
+- Las postulaciones resuelven el perfil candidato priorizando `CANDIDATO_EXTERNO` sobre `ESTUDIANTE`.
+- El frontend incorpora `ExternalDashboard`, `ExternalProfile`, `ExternalApplications` y `ExternalJobDetail`.
+
+## 14. Fase 3 — Bolsa de empleo general
+
+La Fase 3 unifica el catálogo para estudiantes y candidatos externos, permite clasificar ofertas y añade verificación de organizaciones y recomendaciones.
+
+### 14.1. Ofertas generales y tipos de oferta
+
+- Las ofertas usan los tipos `PRACTICA`, `EMPLEO` y `EMPLEO_PUBLICO`.
+- `offers.controller.js` centraliza los tipos y estados válidos (`OFFER_TYPES`, `OFFER_STATUSES`).
+- La migración `20261008_offer_details.sql` añade área, requisitos, duración, horario y correo de contacto.
+
+### 14.2. Verificación de organizaciones (#17 HU-13)
+
+- `verifications.controller.js` y `verifications.routes.js` permiten listar organizaciones y registrar decisiones.
+- Aprobar activa `organizaciones.verificada`; cada decisión queda en el historial `verificaciones`.
+- La migración `20261008_organization_verification.sql` asegura la tabla y la columna en bases existentes.
+- El panel `CompanyVerification` del frontend permite aprobar o rechazar.
+
+### 14.3. Recomendación de ofertas (#20 HU-16)
+
+- `GET /api/offers/recommended` ordena las ofertas publicadas por afinidad con el perfil del candidato.
+- No excluye ofertas: solo las reordena. Si no hay perfil candidato, devuelve `403`.
+
+El detalle completo está en [`informe-cierre-fase-3.md`](informe-cierre-fase-3.md).
+
+### 14.4. Refactor de soporte
+
+Como parte de la Fase 3 se centralizaron helpers para eliminar duplicación: `backend/src/utils/payload.js` y `backend/src/utils/profiles.js`, y `frontend/src/lib/offers.ts`.
+
+## 15. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.

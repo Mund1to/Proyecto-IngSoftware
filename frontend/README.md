@@ -59,10 +59,11 @@ npm run preview
 
 ```text
 src/
-├── components/  # Componentes reutilizables
-├── screens/     # Pantallas del prototipo
+├── components/  # Componentes reutilizables (NavBar, UniversityLogo, ArdyMark)
+├── screens/     # Pantallas por rol (auth, estudiante, empresa, externo)
+├── lib/         # Cliente de API (api.ts) y helpers (offers.ts, useStoredList.ts)
 ├── imports/     # Recursos gráficos
-├── App.tsx      # Componente principal y navegación temporal
+├── App.tsx      # Componente principal y navegación
 ├── index.css    # Sistema de estilos global
 └── main.tsx     # Punto de entrada de React
 ```

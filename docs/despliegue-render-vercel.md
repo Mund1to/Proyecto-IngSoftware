@@ -22,6 +22,13 @@ El repositorio contiene el frontend, la API y el esquema PostgreSQL, pero GitHub
 
 Render proporciona `PORT` automáticamente. Al iniciar, la API crea el esquema si la base está vacía y agrega las columnas faltantes de ofertas si ya existe.
 
+Si la base ya existía antes de la Fase 3, aplique las migraciones aditivas una sola vez:
+
+```powershell
+psql -U postgres -d sipu -f backend/database/migrations/20261008_offer_details.sql
+psql -U postgres -d sipu -f backend/database/migrations/20261008_organization_verification.sql
+```
+
 Después del despliegue, comprueba `https://<api-render>/api/health` y `https://<api-render>/api/db-check`. Ambos deben responder correctamente antes de configurar el frontend.
 
 ## 3. Desplegar el frontend en Vercel

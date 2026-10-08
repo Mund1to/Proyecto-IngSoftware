@@ -100,13 +100,20 @@ Las respuestas reales del backend devolvieron `ok: true` en todos los endpoints 
 | `GET` | `/api/profile/me` | Bearer JWT | Devuelve los datos del usuario autenticado. |
 | `GET` | `/api/db-check` | Pública | Comprueba la conexión con PostgreSQL. |
 | `GET` | `/api/offers` | Pública | Lista las ofertas públicas y activas. |
+| `GET` | `/api/offers/recommended` | Bearer JWT + candidato | Ordena las ofertas publicadas por afinidad con el perfil (Fase 3, #20 HU-16). |
 | `GET` | `/api/offers/mine` | Bearer JWT + organización | Lista las ofertas creadas por la organización autenticada. |
 | `POST` | `/api/offers` | Bearer JWT + organización | Crea una oferta para la organización autenticada. |
 | `GET` | `/api/offers/:id` | Pública | Detalla una oferta concreta. |
 | `PATCH` | `/api/offers/:id` | Bearer JWT + organización | Actualiza una oferta propia. |
 | `DELETE` | `/api/offers/:id` | Bearer JWT + organización | Elimina una oferta propia. |
-| `GET` | `/api/applications/me` | Bearer JWT + estudiante | Lista las postulaciones del estudiante autenticado. |
+| `PUT` | `/api/profile/me` | Bearer JWT | Actualiza nombre y teléfono del usuario. |
+| `PUT` | `/api/profile/student` | Bearer JWT + estudiante | Actualiza el perfil académico del estudiante. |
+| `PUT` | `/api/profile/organization` | Bearer JWT + organización | Actualiza los datos de la organización. |
+| `PUT` | `/api/profile/external` | Bearer JWT + candidato externo | Actualiza el perfil laboral del candidato externo. |
+| `GET` | `/api/applications/me` | Bearer JWT + candidato | Lista las postulaciones del candidato autenticado. |
 | `GET` | `/api/applications/offers/:offerId` | Bearer JWT + organización | Lista postulaciones recibidas para una oferta propia. |
-| `POST` | `/api/applications/offers/:offerId` | Bearer JWT + estudiante | Registra una postulación para una oferta pública. |
+| `POST` | `/api/applications/offers/:offerId` | Bearer JWT + candidato | Registra una postulación para una oferta pública. |
 | `PATCH` | `/api/applications/:id/status` | Bearer JWT + organización | Cambia el estado de una postulación. |
+| `GET` | `/api/verifications/organizations` | Bearer JWT + revisor | Lista organizaciones y su estado de verificación (Fase 3, #17 HU-13). |
+| `PATCH` | `/api/verifications/organizations/:organizationId` | Bearer JWT + revisor | Aprueba o rechaza la verificación de una organización. |
 
