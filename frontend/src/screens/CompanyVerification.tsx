@@ -1,0 +1,141 @@
+import { useEffect, useState } from "react";
+import { AppState, Screen } from "../App";
+import NavBar from "../components/NavBar";
+import { api } from "../lib/api";
+
+type Props = {
+  state: AppState;
+  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+};
+
+type Organization = {
+  organizacion_id: number;
+  razon_social: string;
+  identificacion_fiscal: string | null;
+  sitio_web: string | null;
+  verificada: boolean;
+  verificacion_estado: string | null;
+  observaciones: string | null;
+  verificacion_fecha: string | null;
+};
+
+const statusStyle: Record<string, string> = {
+  APROBADA: "bg-green-50 text-green-700 border-green-200",
+  RECHAZADA: "bg-red-50 text-red-600 border-red-200",
+  PENDIENTE: "bg-amber-50 text-amber-700 border-amber-200",
+};
+
+// #17 HU-13: panel para revisar y aprobar la verificación de organizaciones.
+export default function CompanyVerification({ state, navigate }: Props) {
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  const load = () => {
+    if (!state.token) return;
+    setLoading(true);
+    api.getOrganizations(state.token)
+      .then((response) => {
+        setOrganizations(response.organizations ?? []);
+        setError("");
+      })
+      .catch((err) => {
+        setOrganizations([]);
+        setError(err instanceof Error ? err.message : "No se pudieron cargar las organizaciones.");
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, [state.token]);
+
+  const changeStatus = async (organizationId: number, status: "APROBADA" | "RECHAZADA") => {
+    if (!state.token) return;
+    setUpdatingId(organizationId);
+    setError("");
+    try {
+      const response = await api.updateOrganizationVerification(organizationId, status, state.token);
+      setOrganizations((current) => current.map((org) => org.organizacion_id === organizationId
+        ? { ...org, verificada: response.organization?.verificada ?? status === "APROBADA", verificacion_estado: status }
+        : org));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar la verificación.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const verifiedCount = organizations.filter((org) => org.verificada).length;
+
+  return (
+    <div className="min-h-screen bg-[#f0f4f8]">
+      <NavBar role="company" navigate={navigate} activeScreen="company-verification" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-[#0d2240]">Verificación de organizaciones</h1>
+            <p className="text-[#64748b] text-sm mt-1">{verifiedCount} de {organizations.length} organizaciones verificadas.</p>
+          </div>
+          <button onClick={load} className="text-sm font-semibold text-[#0d2240] border border-[#e2e8f0] rounded-xl px-4 py-2 hover:bg-white">
+            Actualizar
+          </button>
+        </div>
+
+        {error && <div className="form-error mb-5" role="alert">{error}</div>}
+
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-[#e8eef4] text-center py-16 text-[#64748b] text-sm">Cargando organizaciones...</div>
+        ) : organizations.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#e8eef4] text-center py-16">
+            <p className="text-[#64748b] text-sm">No hay organizaciones registradas.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {organizations.map((org) => {
+              const status = org.verificacion_estado ?? (org.verificada ? "APROBADA" : "PENDIENTE");
+              return (
+                <div key={org.organizacion_id} className="bg-white rounded-2xl border border-[#e8eef4] shadow-sm p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-[#0d2240] flex items-center gap-2">
+                        {org.razon_social}
+                        {org.verificada && <span className="text-[#16a34a] text-sm font-semibold">✓ Verificada</span>}
+                      </h3>
+                      <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-[#94a3b8]">
+                        {org.identificacion_fiscal && <span>NIT: {org.identificacion_fiscal}</span>}
+                        {org.sitio_web && <a className="text-blue-700 underline" href={org.sitio_web} target="_blank" rel="noreferrer">{org.sitio_web}</a>}
+                      </div>
+                      {org.observaciones && <p className="text-sm text-[#475569] mt-3">{org.observaciones}</p>}
+                    </div>
+                    <span className={`text-xs px-3 py-1.5 rounded-full font-bold border flex-shrink-0 ${statusStyle[status] ?? statusStyle.PENDIENTE}`}>
+                      {status}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-3 mt-5 pt-4 border-t border-[#f8fafc]">
+                    <button
+                      disabled={updatingId === org.organizacion_id || org.verificada}
+                      onClick={() => void changeStatus(org.organizacion_id, "APROBADA")}
+                      className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl hover:opacity-90 disabled:opacity-40"
+                      style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" }}
+                    >
+                      {org.verificada ? "✓ Ya verificada" : "Aprobar verificación"}
+                    </button>
+                    <button
+                      disabled={updatingId === org.organizacion_id || (!org.verificada && status === "RECHAZADA")}
+                      onClick={() => void changeStatus(org.organizacion_id, "RECHAZADA")}
+                      className="flex-1 py-2.5 text-sm font-bold text-red-600 border border-red-200 rounded-xl hover:bg-red-50 disabled:opacity-40"
+                    >
+                      Rechazar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

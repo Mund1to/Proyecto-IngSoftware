@@ -90,6 +90,18 @@ export const api = {
 
   getOffers: async () => request<{ ok: boolean; offers: any[] }>(`/offers`),
 
+  getRecommendedOffers: async (token: string) =>
+    request<{ ok: boolean; offers: any[] }>(`/offers/recommended`, {}, token),
+
+  getOrganizations: async (token: string) =>
+    request<{ ok: boolean; organizations: any[] }>(`/verifications/organizations`, {}, token),
+
+  updateOrganizationVerification: async (organizationId: string | number, status: string, token: string) =>
+    request<{ ok: boolean; organization: any; verificationStatus: string }>(`/verifications/organizations/${organizationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ estado: status }),
+    }, token),
+
   getMyOffers: async (token: string) =>
     request<{ ok: boolean; offers: any[] }>(`/offers/mine`, {}, token),
 

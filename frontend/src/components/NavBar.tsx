@@ -13,6 +13,7 @@ const links: Record<Role, { label: string; screen: Screen }[]> = {
   company: [
     { label: "Ofertas", screen: "company-dashboard" },
     { label: "Postulantes", screen: "company-applicants" },
+    { label: "Verificación", screen: "company-verification" },
   ],
   external: [
     { label: "Ofertas", screen: "external-dashboard" },

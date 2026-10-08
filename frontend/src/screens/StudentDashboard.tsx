@@ -45,8 +45,14 @@ export default function StudentDashboard({ state, navigate }: Props) {
 
   useEffect(() => {
     let active = true;
+    // #20 HU-16: con sesión se usa el orden por afinidad al perfil; sin sesión,
+    // el catálogo público. Si la recomendación falla, se cae al catálogo público.
+    const fetchOffers = () => (state.token
+      ? api.getRecommendedOffers(state.token).catch(() => api.getOffers())
+      : api.getOffers());
+
     const refreshOffers = () => {
-      api.getOffers()
+      fetchOffers()
         .then((response) => {
           if (!active) return;
           setOffers((response.offers ?? []).map(toUiOffer));
@@ -65,7 +71,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
       active = false;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [state.token]);
 
   const filtered = useMemo(() => offers.filter((offer) =>
     (city === "Todas" || offer.city === city) &&
