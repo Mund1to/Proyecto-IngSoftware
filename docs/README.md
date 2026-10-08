@@ -8,6 +8,7 @@ Esta carpeta contiene la documentación funcional, técnica y de proceso del pro
 - [`fase-1-plan.md`](fase-1-plan.md): plan, alcance y endpoints del MVP de prácticas.
 - [`informe-actualizacion-roles-ofertas.md`](informe-actualizacion-roles-ofertas.md): cambios de roles, ofertas, permisos y validaciones.
 - [`informe-cierre-fase-3.md`](informe-cierre-fase-3.md): cierre de la Fase 3 con verificación de organizaciones y recomendación de ofertas.
+- [`informe-cierre-fase-4.md`](informe-cierre-fase-4.md): cierre de la Fase 4 con convocatorias públicas y estadísticas de empleo.
 - [`despliegue-render-vercel.md`](despliegue-render-vercel.md): despliegue de PostgreSQL y la API en Render, y del frontend en Vercel.
 
 Los documentos de referencia entregados para el proyecto se conservan en `Proyecto-Archivos/docs/`.

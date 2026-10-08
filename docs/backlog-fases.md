@@ -69,10 +69,12 @@ El detalle de cierre está en [`informe-cierre-fase-3.md`](informe-cierre-fase-3
 
 **Objetivo:** incorporar funciones institucionales y convocatorias públicas.
 
-- #18 HU-14: Administrar convocatorias públicas.
-- #21 HU-17: Generar estadísticas de empleo.
+- #18 HU-14: Administrar convocatorias públicas. ✅ Completada
+- #21 HU-17: Generar estadísticas de empleo. ✅ Completada
 
 **Criterio de salida:** un funcionario autorizado puede administrar convocatorias, supervisar empleadores y consultar indicadores de empleo.
+
+El detalle de cierre está en [`informe-cierre-fase-4.md`](informe-cierre-fase-4.md).
 
 ## Orden recomendado
 
@@ -101,8 +103,7 @@ El detalle de cierre está en [`informe-cierre-fase-3.md`](informe-cierre-fase-3
 
 ### Futura
 
-- #18
-- #21
+- (Sin historias pendientes: el backlog queda completo.)
 
 ## Roles del sistema
 
