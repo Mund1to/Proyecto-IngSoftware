@@ -14,6 +14,8 @@ const links: Record<Role, { label: string; screen: Screen }[]> = {
     { label: "Ofertas", screen: "company-dashboard" },
     { label: "Postulantes", screen: "company-applicants" },
     { label: "Verificación", screen: "company-verification" },
+    { label: "Convocatorias", screen: "convocatorias" },
+    { label: "Estadísticas", screen: "employment-stats" },
   ],
   external: [
     { label: "Ofertas", screen: "external-dashboard" },

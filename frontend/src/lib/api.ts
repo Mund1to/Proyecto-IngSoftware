@@ -139,4 +139,27 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ estado: status }),
     }, token),
+
+  getConvocatorias: async () =>
+    request<{ ok: boolean; convocatorias: any[] }>(`/convocatorias`),
+
+  createConvocatoria: async (payload: Record<string, unknown>, token: string) =>
+    request<{ ok: boolean; convocatoria: any }>(`/convocatorias`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, token),
+
+  updateConvocatoria: async (id: string | number, payload: Record<string, unknown>, token: string) =>
+    request<{ ok: boolean; convocatoria: any }>(`/convocatorias/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, token),
+
+  deleteConvocatoria: async (id: string | number, token: string) =>
+    request<{ ok: boolean; deletedConvocatoriaId: number }>(`/convocatorias/${id}`, {
+      method: 'DELETE',
+    }, token),
+
+  getEmploymentStats: async (token: string) =>
+    request<{ ok: boolean; stats: any }>(`/stats/employment`, {}, token),
 };

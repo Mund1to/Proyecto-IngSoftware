@@ -8,6 +8,8 @@ import StudentApplications from "./screens/StudentApplications";
 import CompanyDashboard from "./screens/CompanyDashboard";
 import CompanyApplicants from "./screens/CompanyApplicants";
 import CompanyVerification from "./screens/CompanyVerification";
+import Convocatorias from "./screens/Convocatorias";
+import EmploymentStats from "./screens/EmploymentStats";
 import ExternalDashboard from "./screens/ExternalDashboard";
 import ExternalJobDetail from "./screens/ExternalJobDetail";
 import ExternalProfile from "./screens/ExternalProfile";
@@ -24,6 +26,8 @@ export type Screen =
   | "company-dashboard"
   | "company-applicants"
   | "company-verification"
+  | "convocatorias"
+  | "employment-stats"
   | "external-dashboard"
   | "external-job-detail"
   | "external-profile"
@@ -721,6 +725,8 @@ export default function App() {
     case "company-dashboard":  return <CompanyDashboard {...props} />;
     case "company-applicants": return <CompanyApplicants {...props} />;
     case "company-verification": return <CompanyVerification {...props} />;
+    case "convocatorias":      return <Convocatorias {...props} />;
+    case "employment-stats":   return <EmploymentStats {...props} />;
     case "external-dashboard": return <ExternalDashboard {...props} />;
     case "external-job-detail":return <ExternalJobDetail {...props} />;
     case "external-profile":   return <ExternalProfile {...props} />;
