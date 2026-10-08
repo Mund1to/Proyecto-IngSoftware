@@ -3,6 +3,7 @@ import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import { api } from "../lib/api";
+import { companyInitials, formatSalary, toNumberOrZero } from "../lib/offers";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Sort = "recent" | "closing" | "salary";
@@ -15,12 +16,12 @@ const toUiOffer = (offer: any): Offer => ({
   id: Number(offer.id),
   title: offer.titulo ?? offer.title ?? "Oferta",
   company: offer.empresa ?? offer.company ?? "Empresa",
-  logo: (offer.empresa ?? offer.company ?? "E").slice(0, 2).toUpperCase(),
+  logo: companyInitials(offer.empresa ?? offer.company ?? "E"),
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
   area: offer.area ?? "General",
   modality: (offer.modalidad ?? "Híbrida") as Offer["modality"],
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
-  salary: offer.remuneracion ? `$${Number(offer.remuneracion).toLocaleString("es-CO")}/mes` : "A convenir",
+  salary: formatSalary(offer.remuneracion),
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
   applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
@@ -28,8 +29,8 @@ const toUiOffer = (offer: any): Offer => ({
   verified: Boolean(offer.verificada),
   duration: offer.duracion,
   schedule: offer.horario,
-  salaryMin: offer.remuneracion === null ? null : Number(offer.remuneracion),
-  salaryMax: offer.remuneracion_maxima === null ? null : Number(offer.remuneracion_maxima),
+  salaryMin: offer.remuneracion === null ? null : toNumberOrZero(offer.remuneracion),
+  salaryMax: offer.remuneracion_maxima === null ? null : toNumberOrZero(offer.remuneracion_maxima),
 });
 
 export default function StudentDashboard({ state, navigate }: Props) {
@@ -150,7 +151,7 @@ function OfferCard({ offer, applied, saved, onSave, onOpen }: { offer: Offer; ap
     <article className="offer-card">
       <div className="offer-topline">
         <div className="company-mark" aria-hidden="true">{offer.logo}</div>
-        <span className={`status status-${status.toLowerCase().replaceAll(" ", "-")}`}>{status}</span>
+        <span className={`status status-${status.toLowerCase().replace(/\s+/g, "-")}`}>{status}</span>
         <button className={saved ? "save-button saved" : "save-button"} aria-label={`${saved ? "Quitar de guardadas" : "Guardar oferta"}: ${offer.title}`} onClick={onSave}>{saved ? "Guardada" : "Guardar"}</button>
       </div>
       <button className="offer-main" onClick={onOpen} aria-label={`Ver oferta ${offer.title} en ${offer.company}`}>

@@ -3,6 +3,7 @@ import { AppState, Job, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import { api } from "../lib/api";
+import { companyInitials, toNumberOrZero } from "../lib/offers";
 
 type Props = {
   state: AppState;
@@ -45,14 +46,14 @@ const mapOfferToJob = (offer: any): Job => ({
   id: Number(offer.id),
   title: offer.titulo ?? offer.title ?? "Oferta",
   company: offer.empresa ?? offer.company ?? "Empresa",
-  logo: (offer.empresa ?? offer.company ?? "E").slice(0, 2).toUpperCase(),
+  logo: companyInitials(offer.empresa ?? offer.company ?? "E"),
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
   area: offer.area ?? "General",
   modality: (offer.modalidad ?? "Híbrida") as Job["modality"],
   type: offer.tipo === "PRACTICA" ? "Práctica" : (offer.tipo === "EMPLEO_PUBLICO" ? "Contrato" : "Tiempo completo"),
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
-  salaryMin: Number(offer.remuneracion ?? offer.salaryMin ?? 0),
-  salaryMax: Number(offer.remuneracion_maxima ?? offer.remuneracionMaxima ?? offer.salaryMax ?? offer.remuneracion ?? 0),
+  salaryMin: toNumberOrZero(offer.remuneracion ?? offer.salaryMin),
+  salaryMax: toNumberOrZero(offer.remuneracion_maxima ?? offer.remuneracionMaxima ?? offer.salaryMax ?? offer.remuneracion),
   experience: offer.experiencia ?? "No especificada",
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],

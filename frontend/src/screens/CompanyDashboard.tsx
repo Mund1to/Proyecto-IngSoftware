@@ -3,6 +3,7 @@ import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import { api } from "../lib/api";
 import { formatDate } from "./StudentDashboard";
+import { companyInitials, formatSalary, toNumberOrZero } from "../lib/offers";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Draft = {
@@ -23,12 +24,12 @@ const toUiOffer = (offer: any, fallbackCompany = "Empresa", fallbackVerified = f
   id: Number(offer.id),
   title: offer.titulo ?? offer.title ?? "Oferta",
   company: offer.empresa ?? offer.company ?? fallbackCompany,
-  logo: (offer.empresa ?? offer.company ?? "E").slice(0, 2).toUpperCase(),
+  logo: companyInitials(offer.empresa ?? offer.company ?? "E"),
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
   area: offer.area ?? "General",
   modality: (offer.modalidad ?? "Híbrida") as Offer["modality"],
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
-  salary: offer.remuneracion ? `$${Number(offer.remuneracion).toLocaleString("es-CO")}/mes` : "A convenir",
+  salary: formatSalary(offer.remuneracion),
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
   applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
@@ -38,8 +39,8 @@ const toUiOffer = (offer: any, fallbackCompany = "Empresa", fallbackVerified = f
   duration: offer.duracion ?? offer.duration,
   schedule: offer.horario ?? offer.schedule,
   contactEmail: offer.contacto_email ?? offer.contactEmail,
-  salaryMin: offer.remuneracion == null ? null : Number(offer.remuneracion),
-  salaryMax: offer.remuneracion_maxima == null ? null : Number(offer.remuneracion_maxima),
+  salaryMin: offer.remuneracion == null ? null : toNumberOrZero(offer.remuneracion),
+  salaryMax: offer.remuneracion_maxima == null ? null : toNumberOrZero(offer.remuneracion_maxima),
 });
 
 export default function CompanyDashboard({ state, navigate }: Props) {
@@ -54,7 +55,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
   const [draftSaved, setDraftSaved] = useState(false);
   const [pendingApplicants, setPendingApplicants] = useState(0);
   const [offersError, setOffersError] = useState("");
-  const offersListRef = useRef<HTMLElement>(null);
+  const offersListRef = useRef<HTMLDivElement>(null);
   const draftStorageKey = `sipu-company-draft-${state.currentUser?.id ?? "anonymous"}`;
 
   useEffect(() => {
@@ -73,7 +74,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
 
     api.getMyOffers(state.token)
       .then(async (response) => {
-        const mapped = (response.offers ?? []).map(toUiOffer);
+        const mapped = (response.offers ?? []).map((offer: any) => toUiOffer(offer));
         setOffers(mapped);
         setOffersError("");
         const applicationLists = await Promise.all(mapped.map((offer) =>

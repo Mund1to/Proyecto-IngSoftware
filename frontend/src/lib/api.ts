@@ -1,6 +1,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
-export type ApiUser = {
+export type   ApiUser = {
   id: number;
   email: string;
   nombreCompleto: string;
@@ -16,6 +16,7 @@ export type ApiUser = {
     programaAcademico?: string | null;
     semestre?: number | string | null;
     codigoEstudiante?: string | null;
+    fechaGraduacionEstimada?: string | null;
     razonSocial?: string | null;
     descripcion?: string | null;
     sitioWeb?: string | null;
