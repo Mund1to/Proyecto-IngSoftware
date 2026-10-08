@@ -5,9 +5,11 @@ import { pool, testDatabaseConnection } from './config/database.js';
 import { initializeDatabaseSchema } from './config/migrate.js';
 import applicationsRouter from './routes/applications.routes.js';
 import authRouter from './routes/auth.routes.js';
+import convocatoriasRouter from './routes/convocatorias.routes.js';
 import healthRouter from './routes/health.routes.js';
 import offersRouter from './routes/offers.routes.js';
 import profileRouter from './routes/profile.routes.js';
+import statsRouter from './routes/stats.routes.js';
 import verificationsRouter from './routes/verifications.routes.js';
 
 const app = express();
@@ -20,6 +22,8 @@ app.use('/api/profile', profileRouter);
 app.use('/api/offers', offersRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/verifications', verificationsRouter);
+app.use('/api/convocatorias', convocatoriasRouter);
+app.use('/api/stats', statsRouter);
 
 app.get('/api/db-check', async (_request, response) => {
   const result = await testDatabaseConnection();
