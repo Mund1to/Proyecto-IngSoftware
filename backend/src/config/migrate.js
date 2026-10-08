@@ -17,7 +17,12 @@ export async function initializeDatabaseSchema() {
       await client.query(`
         ALTER TABLE ofertas
           ADD COLUMN IF NOT EXISTS remuneracion NUMERIC(12,2),
-          ADD COLUMN IF NOT EXISTS remuneracion_maxima NUMERIC(12,2);
+          ADD COLUMN IF NOT EXISTS remuneracion_maxima NUMERIC(12,2),
+          ADD COLUMN IF NOT EXISTS area VARCHAR(100) NOT NULL DEFAULT 'General',
+          ADD COLUMN IF NOT EXISTS requisitos TEXT[] NOT NULL DEFAULT '{}',
+          ADD COLUMN IF NOT EXISTS duracion VARCHAR(120),
+          ADD COLUMN IF NOT EXISTS horario VARCHAR(120),
+          ADD COLUMN IF NOT EXISTS contacto_email VARCHAR(254);
       `);
       console.log('Database tables are already initialized.');
       return { ok: true, message: 'Already initialized' };

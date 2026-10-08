@@ -77,6 +77,7 @@ Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y l
 - [`backend/README.md`](backend/README.md): ejecución de la API y endpoint de salud.
 - [`docs/historial-desarrollo.md`](docs/historial-desarrollo.md): guía paso a paso de lo realizado y cómo continuar.
 - [`docs/informe-actualizacion-roles-ofertas.md`](docs/informe-actualizacion-roles-ofertas.md): cambios de roles, ofertas, permisos, validaciones y actualización de base de datos.
+- [`docs/despliegue-render-vercel.md`](docs/despliegue-render-vercel.md): despliegue de PostgreSQL y API en Render, y frontend en Vercel.
 - [`docs/backlog-fases.md`](docs/backlog-fases.md): fases, historias de usuario y prioridades.
 - [`docs/database-schema.md`](docs/database-schema.md): modelo PostgreSQL inicial.
 

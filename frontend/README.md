@@ -2,7 +2,7 @@
 
 Aplicación web de SIPU, construida con React, Vite, TypeScript y Tailwind CSS.
 
-> El flujo visual disponible actualmente es un prototipo de interfaz. La autenticación, la persistencia de datos y la comunicación con la API se implementarán durante la Fase 1.
+La aplicación consume la API para autenticación, perfiles, ofertas y postulaciones.
 
 ## Requisitos
 
@@ -11,19 +11,13 @@ Aplicación web de SIPU, construida con React, Vite, TypeScript y Tailwind CSS.
 
 ## Configuración
 
-Desde la raíz del repositorio, cree el archivo de variables locales si necesita configurar la URL de la API en el futuro:
+Desde la raíz del repositorio, cree `frontend/.env` para configurar la URL de la API en desarrollo:
 
 ```text
-frontend/.env
-```
-
-Las variables que comiencen con `VITE_` son accesibles desde la aplicación. Por ejemplo:
-
-```env
 VITE_API_URL=http://localhost:3000/api
 ```
 
-El archivo `.env` no se versiona.
+En producción, configure `VITE_API_URL` en Vercel con la URL pública de la API, incluyendo `/api`. Las variables `VITE_*` quedan incorporadas en la compilación y no deben contener secretos.
 
 ## Ejecutar en desarrollo
 
