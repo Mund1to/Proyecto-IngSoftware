@@ -19,6 +19,15 @@ function normalizeString(value) {
   return text === '' ? null : text;
 }
 
+function normalizeNumber(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
 async function getOrganizationProfileId(userId) {
   const result = await pool.query(
     `SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo = 'ORGANIZACION' LIMIT 1`,
@@ -106,6 +115,8 @@ export async function createOfferController(request, response) {
   const status = normalizeString(getBodyValue(payload, ['estado', 'status'])) ?? 'BORRADOR';
   const location = normalizeString(getBodyValue(payload, ['ubicacion', 'location']));
   const modality = normalizeString(getBodyValue(payload, ['modalidad', 'modality']));
+  const remuneration = normalizeNumber(getBodyValue(payload, ['remuneracion', 'salary', 'salario', 'salaryMin']));
+  const remunerationMax = normalizeNumber(getBodyValue(payload, ['remuneracionMaxima', 'remuneracion_maxima', 'salaryMax']));
   const publicationDate = getBodyValue(payload, ['fechaPublicacion', 'fecha_publicacion', 'publishedAt']) ?? null;
   const closeDate = getBodyValue(payload, ['fechaCierre', 'fecha_cierre', 'closeAt']) ?? null;
 
@@ -140,9 +151,11 @@ export async function createOfferController(request, response) {
         estado,
         ubicacion,
         modalidad,
+        remuneracion,
+        remuneracion_maxima,
         fecha_publicacion,
         fecha_cierre
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *`,
       [
         organizationId,
@@ -152,6 +165,8 @@ export async function createOfferController(request, response) {
         status.toUpperCase(),
         location,
         modality,
+        remuneration,
+        remunerationMax,
         publicationDate ?? null,
         closeDate ?? null,
       ]
@@ -179,6 +194,8 @@ export async function updateOfferController(request, response) {
   const status = getBodyValue(payload, ['estado', 'status']);
   const location = getBodyValue(payload, ['ubicacion', 'location']);
   const modality = getBodyValue(payload, ['modalidad', 'modality']);
+  const remuneration = normalizeNumber(getBodyValue(payload, ['remuneracion', 'salary', 'salario', 'salaryMin']));
+  const remunerationMax = normalizeNumber(getBodyValue(payload, ['remuneracionMaxima', 'remuneracion_maxima', 'salaryMax']));
   const publicationDate = getBodyValue(payload, ['fechaPublicacion', 'fecha_publicacion', 'publishedAt']);
   const closeDate = getBodyValue(payload, ['fechaCierre', 'fecha_cierre', 'closeAt']);
 
@@ -208,10 +225,12 @@ export async function updateOfferController(request, response) {
            estado = COALESCE($4, estado),
            ubicacion = COALESCE($5, ubicacion),
            modalidad = COALESCE($6, modalidad),
-           fecha_publicacion = COALESCE($7, fecha_publicacion),
-           fecha_cierre = COALESCE($8, fecha_cierre),
+           remuneracion = COALESCE($7, remuneracion),
+           remuneracion_maxima = COALESCE($8, remuneracion_maxima),
+           fecha_publicacion = COALESCE($9, fecha_publicacion),
+           fecha_cierre = COALESCE($10, fecha_cierre),
            updated_at = NOW()
-       WHERE id = $9 AND organizacion_id = $10
+       WHERE id = $11 AND organizacion_id = $12
        RETURNING *`,
       [
         normalizeString(title),
@@ -220,6 +239,8 @@ export async function updateOfferController(request, response) {
         status ? String(status).toUpperCase() : null,
         normalizeString(location),
         normalizeString(modality),
+        remuneration,
+        remunerationMax,
         publicationDate ?? null,
         closeDate ?? null,
         id,

@@ -14,6 +14,11 @@ export async function initializeDatabaseSchema() {
     );
 
     if (checkResult.rowCount > 0) {
+      await client.query(`
+        ALTER TABLE ofertas
+          ADD COLUMN IF NOT EXISTS remuneracion NUMERIC(12,2),
+          ADD COLUMN IF NOT EXISTS remuneracion_maxima NUMERIC(12,2);
+      `);
       console.log('Database tables are already initialized.');
       return { ok: true, message: 'Already initialized' };
     }

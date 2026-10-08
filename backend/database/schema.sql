@@ -126,6 +126,8 @@ CREATE TABLE ofertas (
     estado offer_status NOT NULL DEFAULT 'BORRADOR',
     ubicacion VARCHAR(180),
     modalidad VARCHAR(80),
+    remuneracion NUMERIC(12,2),
+    remuneracion_maxima NUMERIC(12,2),
     fecha_publicacion TIMESTAMPTZ,
     fecha_cierre TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
