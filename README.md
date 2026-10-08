@@ -4,7 +4,18 @@ SIPU (Sistema de Intermediación de Prácticas Universitarias) es una plataforma
 
 ## Estado del proyecto
 
-La **Fase 0 — Base técnica** está preparada: el monorepo incluye un frontend React/Vite, una API Express, documentación de ejecución local y un esquema inicial de PostgreSQL. La **Fase 1** quedó funcionando con autenticación real y gestión de ofertas/postulaciones. La **Fase 2** se inicia con la preparación del perfil de candidato externo y la conexión de sus datos al backend.
+La **Fase 0 — Base técnica** está preparada: el monorepo incluye un frontend React/Vite, una API Express, documentación de ejecución local y un esquema inicial de PostgreSQL. La **Fase 1** queda cerrada y verificada con autenticación real, gestión de ofertas y flujo de postulaciones para estudiantes y empresas. La **Fase 2** se inicia con la preparación del perfil de candidato externo y la conexión de sus datos al backend.
+
+## Verificación de cierre de la Fase 1
+
+Se validaron en la API desplegada los flujos principales del MVP:
+
+- registro de empresa y publicación de una oferta;
+- registro de estudiante y envío de postulación a una oferta;
+- consulta de postulaciones desde el perfil del estudiante;
+- consulta de postulaciones recibidas desde el perfil de la empresa.
+
+La verificación real devolvió respuestas `ok: true` y confirmación de creación de usuarios, ofertas y aplicaciones en PostgreSQL.
 
 ## Estructura
 

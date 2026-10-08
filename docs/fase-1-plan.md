@@ -74,7 +74,16 @@ La base de datos se conecta en `backend/src/config/database.js` desde `DATABASE_
 - registrar perfiles de estudiante y organización durante el alta;
 - crear el CRUD de ofertas de práctica;
 - crear el flujo de postulaciones;
-- verificar el MVP con peticiones reales a la API local.
+- verificar el MVP con peticiones reales a la API desplegada y local.
+
+### Verificación final realizada
+
+Se validó al menos un caso de uso real completo para cada perfil:
+
+- empresa: registro, login, creación de oferta, revisión de postulaciones;
+- estudiante: registro, login, postulación a oferta y consulta de sus postulaciones.
+
+Las respuestas reales del backend devolvieron `ok: true` en todos los endpoints clave del flujo.
 
 ### Pendiente
 
