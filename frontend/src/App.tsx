@@ -31,6 +31,18 @@ export type UserSession = {
   id: number;
   email: string;
   nombreCompleto: string;
+  telefono?: string | null;
+  universidad?: string | null;
+  programaAcademico?: string | null;
+  semestre?: number | string | null;
+  codigoEstudiante?: string | null;
+  fechaGraduacionEstimada?: string | null;
+  resumen?: string | null;
+  ubicacion?: string | null;
+  disponibilidad?: string | null;
+  cvUrl?: string | null;
+  organizacionNombre?: string | null;
+  organizacionVerificada?: boolean;
   profileTypes: string[];
   roles: string[];
 };
@@ -50,6 +62,14 @@ export type Offer = {
   description: string;
   requirements: string[];
   applicants?: number;
+  offerType?: "PRACTICA" | "EMPLEO" | "EMPLEO_PUBLICO";
+  status?: string;
+  verified?: boolean;
+  duration?: string | null;
+  schedule?: string | null;
+  contactEmail?: string | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
 };
 
 export const OFFERS: Offer[] = [
@@ -178,7 +198,7 @@ export const OFFERS: Offer[] = [
 
 // ── Public job listings (for external users) ─────────────────────────────────
 
-export type JobType = "Tiempo completo" | "Medio tiempo" | "Contrato" | "Freelance";
+export type JobType = "Práctica" | "Tiempo completo" | "Medio tiempo" | "Contrato" | "Freelance";
 
 export type Job = {
   id: number;
@@ -407,14 +427,6 @@ export type Application = {
   status: "Enviada" | "En revisión" | "Aceptada" | "Rechazada";
 };
 
-export const APPLICATIONS_DATA: Application[] = [
-  { id: 1, offerId: 1, offerTitle: "Practicante de Ingeniería de Software", company: "Bancolombia", appliedDate: "2026-09-02", status: "En revisión" },
-  { id: 2, offerId: 5, offerTitle: "Practicante de Diseño UX/UI", company: "Rappi", appliedDate: "2026-08-25", status: "Aceptada" },
-  { id: 3, offerId: 3, offerTitle: "Practicante de Contabilidad y Finanzas", company: "Deloitte Colombia", appliedDate: "2026-08-18", status: "Rechazada" },
-];
-
-// ── Job applications (external users) ────────────────────────────────────────
-
 export type JobApplication = {
   id: number;
   jobId: number;
@@ -424,33 +436,36 @@ export type JobApplication = {
   status: "Enviada" | "En revisión" | "Entrevista" | "Aceptada" | "Rechazada";
 };
 
-export const JOB_APPLICATIONS_DATA: JobApplication[] = [
-  { id: 1, jobId: 101, jobTitle: "Desarrollador Full Stack Senior", company: "Bancolombia", appliedDate: "2026-09-10", status: "Entrevista" },
-  { id: 2, jobId: 105, jobTitle: "Product Designer UX/UI", company: "Rappi", appliedDate: "2026-09-05", status: "En revisión" },
-];
-
-// ── Company candidates (for company panel) ────────────────────────────────────
-
-export const COMPANY_CANDIDATES = [
-  { id: 1, name: "Laura Martínez Gómez", career: "Ingeniería de Sistemas", semester: "9°", gpa: "4.2", city: "Bogotá", appliedDate: "2026-09-01", status: "En revisión" as const, skills: ["React", "Java", "Python", "SQL"] },
-  { id: 2, name: "Andrés Felipe Rincón", career: "Ingeniería de Software", semester: "10°", gpa: "3.9", city: "Medellín", appliedDate: "2026-09-03", status: "En revisión" as const, skills: ["JavaScript", "Node.js", "MongoDB"] },
-  { id: 3, name: "María Camila Torres", career: "Ingeniería de Sistemas", semester: "8°", gpa: "4.5", city: "Cali", appliedDate: "2026-09-04", status: "Aceptada" as const, skills: ["Python", "Django", "PostgreSQL", "Git"] },
-  { id: 4, name: "Juan Sebastián López", career: "Ciencias de la Computación", semester: "9°", gpa: "3.7", city: "Bogotá", appliedDate: "2026-09-05", status: "Rechazada" as const, skills: ["C++", "Java", "Algoritmos"] },
-];
-
 const profileTypeToRole = (profileType?: string): Role => {
   if (profileType === "ORGANIZACION") return "company";
   if (profileType === "CANDIDATO_EXTERNO") return "external";
   return "student";
 };
 
-const mapUserToSession = (user: ApiUser): UserSession => ({
-  id: Number(user.id),
-  email: user.email,
-  nombreCompleto: user.nombreCompleto,
-  profileTypes: user.profileTypes ?? user.perfiles?.map((profile) => profile.tipo ?? "ESTUDIANTE") ?? ["ESTUDIANTE"],
-  roles: user.roles ?? ["USUARIO"],
-});
+const mapUserToSession = (user: ApiUser): UserSession => {
+  const studentProfile = user.perfiles?.find((profile) => profile.tipo === "ESTUDIANTE");
+  const externalProfile = user.perfiles?.find((profile) => profile.tipo === "CANDIDATO_EXTERNO");
+  const organizationProfile = user.perfiles?.find((profile) => profile.tipo === "ORGANIZACION");
+  return {
+    id: Number(user.id),
+    email: user.email,
+    nombreCompleto: user.nombreCompleto,
+    telefono: user.telefono,
+    universidad: studentProfile?.universidad,
+    programaAcademico: studentProfile?.programaAcademico,
+    semestre: studentProfile?.semestre,
+    codigoEstudiante: studentProfile?.codigoEstudiante,
+    fechaGraduacionEstimada: studentProfile?.fechaGraduacionEstimada,
+    resumen: externalProfile?.resumen,
+    ubicacion: externalProfile?.ubicacion,
+    disponibilidad: externalProfile?.disponibilidad,
+    cvUrl: externalProfile?.cvUrl,
+    organizacionNombre: organizationProfile?.razonSocial,
+    organizacionVerificada: organizationProfile?.verificada,
+    profileTypes: user.profileTypes ?? user.perfiles?.map((profile) => profile.tipo ?? "ESTUDIANTE") ?? ["ESTUDIANTE"],
+    roles: user.roles ?? ["USUARIO"],
+  };
+};
 
 export type AppState = {
   screen: Screen;
@@ -460,9 +475,9 @@ export type AppState = {
   selectedOffer: Offer | null;
   selectedJob: Job | null;
   selectedCompanyOffer: Offer | null;
+  applicantFilter?: "Todos" | "En revisión" | "Aceptada" | "Rechazada";
   applications: Application[];
   jobApplications: JobApplication[];
-  candidates: typeof COMPANY_CANDIDATES;
 };
 
 export default function App() {
@@ -477,9 +492,8 @@ export default function App() {
       selectedOffer: null,
       selectedJob: null,
       selectedCompanyOffer: null,
-      applications: APPLICATIONS_DATA,
-      jobApplications: JOB_APPLICATIONS_DATA,
-      candidates: COMPANY_CANDIDATES,
+      applications: [],
+      jobApplications: [],
     };
   });
 
@@ -518,6 +532,46 @@ export default function App() {
       });
   }, [state.token]);
 
+  useEffect(() => {
+    if (!state.token) return;
+
+    api.getMyApplications(state.token)
+      .then((response) => {
+        const applications = (response.applications ?? []).map((item) => {
+          let status: Application["status"] = "Enviada";
+          if (item.estado === "EN_REVISION" || item.estado === "PRESELECCIONADA") status = "En revisión";
+          else if (item.estado === "ACEPTADA") status = "Aceptada";
+          else if (item.estado === "RECHAZADA") status = "Rechazada";
+
+          return {
+            id: Number(item.id),
+            offerId: Number(item.oferta_id),
+            offerTitle: item.oferta_titulo ?? "Oferta",
+            company: item.empresa ?? "Empresa",
+            appliedDate: (item.created_at ?? new Date().toISOString()).slice(0, 10),
+            status,
+            type: item.oferta_tipo,
+          };
+        });
+        const practiceApplications: Application[] = applications
+          .filter((item) => item.type === "PRACTICA")
+          .map(({ type: _type, ...application }) => application);
+        const jobApplications: JobApplication[] = applications
+          .filter((item) => item.type !== "PRACTICA")
+          .map((item) => ({
+            id: item.id,
+            jobId: item.offerId,
+            jobTitle: item.offerTitle,
+            company: item.company,
+            appliedDate: item.appliedDate,
+            status: item.status,
+          }));
+
+        setState((current) => ({ ...current, applications: practiceApplications, jobApplications }));
+      })
+      .catch((error) => console.error("getMyApplications failed:", error));
+  }, [state.token]);
+
   const navigate = (screen: Screen, extra?: Partial<AppState>) => {
     setState((s) => ({ ...s, screen, ...extra }));
     window.scrollTo({ top: 0 });
@@ -534,6 +588,8 @@ export default function App() {
       currentUser: user,
       role: nextRole,
       screen: nextRole === "company" ? "company-dashboard" : nextRole === "external" ? "external-dashboard" : "student-dashboard",
+      applications: [],
+      jobApplications: [],
     }));
   };
 
@@ -548,11 +604,13 @@ export default function App() {
       currentUser: user,
       role: nextRole,
       screen: nextRole === "company" ? "company-dashboard" : nextRole === "external" ? "external-dashboard" : "student-dashboard",
+      applications: [],
+      jobApplications: [],
     }));
   };
 
   const updateExternalProfile = async (payload: Record<string, unknown>) => {
-    if (!state.token) return;
+    if (!state.token) throw new Error("Tu sesión expiró. Inicia sesión nuevamente.");
 
     try {
       const response = await api.updateExternalProfile(payload, state.token);
@@ -562,7 +620,22 @@ export default function App() {
       }));
     } catch (error) {
       console.error("updateExternalProfile failed:", error);
+      throw error;
     }
+  };
+
+  const updateStudentProfile = async (payload: Record<string, unknown>) => {
+    if (!state.token) throw new Error("Tu sesión expiró. Inicia sesión nuevamente.");
+
+    await api.updateCurrentUser({ nombreCompleto: payload.nombreCompleto, telefono: payload.telefono }, state.token);
+    const response = await api.updateStudentProfile({
+      universidad: payload.universidad,
+      programaAcademico: payload.programaAcademico,
+      semestre: payload.semestre,
+      codigoEstudiante: payload.codigoEstudiante,
+      fechaGraduacionEstimada: payload.fechaGraduacionEstimada,
+    }, state.token);
+    setState((current) => ({ ...current, currentUser: mapUserToSession(response.user) }));
   };
 
   const logout = () => {
@@ -572,11 +645,13 @@ export default function App() {
       currentUser: null,
       role: null,
       screen: "auth",
+      applications: [],
+      jobApplications: [],
     }));
   };
 
   const applyToOffer = async (offer: Offer) => {
-    if (!state.token) return;
+    if (!state.token) throw new Error("Tu sesión expiró. Inicia sesión nuevamente.");
     if (state.applications.find((a) => a.offerId === offer.id)) return;
 
     try {
@@ -599,11 +674,12 @@ export default function App() {
       }));
     } catch (error) {
       console.error("applyToOffer failed:", error);
+      throw error;
     }
   };
 
   const applyToJob = async (job: Job) => {
-    if (!state.token) return;
+    if (!state.token) throw new Error("Tu sesión expiró. Inicia sesión nuevamente.");
     if (state.jobApplications.find((a) => a.jobId === job.id)) return;
 
     try {
@@ -617,6 +693,7 @@ export default function App() {
       }));
     } catch (error) {
       console.error("applyToJob failed:", error);
+      throw error;
     }
   };
 
@@ -625,13 +702,13 @@ export default function App() {
 
     try {
       await api.updateApplicationStatus(id, status === "Aceptada" ? "ACEPTADA" : "RECHAZADA", state.token);
-      setState((s) => ({ ...s, candidates: s.candidates.map((c) => (c.id === id ? { ...c, status } : c)) }));
     } catch (error) {
       console.error("updateCandidateStatus failed:", error);
+      throw error;
     }
   };
 
-  const props = { state, navigate, applyToOffer, applyToJob, updateCandidateStatus, updateExternalProfile, login, register, logout };
+  const props = { state, navigate, applyToOffer, applyToJob, updateCandidateStatus, updateExternalProfile, updateStudentProfile, login, register, logout };
 
   switch (state.screen) {
     case "auth":               return <AuthScreen {...props} />;

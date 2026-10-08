@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AppState, Offer, OFFERS, Screen } from "../App";
+import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import { api } from "../lib/api";
@@ -17,13 +17,19 @@ const toUiOffer = (offer: any): Offer => ({
   company: offer.empresa ?? offer.company ?? "Empresa",
   logo: (offer.empresa ?? offer.company ?? "E").slice(0, 2).toUpperCase(),
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
-  area: offer.area ?? "Tecnología",
+  area: offer.area ?? "General",
   modality: (offer.modalidad ?? "Híbrida") as Offer["modality"],
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
   salary: offer.remuneracion ? `$${Number(offer.remuneracion).toLocaleString("es-CO")}/mes` : "A convenir",
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
-  requirements: Array.isArray(offer.requirements) && offer.requirements.length ? offer.requirements : [offer.descripcion ?? "Disponibilidad para práctica."],
+  requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
   applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
+  offerType: offer.tipo,
+  verified: Boolean(offer.verificada),
+  duration: offer.duracion,
+  schedule: offer.horario,
+  salaryMin: offer.remuneracion === null ? null : Number(offer.remuneracion),
+  salaryMax: offer.remuneracion_maxima === null ? null : Number(offer.remuneracion_maxima),
 });
 
 export default function StudentDashboard({ state, navigate }: Props) {
@@ -33,15 +39,31 @@ export default function StudentDashboard({ state, navigate }: Props) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
   const [saved, setSaved] = useState<number[]>([]);
-  const [offers, setOffers] = useState<Offer[]>(OFFERS);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    api.getOffers()
-      .then((response) => {
-        const mapped = (response.offers ?? []).map(toUiOffer);
-        setOffers(mapped.length ? mapped : OFFERS);
-      })
-      .catch(() => setOffers(OFFERS));
+    let active = true;
+    const refreshOffers = () => {
+      api.getOffers()
+        .then((response) => {
+          if (!active) return;
+          setOffers((response.offers ?? []).map(toUiOffer));
+          setLoadError("");
+        })
+        .catch((error) => {
+          if (!active) return;
+          setOffers([]);
+          setLoadError(error instanceof Error ? error.message : "No se pudieron cargar las ofertas.");
+        });
+    };
+
+    refreshOffers();
+    const interval = window.setInterval(refreshOffers, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   const filtered = useMemo(() => offers.filter((offer) =>
@@ -53,7 +75,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
     ? +new Date(a.closeDate) - +new Date(b.closeDate)
     : sort === "salary"
       ? salaryNumber(b.salary) - salaryNumber(a.salary)
-      : b.id - a.id), [area, city, modality, search, sort]);
+      : b.id - a.id), [area, city, modality, search, sort, offers]);
 
   const applied = new Set(state.applications.map((item) => item.offerId));
   const openCount = filtered.filter((offer) => +new Date(offer.closeDate) >= Date.now()).length;
@@ -62,12 +84,12 @@ export default function StudentDashboard({ state, navigate }: Props) {
 
   return (
     <div className="app-shell">
-      <NavBar role="student" navigate={navigate} activeScreen="student-dashboard" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} onLogout={() => navigate("auth")} />
+      <NavBar role="student" navigate={navigate} activeScreen="student-dashboard" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} />
       <main>
         <section className="page-hero">
           <div className="container">
             <p className="eyebrow inverse">Prácticas universitarias</p>
-            <h1>Hola, Laura. Encuentra tu próxima oportunidad.</h1>
+            <h1>Hola, {state.currentUser?.nombreCompleto?.split(" ")[0] ?? "estudiante"}. Encuentra tu próxima oportunidad.</h1>
             <p>Explora ofertas verificadas y lleva el seguimiento de tu proceso en un solo lugar.</p>
             <label className="search-box">
               <span aria-hidden="true">⌕</span>
@@ -79,7 +101,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
         <section className="container catalog">
           <div className="filter-card" aria-label="Filtros de ofertas">
             <Filter label="Ciudad" value={city} options={cities} onChange={setCity} />
-            <Filter label="Área" value={area} options={areas} onChange={setArea} />
+            <Filter label="Área" value={area} options={[...new Set([...areas, ...offers.map((offer) => offer.area)])]} onChange={setArea} />
             <Filter label="Modalidad" value={modality} options={modalities} onChange={setModality} />
             <Filter label="Ordenar por" value={sort} options={["recent", "closing", "salary"]} labels={["Más recientes", "Fecha de cierre", "Mayor remuneración"]} onChange={(value) => setSort(value as Sort)} />
             {hasFilters && <button className="button secondary clear-filters" onClick={clear}>Limpiar filtros</button>}
@@ -87,9 +109,10 @@ export default function StudentDashboard({ state, navigate }: Props) {
 
           <div className="catalog-heading">
             <div><p className="eyebrow">Resultados</p><h2>{openCount} ofertas abiertas</h2></div>
-            <p className="muted">Empresas verificadas por SIPU</p>
+            <p className="muted">Ofertas publicadas por organizaciones registradas en SIPU</p>
           </div>
 
+          {loadError && <div className="form-error" role="alert">{loadError}</div>}
           {filtered.length ? (
             <div className="offer-grid">
               {filtered.map((offer) => (
@@ -132,7 +155,7 @@ function OfferCard({ offer, applied, saved, onSave, onOpen }: { offer: Offer; ap
       </div>
       <button className="offer-main" onClick={onOpen} aria-label={`Ver oferta ${offer.title} en ${offer.company}`}>
         <h3>{offer.title}</h3>
-        <p className="verified">{offer.company} <span title="Empresa verificada">✓ Verificada</span></p>
+        <p className="verified">{offer.company}{offer.verified && <span title="Organización verificada">✓ Verificada</span>}</p>
         <dl className="offer-meta">
           <div><dt>Ciudad</dt><dd>{offer.city}</dd></div>
           <div><dt>Modalidad</dt><dd>{offer.modality}</dd></div>

@@ -92,7 +92,7 @@ export async function applyToOfferController(request, response) {
 
   try {
     const offerResult = await pool.query(
-      `SELECT id, estado FROM ofertas WHERE id = $1`,
+      `SELECT id, estado, fecha_cierre FROM ofertas WHERE id = $1`,
       [offerId]
     );
 
@@ -102,6 +102,10 @@ export async function applyToOfferController(request, response) {
 
     if (offerResult.rows[0].estado !== 'PUBLICADA') {
       return response.status(400).json({ ok: false, message: 'La oferta no está publicada para recibir postulaciones.' });
+    }
+
+    if (offerResult.rows[0].fecha_cierre && new Date(offerResult.rows[0].fecha_cierre) < new Date()) {
+      return response.status(400).json({ ok: false, message: 'El plazo para postularse a esta oferta ya terminó.' });
     }
 
     const existingApplication = await pool.query(

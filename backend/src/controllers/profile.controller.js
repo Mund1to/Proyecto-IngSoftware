@@ -18,6 +18,10 @@ function toNullableString(value) {
   return String(value).trim();
 }
 
+function hasBodyValue(payload, keys) {
+  return keys.some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+}
+
 function mapProfile(profile) {
   return {
     id: profile.id,
@@ -154,26 +158,44 @@ export async function updateCurrentUserController(request, response) {
 
 export async function updateStudentProfileController(request, response) {
   const payload = request.body ?? {};
+  const universityKeys = ['universidad'];
+  const programKeys = ['programaAcademico', 'programa_academico'];
+  const semesterKeys = ['semestre'];
+  const studentCodeKeys = ['codigoEstudiante', 'codigo_estudiante'];
+  const graduationKeys = ['fechaGraduacionEstimada', 'fecha_graduacion_estimada'];
+  const semesterValue = getBodyValue(payload, semesterKeys);
+  const semester = !hasBodyValue(payload, semesterKeys) || semesterValue === '' || semesterValue === undefined
+    ? null
+    : Number(semesterValue);
+
+  if (semester !== null && (!Number.isInteger(semester) || semester < 1)) {
+    return response.status(400).json({ ok: false, message: 'El semestre debe ser un número entero mayor que cero.' });
+  }
 
   try {
     const result = await pool.query(
       `UPDATE perfiles_estudiante pe
-       SET universidad = COALESCE($1, pe.universidad),
-           programa_academico = COALESCE($2, pe.programa_academico),
-           semestre = COALESCE($3, pe.semestre),
-           codigo_estudiante = COALESCE($4, pe.codigo_estudiante),
-           fecha_graduacion_estimada = COALESCE($5, pe.fecha_graduacion_estimada)
+       SET universidad = CASE WHEN $1 THEN $2 ELSE pe.universidad END,
+           programa_academico = CASE WHEN $3 THEN $4 ELSE pe.programa_academico END,
+           semestre = CASE WHEN $5 THEN $6 ELSE pe.semestre END,
+           codigo_estudiante = CASE WHEN $7 THEN $8 ELSE pe.codigo_estudiante END,
+           fecha_graduacion_estimada = CASE WHEN $9 THEN $10 ELSE pe.fecha_graduacion_estimada END
        FROM perfiles p
        WHERE pe.perfil_id = p.id
-         AND p.usuario_id = $6
+         AND p.usuario_id = $11
          AND p.tipo = 'ESTUDIANTE'
        RETURNING pe.perfil_id`,
       [
-        toNullableString(getBodyValue(payload, ['universidad'])),
-        toNullableString(getBodyValue(payload, ['programaAcademico', 'programa_academico'])),
-        getBodyValue(payload, ['semestre']) ?? null,
-        toNullableString(getBodyValue(payload, ['codigoEstudiante', 'codigo_estudiante'])),
-        getBodyValue(payload, ['fechaGraduacionEstimada', 'fecha_graduacion_estimada']) ?? null,
+        hasBodyValue(payload, universityKeys),
+        toNullableString(getBodyValue(payload, universityKeys)),
+        hasBodyValue(payload, programKeys),
+        toNullableString(getBodyValue(payload, programKeys)),
+        hasBodyValue(payload, semesterKeys),
+        semester,
+        hasBodyValue(payload, studentCodeKeys),
+        toNullableString(getBodyValue(payload, studentCodeKeys)),
+        hasBodyValue(payload, graduationKeys),
+        getBodyValue(payload, graduationKeys) || null,
         request.auth.sub,
       ]
     );

@@ -98,6 +98,17 @@ export const api = {
       body: JSON.stringify(payload),
     }, token),
 
+  updateOffer: async (offerId: string | number, payload: Record<string, unknown>, token: string) =>
+    request<{ ok: boolean; offer: any }>(`/offers/${offerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, token),
+
+  deleteOffer: async (offerId: string | number, token: string) =>
+    request<{ ok: boolean; deletedOfferId: number }>(`/offers/${offerId}`, {
+      method: 'DELETE',
+    }, token),
+
   getApplicationsForOffer: async (offerId: string | number, token: string) =>
     request<{ ok: boolean; applications: any[] }>(`/applications/offers/${offerId}`, {}, token),
 

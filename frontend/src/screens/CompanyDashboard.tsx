@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AppState, Offer, OFFERS, Screen } from "../App";
+import { useEffect, useRef, useState } from "react";
+import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import { api } from "../lib/api";
 import { formatDate } from "./StudentDashboard";
@@ -19,52 +19,148 @@ const initial: Draft = {
   offerType: "PRACTICA",
 };
 
-const toUiOffer = (offer: any): Offer => ({
+const toUiOffer = (offer: any, fallbackCompany = "Empresa", fallbackVerified = false): Offer => ({
   id: Number(offer.id),
   title: offer.titulo ?? offer.title ?? "Oferta",
-  company: offer.empresa ?? offer.company ?? "Empresa",
+  company: offer.empresa ?? offer.company ?? fallbackCompany,
   logo: (offer.empresa ?? offer.company ?? "E").slice(0, 2).toUpperCase(),
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
-  area: offer.area ?? "Tecnología",
+  area: offer.area ?? "General",
   modality: (offer.modalidad ?? "Híbrida") as Offer["modality"],
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
   salary: offer.remuneracion ? `$${Number(offer.remuneracion).toLocaleString("es-CO")}/mes` : "A convenir",
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
-  requirements: Array.isArray(offer.requirements) && offer.requirements.length ? offer.requirements : [offer.descripcion ?? "Disponibilidad para práctica."],
+  requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
   applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
+  offerType: offer.tipo ?? offer.offerType,
+  status: offer.estado ?? offer.status ?? "PUBLICADA",
+  verified: Boolean(offer.verificada ?? fallbackVerified),
+  duration: offer.duracion ?? offer.duration,
+  schedule: offer.horario ?? offer.schedule,
+  contactEmail: offer.contacto_email ?? offer.contactEmail,
+  salaryMin: offer.remuneracion == null ? null : Number(offer.remuneracion),
+  salaryMax: offer.remuneracion_maxima == null ? null : Number(offer.remuneracion_maxima),
 });
 
 export default function CompanyDashboard({ state, navigate }: Props) {
-  const [offers, setOffers] = useState<Offer[]>(OFFERS.filter((offer) => offer.company === "Bancolombia"));
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [preview, setPreview] = useState(false);
   const [published, setPublished] = useState(false);
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState("");
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [pendingApplicants, setPendingApplicants] = useState(0);
+  const [offersError, setOffersError] = useState("");
+  const offersListRef = useRef<HTMLElement>(null);
+  const draftStorageKey = `sipu-company-draft-${state.currentUser?.id ?? "anonymous"}`;
+
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(draftStorageKey);
+    if (!savedDraft || editingId !== null) return;
+    try {
+      setDraft({ ...initial, ...JSON.parse(savedDraft) as Partial<Draft> });
+      setDraftSaved(true);
+    } catch {
+      localStorage.removeItem(draftStorageKey);
+    }
+  }, [draftStorageKey, editingId]);
 
   useEffect(() => {
     if (!state.token) return;
 
     api.getMyOffers(state.token)
-      .then((response) => {
+      .then(async (response) => {
         const mapped = (response.offers ?? []).map(toUiOffer);
-        setOffers(mapped.length ? mapped : OFFERS.filter((offer) => offer.company === "Bancolombia"));
+        setOffers(mapped);
+        setOffersError("");
+        const applicationLists = await Promise.all(mapped.map((offer) =>
+          api.getApplicationsForOffer(offer.id, state.token!).catch(() => ({ applications: [] })),
+        ));
+        const applications = applicationLists.flatMap((item) => item.applications ?? []);
+        setOffers(mapped.map((offer, index) => ({ ...offer, applicants: applicationLists[index].applications?.length ?? offer.applicants ?? 0 })));
+        setPendingApplicants(applications.filter((item) => !["ACEPTADA", "RECHAZADA"].includes(item.estado)).length);
       })
-      .catch(() => setOffers(OFFERS.filter((offer) => offer.company === "Bancolombia")));
+      .catch((error) => {
+        setOffers([]);
+        setOffersError(error instanceof Error ? error.message : "No se pudieron cargar tus ofertas.");
+      });
   }, [state.token]);
 
-  const update = (key: keyof Draft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
+  const update = (key: keyof Draft, value: string) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setDraftSaved(false);
+  };
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+      setDraftSaved(true);
+      setError("");
+    } catch {
+      setError("No se pudo guardar el borrador en este navegador.");
+    }
+  };
   const validate = () => {
     const salaryOk = draft.offerType === "PRACTICA"
       ? Boolean(draft.salary)
-      : Boolean(draft.salaryMin && draft.salaryMax);
+      : Boolean(draft.salaryMin && draft.salaryMax && Number(draft.salaryMax) >= Number(draft.salaryMin));
+    const closeDateIsFuture = draft.closeDate && new Date(`${draft.closeDate}T23:59:59.999`).getTime() > Date.now();
 
-    if (!draft.title || !draft.description || !draft.program || !draft.skills || !draft.city || !salaryOk || !draft.closeDate || !draft.contact) {
+    if (!draft.title || !draft.description || !draft.program || !draft.skills || !draft.city || !salaryOk || !closeDateIsFuture || !draft.contact) {
       setError("Completa todos los campos obligatorios antes de continuar.");
       return;
     }
     setError("");
     setPreview(true);
+  };
+
+  const startEdit = (offer: Offer) => {
+    setEditingId(offer.id);
+    setDraft({
+      title: offer.title,
+      area: offer.area ?? "General",
+      description: offer.description,
+      program: offer.requirements?.[0] ?? "",
+      semester: "",
+      skills: offer.requirements?.[1] ?? "",
+      experience: offer.requirements?.[2] ?? "No requerida",
+      languages: "",
+      city: offer.city,
+      modality: offer.modality,
+      duration: offer.duration ?? "",
+      schedule: offer.schedule ?? "",
+      salary: offer.salary ? offer.salary.replace(/\D/g, "") : "",
+      salaryMin: offer.salaryMin ? String(offer.salaryMin) : offer.salary ? offer.salary.replace(/\D/g, "") : "",
+      salaryMax: offer.salaryMax ? String(offer.salaryMax) : "",
+      closeDate: offer.closeDate ? offer.closeDate.slice(0, 10) : "",
+      contact: offer.contactEmail ?? state.currentUser?.email ?? "",
+      offerType: offer.offerType ?? "PRACTICA",
+    });
+    setCreating(true);
+    setPreview(false);
+    setError("");
+  };
+
+  const cancelEditOrCreate = () => {
+    setCreating(false);
+    setEditingId(null);
+    setPreview(false);
+    setPublished(false);
+    setDraft(initial);
+    setError("");
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId || !state.token) return;
+    try {
+      await api.deleteOffer(deletingId, state.token);
+      setOffers((current) => current.map((o) => o.id === deletingId ? { ...o, status: "CANCELADA" } : o));
+      setDeletingId(null);
+    } catch (err) {
+      setOffersError(err instanceof Error ? err.message : "No se pudo cancelar la oferta.");
+    }
   };
 
   const publishOffer = async () => {
@@ -76,49 +172,63 @@ export default function CompanyDashboard({ state, navigate }: Props) {
       estado: "PUBLICADA",
       ubicacion: draft.city,
       modalidad: draft.modality,
+      area: draft.area,
+      requisitos: [draft.program, draft.skills, draft.experience, draft.languages].filter(Boolean),
+      duracion: draft.duration,
+      horario: draft.schedule,
+      contactoEmail: draft.contact,
       fechaPublicacion: new Date().toISOString(),
-      fechaCierre: draft.closeDate ? new Date(draft.closeDate).toISOString() : null,
+      fechaCierre: draft.closeDate ? new Date(`${draft.closeDate}T23:59:59.999`).toISOString() : null,
       remuneracion: draft.offerType === "PRACTICA" ? Number(draft.salary) : Number(draft.salaryMin),
       remuneracionMaxima: draft.offerType === "PRACTICA" ? null : Number(draft.salaryMax),
     };
 
     try {
-      const response = await api.createOffer(payload, state.token);
-      const created = toUiOffer(response.offer);
-      setOffers((current) => [created, ...current]);
+      if (editingId) {
+        const response = await api.updateOffer(editingId, payload, state.token);
+        const updated = toUiOffer(response.offer, state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto, state.currentUser?.organizacionVerificada);
+        setOffers((current) => current.map((o) => (o.id === editingId ? { ...updated, applicants: o.applicants } : o)));
+      } else {
+        const response = await api.createOffer(payload, state.token);
+        const created = toUiOffer(response.offer, state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto, state.currentUser?.organizacionVerificada);
+        setOffers((current) => [created, ...current]);
+        localStorage.removeItem(draftStorageKey);
+      }
+      setDraftSaved(false);
       setPublished(true);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "No se pudo publicar la oferta.");
+      setError(error instanceof Error ? error.message : "No se pudo guardar la oferta.");
     }
   };
 
   if (creating) return (
     <div className="app-shell">
-      <NavBar role="company" navigate={navigate} activeScreen="company-dashboard" userName={state.currentUser?.nombreCompleto ?? "Empresa"} onLogout={() => navigate("auth")} />
+      <NavBar role="company" navigate={navigate} activeScreen="company-dashboard" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
       <main className="container publish-page">
-        <button className="back-button" onClick={() => { setCreating(false); setPreview(false); }}>← Volver al panel</button>
+        <button className="back-button" onClick={cancelEditOrCreate}>← Volver al panel</button>
         {published ? (
-          <div className="publish-success"><div className="success-icon">✓</div><h1>Oferta publicada</h1><p>La oferta ya está visible para estudiantes elegibles.</p><button className="button primary" onClick={() => { setPublished(false); setCreating(false); }}>Ver oferta publicada</button></div>
+          <div className="publish-success"><div className="success-icon">✓</div><h1>{editingId ? "Oferta actualizada" : "Oferta publicada"}</h1><p>{editingId ? "Los cambios ya son visibles para estudiantes y candidatos." : "La oferta ya está visible para estudiantes y candidatos externos."}</p><button className="button primary" onClick={cancelEditOrCreate}>Volver a mis ofertas</button></div>
         ) : preview ? (
           <>
-            <div className="page-title"><p className="eyebrow">Paso 2 de 2</p><h1>Vista previa de la oferta</h1><p>Así la verán los estudiantes. Revisa la información antes de publicarla.</p></div>
+            <div className="page-title"><p className="eyebrow">Paso 2 de 2</p><h1>{editingId ? "Vista previa de cambios" : "Vista previa de la oferta"}</h1><p>Así la verán los estudiantes y candidatos externos. Revisa la información antes de guardar.</p></div>
             <section className="preview-card">
               <span className="status status-abierta">Abierta</span>
-              <h2>{draft.title}</h2><p className="verified">Bancolombia <span>✓ Empresa verificada</span></p>
+              <h2>{draft.title}</h2><p className="verified">{state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Organización"}{state.currentUser?.organizacionVerificada && <span>✓ Organización verificada</span>}</p>
               <div className="detail-tags"><span>{draft.city}</span><span>{draft.modality}</span><span>{draft.area}</span><span>{draft.offerType}</span><span>{draft.offerType === "PRACTICA" ? `${draft.salary} COP` : `${draft.salaryMin} - ${draft.salaryMax} COP`}</span></div>
               <h3>Descripción</h3><p>{draft.description}</p>
               <h3>Requisitos</h3><ul className="check-list"><li>{draft.program}</li><li>{draft.skills}</li><li>{draft.experience}</li></ul>
               <h3>Condiciones</h3><p>{draft.duration} · {draft.schedule} · Cierre {formatDate(draft.closeDate)}</p>
             </section>
-            <div className="publish-actions"><button className="button secondary" onClick={() => setPreview(false)}>Volver a editar</button><button className="button secondary" onClick={() => alert("Borrador guardado")}>Guardar borrador</button><button className="button primary" onClick={() => void publishOffer()}>Publicar oferta</button></div>
+            <div className="publish-actions"><button className="button secondary" onClick={() => setPreview(false)}>Volver a editar</button>{!editingId && <button className="button secondary" onClick={saveDraft}>{draftSaved ? "Borrador guardado" : "Guardar borrador"}</button>}<button className="button primary" onClick={() => void publishOffer()}>{editingId ? "Guardar cambios" : "Publicar oferta"}</button></div>
+            {draftSaved && <p role="status" className="muted">Borrador guardado en este navegador.</p>}
           </>
         ) : (
           <>
-            <div className="page-title"><p className="eyebrow">Paso 1 de 2</p><h1>Crear oferta {draft.offerType === "PRACTICA" ? "de práctica" : draft.offerType === "EMPLEO" ? "laboral" : "pública"}</h1><p>Los campos marcados con * son obligatorios.</p></div>
+            <div className="page-title"><p className="eyebrow">{editingId ? "Edición de oferta" : "Paso 1 de 2"}</p><h1>{editingId ? "Modificar oferta" : `Crear oferta ${draft.offerType === "PRACTICA" ? "de práctica" : draft.offerType === "EMPLEO" ? "laboral" : "pública"}`}</h1><p>Los campos marcados con * son obligatorios.</p></div>
             <form className="publish-form" onSubmit={(event) => { event.preventDefault(); validate(); }}>
               <FormSection title="Información del cargo" description="Describe la oportunidad con claridad.">
                 <Input label="Título del cargo *" value={draft.title} onChange={(value) => update("title", value)} />
-                <Select label="Área *" value={draft.area} options={["Tecnología", "Marketing", "Contabilidad", "Recursos Humanos", "Diseño"]} onChange={(value) => update("area", value)} />
+                <Input label="Área *" value={draft.area} onChange={(value) => update("area", value)} />
                 <TextArea label="Descripción *" value={draft.description} onChange={(value) => update("description", value)} />
               </FormSection>
               <FormSection title="Requisitos" description="Indica el perfil académico esperado.">
@@ -147,7 +257,8 @@ export default function CompanyDashboard({ state, navigate }: Props) {
                 <Input label="Correo de contacto *" value={draft.contact} type="email" onChange={(value) => update("contact", value)} />
               </FormSection>
               {error && <div className="form-error" role="alert">{error}</div>}
-              <div className="publish-actions"><button type="button" className="button secondary" onClick={() => alert("Borrador guardado")}>Guardar borrador</button><button className="button primary" type="submit">Revisar vista previa</button></div>
+              <div className="publish-actions">{!editingId && <button type="button" className="button secondary" onClick={saveDraft}>{draftSaved ? "Borrador guardado" : "Guardar borrador"}</button>}<button className="button primary" type="submit">Revisar vista previa</button></div>
+              {draftSaved && <p role="status" className="muted">Borrador guardado en este navegador.</p>}
             </form>
           </>
         )}
@@ -157,19 +268,62 @@ export default function CompanyDashboard({ state, navigate }: Props) {
 
   return (
     <div className="app-shell">
-      <NavBar role="company" navigate={navigate} activeScreen="company-dashboard" />
+      <NavBar role="company" navigate={navigate} activeScreen="company-dashboard" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
       <main>
-        <section className="company-hero"><div className="container"><div><p className="eyebrow inverse">Panel empresarial</p><h1>Bancolombia</h1><p>Gestiona tus ofertas de práctica y procesos de selección.</p></div><button className="button primary light" onClick={() => setCreating(true)}>Crear oferta de práctica</button></div></section>
+        <section className="company-hero"><div className="container"><div><p className="eyebrow inverse">Panel empresarial</p><h1>{state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Panel empresarial"}</h1><p>Gestiona tus ofertas y procesos de selección.</p></div><button className="button primary light" onClick={() => { setEditingId(null); setDraft(initial); setCreating(true); }}>Crear oferta</button></div></section>
         <section className="container company-content">
+          {offersError && <div className="form-error mb-5" role="alert">{offersError}</div>}
           <div className="metric-grid">
-            <button onClick={() => undefined}><span>Ofertas activas</span><strong>1</strong><small>Ver ofertas</small></button>
-            <button onClick={() => navigate("company-applicants", { selectedCompanyOffer: offers[0] })}><span>Postulantes</span><strong>34</strong><small>Ver postulantes</small></button>
-            <button onClick={() => navigate("company-applicants", { selectedCompanyOffer: offers[0] })}><span>En revisión</span><strong>2</strong><small>Gestionar proceso</small></button>
+            <button onClick={() => offersListRef.current?.scrollIntoView({ behavior: "smooth" })}><span>Ofertas activas</span><strong>{offers.filter((offer) => offer.status === "PUBLICADA" && new Date(offer.closeDate).getTime() >= Date.now()).length}</strong><small>Ver publicaciones</small></button>
+            <button disabled={!offers[0]} onClick={() => navigate("company-applicants", { selectedCompanyOffer: offers[0], applicantFilter: "Todos" })}><span>Postulantes</span><strong>{offers.reduce((total, offer) => total + (offer.applicants ?? 0), 0)}</strong><small>Ver todos</small></button>
+            <button disabled={!offers[0]} onClick={() => navigate("company-applicants", { selectedCompanyOffer: offers[0], applicantFilter: "En revisión" })}><span>En revisión</span><strong>{pendingApplicants}</strong><small>Revisar candidatos</small></button>
           </div>
-          <div className="catalog-heading"><div><p className="eyebrow">Tus publicaciones</p><h2>Ofertas de práctica</h2></div></div>
-          {offers.map((offer) => <article className="company-offer" key={offer.id}><div><span className="status status-abierta">Abierta</span><h3>{offer.title}</h3><p>{offer.city} · {offer.modality} · Cierra {formatDate(offer.closeDate)}</p></div><div><strong>34 postulantes</strong><button className="button secondary" onClick={() => navigate("company-applicants", { selectedCompanyOffer: offer })}>Gestionar postulantes</button></div></article>)}
+          <div className="catalog-heading" ref={offersListRef}><div><p className="eyebrow">Tus publicaciones</p><h2>Ofertas publicadas</h2></div></div>
+          {offers.length === 0 ? (
+            <div className="empty-state">
+              <h2>No tienes ofertas publicadas</h2>
+              <p>Publica tu primera vacante o práctica universitaria para comenzar a recibir candidatos.</p>
+              <button className="button primary" onClick={() => { setEditingId(null); setDraft(initial); setCreating(true); }}>Publicar primera oferta</button>
+            </div>
+          ) : (
+            offers.map((offer) => (
+              <article className="company-offer" key={offer.id}>
+                <div>
+                  <span className={`status ${offer.status === "PUBLICADA" ? "status-abierta" : "status-cerrada"}`}>{offer.status === "PUBLICADA" ? "Publicada" : offer.status === "BORRADOR" ? "Borrador" : offer.status === "CANCELADA" ? "Cancelada" : "Cerrada"}</span>
+                  <h3>{offer.title}</h3>
+                  <p>{offer.city} · {offer.modality} · Cierra {formatDate(offer.closeDate)}</p>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <strong>{offer.applicants ?? 0} postulantes</strong>
+                  <button className="button secondary" onClick={() => navigate("company-applicants", { selectedCompanyOffer: offer, applicantFilter: "Todos" })}>
+                    Gestionar postulantes
+                  </button>
+                  {offer.status !== "CANCELADA" && <button className="button secondary" onClick={() => startEdit(offer)}>
+                    Editar
+                  </button>}
+                  {offer.status === "PUBLICADA" && <button className="button secondary" style={{ color: "#dc2626", borderColor: "#fca5a5" }} onClick={() => setDeletingId(offer.id)}>
+                    Cancelar oferta
+                  </button>}
+                </div>
+              </article>
+            ))
+          )}
         </section>
       </main>
+
+      {deletingId && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={() => setDeletingId(null)}>
+          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" onMouseDown={(e) => e.stopPropagation()}>
+            <p className="eyebrow">Confirmación</p>
+            <h2 id="delete-title">¿Cancelar esta oferta?</h2>
+            <p>La oferta dejará de aparecer en los catálogos. Se conservará el historial de postulaciones recibidas.</p>
+            <div className="modal-actions">
+              <button className="button secondary" onClick={() => setDeletingId(null)}>Cancelar</button>
+              <button className="button primary" style={{ backgroundColor: "#dc2626", borderColor: "#dc2626" }} onClick={() => void confirmDelete()}>Confirmar cancelación</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

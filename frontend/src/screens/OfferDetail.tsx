@@ -3,7 +3,7 @@ import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import { formatDate } from "./StudentDashboard";
 
-type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void; applyToOffer: (offer: Offer) => void };
+type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void; applyToOffer: (offer: Offer) => Promise<void> };
 
 export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
   const offer = state.selectedOffer;
@@ -11,14 +11,25 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
   const [saved, setSaved] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [applyError, setApplyError] = useState("");
   if (!offer) return null;
 
   const closed = +new Date(offer.closeDate) < Date.now();
-  const submit = async () => { await applyToOffer(offer); setApplied(true); setConfirming(false); setSuccess(true); };
+  const submit = async () => {
+    setApplyError("");
+    try {
+      await applyToOffer(offer);
+      setApplied(true);
+      setConfirming(false);
+      setSuccess(true);
+    } catch (error) {
+      setApplyError(error instanceof Error ? error.message : "No se pudo enviar la postulación.");
+    }
+  };
 
   return (
     <div className="app-shell">
-      <NavBar role="student" navigate={navigate} activeScreen="student-dashboard" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} onLogout={() => navigate("auth")} />
+      <NavBar role="student" navigate={navigate} activeScreen="student-dashboard" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} />
       <main className="container detail-page">
         <button className="back-button" onClick={() => navigate("student-dashboard")}>← Volver a ofertas</button>
         <section className="detail-header">
@@ -26,7 +37,7 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
           <div>
             <span className={`status ${closed ? "status-cerrada" : "status-abierta"}`}>{closed ? "Cerrada" : "Abierta"}</span>
             <h1>{offer.title}</h1>
-            <p className="verified detail-company">{offer.company} <span>✓ Empresa verificada</span></p>
+            <p className="verified detail-company">{offer.company}{offer.verified && <span>✓ Organización verificada</span>}</p>
             <div className="detail-tags"><span>{offer.city}</span><span>{offer.modality}</span><span>{offer.area}</span></div>
           </div>
         </section>
@@ -40,8 +51,8 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
               <ul className="check-list">{offer.requirements.map((item) => <li key={item}>{item}</li>)}</ul>
             </Info>
             <div className="two-column-info">
-              <Info title="Duración"><p>6 meses, práctica universitaria</p></Info>
-              <Info title="Beneficios"><p>Mentoría, horario flexible y formación continua.</p></Info>
+              {offer.duration && <Info title="Duración"><p>{offer.duration}</p></Info>}
+              {offer.schedule && <Info title="Horario"><p>{offer.schedule}</p></Info>}
             </div>
           </div>
 
@@ -50,6 +61,7 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
             <h2>{applied ? "Postulación enviada" : "¿Te interesa esta práctica?"}</h2>
             <p>{applied ? "Estado actual: En revisión. Te notificaremos cualquier cambio." : "Revisa tu perfil y confirma el envío de tu información."}</p>
             {closed && !applied && <div className="form-error">Esta oferta cerró y ya no recibe postulaciones.</div>}
+            {applyError && <div className="form-error" role="alert">{applyError}</div>}
             {applied ? (
               <button className="button primary full" onClick={() => navigate("student-applications")}>Ver mi postulación</button>
             ) : (
@@ -67,8 +79,9 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
             <p className="eyebrow">Antes de enviar</p>
             <h2 id="confirm-title">Confirma tu postulación</h2>
             <p>La empresa recibirá tu perfil SIPU y el siguiente documento:</p>
-            <div className="cv-row"><span aria-hidden="true">PDF</span><div><strong>CV_Laura_Camila.pdf</strong><small>Actualizado el 3 sep 2026 · 1,2 MB</small></div><button className="text-button" onClick={() => navigate("student-profile")}>Cambiar</button></div>
-            <div className="modal-actions"><button className="button secondary" onClick={() => setConfirming(false)}>Cancelar</button><button className="button primary" onClick={submit}>Confirmar postulación</button></div>
+            <div className="cv-row"><span aria-hidden="true">PDF</span><div><strong>Hoja de vida</strong><small>Revisa tu perfil antes de enviar la postulación.</small></div><button className="text-button" onClick={() => navigate("student-profile")}>Ver perfil</button></div>
+            {applyError && <div className="form-error" role="alert">{applyError}</div>}
+            <div className="modal-actions"><button className="button secondary" onClick={() => setConfirming(false)}>Cancelar</button><button className="button primary" onClick={() => void submit()}>Confirmar postulación</button></div>
           </section>
         </div>
       )}

@@ -28,6 +28,16 @@ function normalizeNumber(value) {
   return Number.isFinite(numericValue) ? numericValue : null;
 }
 
+function normalizeStringList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  return typeof value === 'string'
+    ? value.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean)
+    : [];
+}
+
 async function getOrganizationProfileId(userId) {
   const result = await pool.query(
     `SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo = 'ORGANIZACION' LIMIT 1`,
@@ -86,7 +96,7 @@ export async function getOfferByIdController(request, response) {
       `SELECT o.*, org.razon_social AS empresa, org.verificada
        FROM ofertas o
        INNER JOIN organizaciones org ON org.perfil_id = o.organizacion_id
-       WHERE o.id = $1`,
+        WHERE o.id = $1 AND o.estado = 'PUBLICADA'`,
       [id]
     );
 
@@ -115,6 +125,11 @@ export async function createOfferController(request, response) {
   const status = normalizeString(getBodyValue(payload, ['estado', 'status'])) ?? 'BORRADOR';
   const location = normalizeString(getBodyValue(payload, ['ubicacion', 'location']));
   const modality = normalizeString(getBodyValue(payload, ['modalidad', 'modality']));
+  const area = normalizeString(getBodyValue(payload, ['area'])) ?? 'General';
+  const requirements = normalizeStringList(getBodyValue(payload, ['requisitos', 'requirements']));
+  const duration = normalizeString(getBodyValue(payload, ['duracion', 'duration']));
+  const schedule = normalizeString(getBodyValue(payload, ['horario', 'schedule']));
+  const contactEmail = normalizeString(getBodyValue(payload, ['contactoEmail', 'contact_email', 'contact']));
   const remuneration = normalizeNumber(getBodyValue(payload, ['remuneracion', 'salary', 'salario', 'salaryMin']));
   const remunerationMax = normalizeNumber(getBodyValue(payload, ['remuneracionMaxima', 'remuneracion_maxima', 'salaryMax']));
   const publicationDate = getBodyValue(payload, ['fechaPublicacion', 'fecha_publicacion', 'publishedAt']) ?? null;
@@ -141,6 +156,10 @@ export async function createOfferController(request, response) {
     });
   }
 
+  if (closeDate && (!Number.isFinite(new Date(closeDate).getTime()) || new Date(closeDate) <= new Date())) {
+    return response.status(400).json({ ok: false, message: 'La fecha de cierre debe ser una fecha futura válida.' });
+  }
+
   try {
     const result = await pool.query(
       `INSERT INTO ofertas (
@@ -151,11 +170,16 @@ export async function createOfferController(request, response) {
         estado,
         ubicacion,
         modalidad,
+        area,
+        requisitos,
+        duracion,
+        horario,
+        contacto_email,
         remuneracion,
         remuneracion_maxima,
         fecha_publicacion,
         fecha_cierre
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *`,
       [
         organizationId,
@@ -165,6 +189,11 @@ export async function createOfferController(request, response) {
         status.toUpperCase(),
         location,
         modality,
+        area,
+        requirements,
+        duration,
+        schedule,
+        contactEmail,
         remuneration,
         remunerationMax,
         publicationDate ?? null,
@@ -194,6 +223,11 @@ export async function updateOfferController(request, response) {
   const status = getBodyValue(payload, ['estado', 'status']);
   const location = getBodyValue(payload, ['ubicacion', 'location']);
   const modality = getBodyValue(payload, ['modalidad', 'modality']);
+  const area = getBodyValue(payload, ['area']);
+  const requirements = getBodyValue(payload, ['requisitos', 'requirements']);
+  const duration = getBodyValue(payload, ['duracion', 'duration']);
+  const schedule = getBodyValue(payload, ['horario', 'schedule']);
+  const contactEmail = getBodyValue(payload, ['contactoEmail', 'contact_email', 'contact']);
   const remuneration = normalizeNumber(getBodyValue(payload, ['remuneracion', 'salary', 'salario', 'salaryMin']));
   const remunerationMax = normalizeNumber(getBodyValue(payload, ['remuneracionMaxima', 'remuneracion_maxima', 'salaryMax']));
   const publicationDate = getBodyValue(payload, ['fechaPublicacion', 'fecha_publicacion', 'publishedAt']);
@@ -217,6 +251,10 @@ export async function updateOfferController(request, response) {
       return response.status(400).json({ ok: false, message: 'El estado de la oferta no es válido.' });
     }
 
+    if (closeDate && (!Number.isFinite(new Date(closeDate).getTime()) || new Date(closeDate) <= new Date())) {
+      return response.status(400).json({ ok: false, message: 'La fecha de cierre debe ser una fecha futura válida.' });
+    }
+
     const result = await pool.query(
       `UPDATE ofertas
        SET titulo = COALESCE($1, titulo),
@@ -225,12 +263,17 @@ export async function updateOfferController(request, response) {
            estado = COALESCE($4, estado),
            ubicacion = COALESCE($5, ubicacion),
            modalidad = COALESCE($6, modalidad),
-           remuneracion = COALESCE($7, remuneracion),
-           remuneracion_maxima = COALESCE($8, remuneracion_maxima),
-           fecha_publicacion = COALESCE($9, fecha_publicacion),
-           fecha_cierre = COALESCE($10, fecha_cierre),
+           area = COALESCE($7, area),
+           requisitos = COALESCE($8, requisitos),
+           duracion = COALESCE($9, duracion),
+           horario = COALESCE($10, horario),
+           contacto_email = COALESCE($11, contacto_email),
+           remuneracion = COALESCE($12, remuneracion),
+           remuneracion_maxima = COALESCE($13, remuneracion_maxima),
+           fecha_publicacion = COALESCE($14, fecha_publicacion),
+           fecha_cierre = COALESCE($15, fecha_cierre),
            updated_at = NOW()
-       WHERE id = $11 AND organizacion_id = $12
+       WHERE id = $16 AND organizacion_id = $17
        RETURNING *`,
       [
         normalizeString(title),
@@ -239,6 +282,11 @@ export async function updateOfferController(request, response) {
         status ? String(status).toUpperCase() : null,
         normalizeString(location),
         normalizeString(modality),
+        normalizeString(area),
+        requirements === undefined ? null : normalizeStringList(requirements),
+        normalizeString(duration),
+        normalizeString(schedule),
+        normalizeString(contactEmail),
         remuneration,
         remunerationMax,
         publicationDate ?? null,
@@ -265,14 +313,15 @@ export async function deleteOfferController(request, response) {
 
   try {
     const result = await pool.query(
-      `DELETE FROM ofertas
+      `UPDATE ofertas
+       SET estado = 'CANCELADA', updated_at = NOW()
        WHERE id = $1 AND organizacion_id = $2
        RETURNING id`,
       [id, organizationId]
     );
 
     if (result.rowCount === 0) {
-      return response.status(404).json({ ok: false, message: 'No se encontró una oferta propia para eliminar.' });
+      return response.status(404).json({ ok: false, message: 'No se encontró una oferta propia para cancelar.' });
     }
 
     return response.json({ ok: true, deletedOfferId: Number(result.rows[0].id) });

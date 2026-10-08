@@ -45,7 +45,7 @@ export default function AuthScreen({ navigate, login, register }: Props) {
     setError("");
     if (!email.includes("@")) return setError("Ingresa un correo válido.");
     if (view === "forgot") {
-      setSent(true);
+      setError("La recuperación automática aún no está disponible. Contacta al administrador de la plataforma.");
       return;
     }
     if (view === "register") {
@@ -198,7 +198,7 @@ export default function AuthScreen({ navigate, login, register }: Props) {
                   )}
                 </div>
               )}
-              <p className="legal">Al continuar aceptas los <button className="text-button">Términos de uso</button> y la <button className="text-button">Política de privacidad</button>.</p>
+              <p className="legal">Al continuar confirmas que tus datos se usarán para gestionar tu cuenta y tus postulaciones.</p>
             </>
           )}
         </div>

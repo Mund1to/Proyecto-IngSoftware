@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Job, JOBS, Screen } from "../App";
+import { AppState, Job, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import { api } from "../lib/api";
@@ -11,7 +11,7 @@ type Props = {
 
 const AREAS = ["Todas", "Tecnología", "Marketing", "Contabilidad", "Recursos Humanos", "Producción", "Jurídica", "Diseño"];
 const MODALITIES = ["Todas", "Presencial", "Remota", "Híbrida"];
-const TYPES = ["Todos", "Tiempo completo", "Medio tiempo", "Contrato", "Freelance"];
+const TYPES = ["Todos", "Práctica", "Tiempo completo", "Medio tiempo", "Contrato", "Freelance"];
 
 const modalityStyle: Record<string, { bg: string; text: string; dot: string }> = {
   Presencial: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-400" },
@@ -20,6 +20,7 @@ const modalityStyle: Record<string, { bg: string; text: string; dot: string }> =
 };
 
 const typeStyle: Record<string, string> = {
+  "Práctica": "bg-cyan-50 text-cyan-700",
   "Tiempo completo": "bg-emerald-50 text-emerald-700",
   "Medio tiempo": "bg-sky-50 text-sky-700",
   Contrato: "bg-orange-50 text-orange-700",
@@ -48,31 +49,48 @@ const mapOfferToJob = (offer: any): Job => ({
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
   area: offer.area ?? "General",
   modality: (offer.modalidad ?? "Híbrida") as Job["modality"],
-  type: offer.tipo === "PRACTICA" ? "Tiempo completo" : (offer.tipo === "EMPLEO_PUBLICO" ? "Contrato" : "Tiempo completo"),
+  type: offer.tipo === "PRACTICA" ? "Práctica" : (offer.tipo === "EMPLEO_PUBLICO" ? "Contrato" : "Tiempo completo"),
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
-  salaryMin: Number(offer.remuneracion ?? offer.salaryMin ?? 3000000),
-  salaryMax: Number(offer.remuneracionMaxima ?? offer.salaryMax ?? 5000000),
-  experience: offer.experiencia ?? "1+ años",
+  salaryMin: Number(offer.remuneracion ?? offer.salaryMin ?? 0),
+  salaryMax: Number(offer.remuneracion_maxima ?? offer.remuneracionMaxima ?? offer.salaryMax ?? offer.remuneracion ?? 0),
+  experience: offer.experiencia ?? "No especificada",
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
-  requirements: Array.isArray(offer.requirements) && offer.requirements.length ? offer.requirements : [offer.descripcion ?? "Requisitos disponibles al aplicar."],
-  benefits: Array.isArray(offer.benefits) && offer.benefits.length ? offer.benefits : ["Plan de carrera", "Seguro médico", "Auxilio de alimentación"],
+  requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
+  benefits: Array.isArray(offer.benefits) ? offer.benefits : [],
   applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
 });
 
 export default function ExternalDashboard({ state, navigate }: Props) {
-  const [jobs, setJobs] = useState<Job[]>(JOBS);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [area, setArea] = useState("Todas");
   const [modality, setModality] = useState("Todas");
   const [type, setType] = useState("Todos");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    api.getOffers()
-      .then((response) => {
-        const offers = (response.offers ?? []).filter((offer) => offer.estado === "PUBLICADA");
-        setJobs(offers.length ? offers.map(mapOfferToJob) : JOBS);
-      })
-      .catch(() => setJobs(JOBS));
+    let active = true;
+    const refreshOffers = () => {
+      api.getOffers()
+        .then((response) => {
+          if (!active) return;
+          const offers = (response.offers ?? []).filter((offer) => offer.estado === "PUBLICADA");
+          setJobs(offers.map(mapOfferToJob));
+          setLoadError("");
+        })
+        .catch((error) => {
+          if (!active) return;
+          setJobs([]);
+          setLoadError(error instanceof Error ? error.message : "No se pudieron cargar las vacantes.");
+        });
+    };
+
+    refreshOffers();
+    const interval = window.setInterval(refreshOffers, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   const applied = state.jobApplications.map((a) => a.jobId);
@@ -89,7 +107,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="external" navigate={navigate} activeScreen="external-dashboard" />
+      <NavBar role="external" navigate={navigate} activeScreen="external-dashboard" userName={state.currentUser?.nombreCompleto ?? "Candidato"} />
 
       {/* Hero */}
       <div
@@ -169,6 +187,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
         </div>
 
         {/* Grid */}
+        {loadError && <div className="form-error mt-5" role="alert">{loadError}</div>}
         <div className="py-8">
           {filtered.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -271,7 +290,7 @@ function JobCard({ job, isApplied, onClick }: { job: Job; isApplied: boolean; on
       <div className="flex items-center justify-between pt-4 border-t border-[#f1f5f9]">
         <div>
           <div className="text-[#16a34a] font-bold text-sm">
-            {fmt(job.salaryMin)} – {fmt(job.salaryMax)}
+            {job.salaryMin || job.salaryMax ? `${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}` : "A convenir"}
           </div>
           <div className={`text-[11px] mt-0.5 font-medium ${daysLeft <= 5 ? "text-red-500" : "text-[#94a3b8]"}`}>
             {daysLeft > 0 ? (daysLeft <= 5 ? `⚠ Cierra en ${daysLeft}d` : `Cierra en ${daysLeft} días`) : "Cerrada"}

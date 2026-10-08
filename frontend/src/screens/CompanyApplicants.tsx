@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen, COMPANY_CANDIDATES } from "../App";
+import { AppState, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import { api } from "../lib/api";
 
 type Props = {
   state: AppState;
   navigate: (screen: Screen) => void;
-  updateCandidateStatus: (id: number, status: "Aceptada" | "Rechazada") => void;
+  updateCandidateStatus: (id: number, status: "Aceptada" | "Rechazada") => Promise<void>;
 };
 
 const statusConfig = {
@@ -33,11 +33,14 @@ const mapStatus = (status?: string): "En revisión" | "Aceptada" | "Rechazada" =
   }
 };
 
+type Candidate = { id: number; name: string; career: string; semester: string; university: string; email: string; phone: string; summary: string; cvUrl: string; city: string; appliedDate: string; status: "En revisión" | "Aceptada" | "Rechazada"; skills: string[] };
+
 export default function CompanyApplicants({ state, navigate, updateCandidateStatus }: Props) {
   const offer = state.selectedCompanyOffer;
-  const [candidates, setCandidates] = useState(state.candidates);
-  const [selected, setSelected] = useState<(typeof COMPANY_CANDIDATES)[0] | null>(null);
-  const [filter, setFilter] = useState<"Todos" | "En revisión" | "Aceptada" | "Rechazada">("Todos");
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [selected, setSelected] = useState<Candidate | null>(null);
+  const [filter, setFilter] = useState<"Todos" | "En revisión" | "Aceptada" | "Rechazada">(state.applicantFilter ?? "Todos");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     if (!offer || !state.token) return;
@@ -46,19 +49,39 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
       .then((response) => {
         const mapped = (response.applications ?? []).map((item) => ({
           id: Number(item.id),
-          name: item.postulante_nombre ?? item.nombre ?? "Estudiante",
-          career: "Perfil SIPU",
-          semester: "Sin dato",
-          gpa: "—",
-          city: "Bogotá",
+          name: item.postulante_nombre ?? item.nombre ?? "Candidato",
+          career: item.programa_academico ?? (item.perfil_tipo === "ESTUDIANTE" ? "Estudiante" : "Candidato externo"),
+          semester: item.semestre ? String(item.semestre) : "No reportado",
+          university: item.universidad ?? "No reportada",
+          email: item.postulante_email ?? "No reportado",
+          phone: item.postulante_telefono ?? "No reportado",
+          summary: item.resumen ?? "",
+          cvUrl: item.cv_url ?? "",
+          city: item.candidato_ubicacion ?? "No reportada",
           appliedDate: (item.created_at ?? new Date().toISOString()).slice(0, 10),
           status: mapStatus(item.estado),
-          skills: ["Perfil SIPU"],
+          skills: [],
         }));
-        setCandidates(mapped.length ? mapped : state.candidates);
+        setCandidates(mapped);
       })
-      .catch(() => setCandidates(state.candidates));
+      .catch((error) => {
+        setCandidates([]);
+        setActionError(error instanceof Error ? error.message : "No se pudieron cargar las postulaciones.");
+      });
   }, [offer, state.token]);
+
+  const changeCandidateStatus = async (id: number, status: "Aceptada" | "Rechazada") => {
+    setActionError("");
+    try {
+      await updateCandidateStatus(id, status);
+      setCandidates((current) => current.map((candidate) => candidate.id === id ? { ...candidate, status } : candidate));
+      setSelected((current) => current?.id === id ? { ...current, status } : current);
+      return true;
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "No se pudo actualizar el estado.");
+      return false;
+    }
+  };
 
   const filtered = candidates.filter((c) => filter === "Todos" || c.status === filter);
   const counts = {
@@ -69,7 +92,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="company" navigate={navigate} activeScreen="company-applicants" userName={state.currentUser?.nombreCompleto ?? "Empresa"} onLogout={() => navigate("auth")} />
+      <NavBar role="company" navigate={navigate} activeScreen="company-applicants" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
 
       {/* Header */}
       <div
@@ -113,6 +136,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        {actionError && <div className="form-error mb-5" role="alert">{actionError}</div>}
         {/* Filter tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
           {(["Todos", "En revisión", "Aceptada", "Rechazada"] as const).map((f) => (
@@ -159,7 +183,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <h3 className="font-bold text-[#0d2240] text-sm leading-snug">{candidate.name}</h3>
-                          <p className="text-[#64748b] text-xs mt-0.5 font-medium">{candidate.career} · {candidate.semester} sem.</p>
+                          <p className="text-[#64748b] text-xs mt-0.5 font-medium">{candidate.career}{candidate.semester !== "No reportado" ? ` · ${candidate.semester}° semestre` : ""}</p>
                         </div>
                         <span className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full font-bold border flex-shrink-0 ${cfg.bg} ${cfg.text} ${cfg.border}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
@@ -169,18 +193,18 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
 
                       <div className="flex items-center gap-3 mt-2 text-[11px] text-[#94a3b8]">
                         <span>📍 {candidate.city}</span>
-                        <span className="font-semibold text-[#64748b]">GPA {candidate.gpa}</span>
+                        <span>{candidate.university}</span>
                         <span>{new Date(candidate.appliedDate).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Skills */}
-                  <div className="flex flex-wrap gap-1.5 mb-5">
+                  {candidate.skills.length > 0 && <div className="flex flex-wrap gap-1.5 mb-5">
                     {candidate.skills.map((s) => (
                       <span key={s} className="text-[11px] px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg font-semibold">{s}</span>
                     ))}
-                  </div>
+                  </div>}
 
                   {/* Actions */}
                   <div className="flex gap-2.5 pt-4 border-t border-[#f8fafc]">
@@ -191,12 +215,12 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      Hoja de vida
+                      Ver perfil
                     </button>
                     {candidate.status === "En revisión" ? (
                       <>
                         <button
-                          onClick={() => updateCandidateStatus(candidate.id, "Aceptada")}
+                          onClick={() => void changeCandidateStatus(candidate.id, "Aceptada")}
                           className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl hover:opacity-90 flex items-center justify-center gap-1"
                           style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" }}
                         >
@@ -206,7 +230,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                           Aceptar
                         </button>
                         <button
-                          onClick={() => updateCandidateStatus(candidate.id, "Rechazada")}
+                          onClick={() => void changeCandidateStatus(candidate.id, "Rechazada")}
                           className="px-3.5 py-2.5 text-sm font-bold text-red-600 border border-red-200 rounded-xl hover:bg-red-50"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,8 +271,8 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ backdropFilter: "blur(4px)" }}>
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl my-4">
             <div className="flex items-center justify-between p-6 border-b border-[#f1f5f9]">
-              <h3 className="font-bold text-[#0d2240]">Hoja de Vida</h3>
-              <button onClick={() => setSelected(null)} className="w-8 h-8 rounded-lg bg-[#f1f5f9] flex items-center justify-center text-[#64748b] hover:bg-[#e2e8f0]">
+              <h3 className="font-bold text-[#0d2240]">Perfil del candidato</h3>
+              <button aria-label="Cerrar perfil" onClick={() => setSelected(null)} className="w-8 h-8 rounded-lg bg-[#f1f5f9] flex items-center justify-center text-[#64748b] hover:bg-[#e2e8f0]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -272,22 +296,29 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                   <div className="flex items-center gap-2 mt-1 text-xs text-[#94a3b8]">
                     <span>📍 {selected.city}</span>
                     <span>·</span>
-                    <span className="font-semibold text-[#64748b]">GPA {selected.gpa}</span>
+                    <span>{selected.university}</span>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-5">
-                <Section title="Educación">
-                  <p className="text-sm font-semibold text-[#1e293b]">Universidad de Ibagué</p>
-                  <p className="text-sm text-[#64748b]">{selected.career} · {selected.semester} semestre</p>
+                <Section title="Formación">
+                  <p className="text-sm font-semibold text-[#1e293b]">{selected.career}</p>
+                  <p className="text-sm text-[#64748b]">Semestre: {selected.semester}</p>
+                </Section>
+
+                {selected.summary && <Section title="Resumen profesional"><p className="text-sm text-[#475569]">{selected.summary}</p></Section>}
+
+                <Section title="Contacto">
+                  <p className="text-sm text-[#1e293b]">Correo: {selected.email}</p>
+                  <p className="text-sm text-[#64748b]">Teléfono: {selected.phone}</p>
                 </Section>
 
                 <Section title="Habilidades técnicas">
                   <div className="flex flex-wrap gap-1.5">
-                    {selected.skills.map((s) => (
+                    {selected.skills.length > 0 ? selected.skills.map((s) => (
                       <span key={s} className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full font-semibold">{s}</span>
-                    ))}
+                    )) : <p className="text-sm text-[#64748b]">No se registraron habilidades en este perfil.</p>}
                   </div>
                 </Section>
 
@@ -297,36 +328,19 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                   </p>
                 </Section>
 
-                {/* CV file */}
-                <div className="p-4 bg-[#f0fdf4] border border-[#bbf7d0] rounded-2xl flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#16a34a]/15 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-[#16a34a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-[#0d2240]">HV_{selected.name.split(" ")[0]}.pdf</p>
-                    <p className="text-xs text-[#64748b]">Hoja de vida adjunta · 245 KB</p>
-                  </div>
-                  <button className="text-sm font-bold text-[#16a34a] hover:underline flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Descargar
-                  </button>
-                </div>
+                {selected.cvUrl ? <a className="text-sm font-semibold text-blue-700 underline" href={selected.cvUrl} target="_blank" rel="noreferrer">Abrir hoja de vida</a> : <p className="text-sm text-[#64748b]">No hay una hoja de vida adjunta a esta postulación.</p>}
               </div>
 
               {selected.status === "En revisión" && (
                 <div className="flex gap-3 mt-6">
                   <button
-                    onClick={() => { updateCandidateStatus(selected.id, "Rechazada"); setSelected(null); }}
+                    onClick={() => void changeCandidateStatus(selected.id, "Rechazada").then((updated) => { if (updated) setSelected(null); })}
                     className="flex-1 py-3 text-sm font-bold text-red-600 border border-red-200 rounded-xl hover:bg-red-50"
                   >
                     Rechazar
                   </button>
                   <button
-                    onClick={() => { updateCandidateStatus(selected.id, "Aceptada"); setSelected(null); }}
+                    onClick={() => void changeCandidateStatus(selected.id, "Aceptada").then((updated) => { if (updated) setSelected(null); })}
                     className="flex-1 py-3 text-sm font-bold text-white rounded-xl hover:opacity-90"
                     style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" }}
                   >

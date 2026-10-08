@@ -10,7 +10,7 @@ El archivo ejecutable asociado es [`../backend/database/schema.sql`](../backend/
 
 - **Usuario y perfil se separan:** una cuenta puede tener varios perfiles a futuro.
 - **Roles independientes de perfiles:** los permisos administrativos se gestionan mediante roles, no con condiciones rígidas para cada tipo de usuario.
-- **Ofertas clasificadas:** `PRACTICA`, `EMPLEO` y `EMPLEO_PUBLICO` son tipos de oferta, no tipos de usuario.
+- **Ofertas clasificadas:** `PRACTICA`, `EMPLEO` y `EMPLEO_PUBLICO` son tipos de oferta, no tipos de usuario. Área, requisitos, duración, horario y correo de contacto quedan asociados a cada oferta.
 - **Postulaciones genéricas:** conectan un perfil candidato con cualquier oferta compatible.
 - **Extensibilidad:** los detalles académicos, laborales y de organizaciones se almacenan en tablas especializadas.
 - **Trazabilidad:** las entidades principales incluyen fechas de creación y actualización.
@@ -68,10 +68,16 @@ erDiagram
    psql -U postgres -d sipu -f backend/database/schema.sql
    ```
 
-4. Verifique la instalación en `psql`:
+4. Si actualiza una base existente, no vuelva a ejecutar el esquema inicial; aplique la migración aditiva de detalles de oferta:
+
+   ```bash
+   psql -U postgres -d sipu -f backend/database/migrations/20261008_offer_details.sql
+   ```
+
+5. Verifique la instalación en `psql`:
 
    ```sql
    \dt
    ```
 
-> La API todavía no consume PostgreSQL en la Fase 0. La conexión, migraciones y repositorios se implementarán al desarrollar las historias de la Fase 1.
+La API usa PostgreSQL para autenticación, perfiles, ofertas y postulaciones. Las migraciones existentes actualizan bases creadas con una versión anterior sin volver a ejecutar el esquema inicial ni borrar información.

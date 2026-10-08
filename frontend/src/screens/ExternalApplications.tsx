@@ -1,4 +1,4 @@
-import { AppState, JOBS, Screen } from "../App";
+import { AppState, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 
@@ -41,7 +41,7 @@ export default function ExternalApplications({ state, navigate }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="external" navigate={navigate} activeScreen="external-applications" />
+      <NavBar role="external" navigate={navigate} activeScreen="external-applications" userName={state.currentUser?.nombreCompleto ?? "Candidato"} />
 
       {/* Header */}
       <div
@@ -93,8 +93,8 @@ export default function ExternalApplications({ state, navigate }: Props) {
         ) : (
           <div className="space-y-4">
             {apps.map((app) => {
-              const job = JOBS.find((j) => j.id === app.jobId);
-              const logo = job?.logo ?? "?";
+              const job = null;
+              const logo = app.company.slice(0, 2).toUpperCase();
               const bg = logoStyle[logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
               const cfg = statusConfig[app.status];
               const stepIndex = app.status === "Rechazada" ? 0 : steps.indexOf(app.status as (typeof steps)[number]);
@@ -185,7 +185,7 @@ export default function ExternalApplications({ state, navigate }: Props) {
 
                     <div className="mt-5 pt-4 border-t border-[#f8fafc] flex justify-end">
                       <button
-                        onClick={() => navigate("external-job-detail", { selectedJob: job ?? null })}
+                        onClick={() => navigate("external-dashboard")}
                         className="text-xs font-semibold text-[#0d2240]/60 hover:text-[#0d2240] flex items-center gap-1"
                       >
                         Ver vacante

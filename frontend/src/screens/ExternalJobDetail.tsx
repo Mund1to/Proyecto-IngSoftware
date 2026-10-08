@@ -5,7 +5,7 @@ import NavBar from "../components/NavBar";
 type Props = {
   state: AppState;
   navigate: (screen: Screen, extra?: Partial<AppState>) => void;
-  applyToJob: (job: Job) => void;
+  applyToJob: (job: Job) => Promise<void>;
 };
 
 const logoStyle: Record<string, string> = {
@@ -30,17 +30,31 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
     job ? state.jobApplications.some((a) => a.jobId === job.id) : false
   );
   const [showModal, setShowModal] = useState(false);
+  const [applyError, setApplyError] = useState("");
+  const [applying, setApplying] = useState(false);
 
   if (!job) { navigate("external-dashboard"); return null; }
 
   const bg = logoStyle[job.logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
   const daysLeft = Math.ceil((new Date(job.closeDate).getTime() - Date.now()) / 86400000);
 
-  const handleApply = () => { applyToJob(job); setApplied(true); setShowModal(true); };
+  const handleApply = async () => {
+    setApplying(true);
+    setApplyError("");
+    try {
+      await applyToJob(job);
+      setApplied(true);
+      setShowModal(true);
+    } catch (error) {
+      setApplyError(error instanceof Error ? error.message : "No se pudo enviar la postulación.");
+    } finally {
+      setApplying(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="external" navigate={navigate} activeScreen="external-dashboard" />
+      <NavBar role="external" navigate={navigate} activeScreen="external-dashboard" userName={state.currentUser?.nombreCompleto ?? "Candidato"} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <button
@@ -103,7 +117,7 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
 
             <div className="flex flex-col items-start sm:items-end gap-2 flex-shrink-0">
               <div className="text-[#4ade80] font-bold text-xl tabular">
-                {fmt(job.salaryMin)} – {fmt(job.salaryMax)}
+                {job.salaryMin || job.salaryMax ? `${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}` : "A convenir"}
               </div>
               <div className="text-white/35 text-sm">{job.applicants} aplicantes</div>
             </div>
@@ -145,6 +159,7 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
                     {b}
                   </span>
                 ))}
+                {job.benefits.length === 0 && <p className="text-[#64748b] text-sm">No se especificaron beneficios para esta oferta.</p>}
               </div>
             </div>
 
@@ -159,9 +174,7 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
                   <div className="text-[#64748b] text-sm">{job.city}</div>
                 </div>
               </div>
-              <p className="text-[#475569] text-sm leading-relaxed">
-                Empresa reconocida a nivel nacional con presencia en múltiples ciudades del país. Comprometida con el desarrollo del talento humano colombiano.
-              </p>
+              <p className="text-[#475569] text-sm leading-relaxed">Oferta publicada por {job.company} en SIPU.</p>
             </div>
           </div>
 
@@ -185,13 +198,15 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
                 </div>
               ) : (
                 <button
-                  onClick={handleApply}
+                  onClick={() => void handleApply()}
+                  disabled={applying || daysLeft < 0}
                   className="w-full py-3.5 rounded-xl text-white text-sm font-bold shadow-lg shadow-green-900/20 hover:opacity-90 active:scale-[0.98]"
                   style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", transition: "opacity 0.15s, transform 0.1s" }}
                 >
-                  Aplicar ahora
+                  {applying ? "Enviando..." : daysLeft < 0 ? "Oferta cerrada" : "Aplicar ahora"}
                 </button>
               )}
+              {applyError && <div className="form-error mt-3" role="alert">{applyError}</div>}
 
               <button
                 onClick={() => navigate("external-profile")}
@@ -205,7 +220,7 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
                   { label: "Tipo de contrato", value: job.type },
                   { label: "Modalidad", value: job.modality },
                   { label: "Experiencia requerida", value: job.experience },
-                  { label: "Salario", value: `${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}` },
+                  { label: "Salario", value: job.salaryMin || job.salaryMax ? `${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}` : "A convenir" },
                 ].map((s) => (
                   <div key={s.label} className="flex justify-between text-sm">
                     <span className="text-[#94a3b8]">{s.label}</span>

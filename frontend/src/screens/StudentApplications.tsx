@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Application, OFFERS, Screen } from "../App";
+import { AppState, Application, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import { api } from "../lib/api";
@@ -72,7 +72,8 @@ const mapApplicationStatus = (status?: string): Application["status"] => {
 };
 
 export default function StudentApplications({ state, navigate }: Props) {
-  const [apps, setApps] = useState<Application[]>(state.applications);
+  const [apps, setApps] = useState<Application[]>([]);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     if (!state.token) return;
@@ -87,9 +88,12 @@ export default function StudentApplications({ state, navigate }: Props) {
           appliedDate: (item.created_at ?? item.appliedDate ?? new Date().toISOString()).slice(0, 10),
           status: mapApplicationStatus(item.estado ?? item.status),
         }));
-        setApps(mapped.length ? mapped : state.applications);
+        setApps(mapped);
       })
-      .catch(() => setApps(state.applications));
+      .catch((error) => {
+        setApps([]);
+        setLoadError(error instanceof Error ? error.message : "No se pudieron cargar tus postulaciones.");
+      });
   }, [state.token]);
 
   const counts = {
@@ -101,7 +105,7 @@ export default function StudentApplications({ state, navigate }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="student" navigate={navigate} activeScreen="student-applications" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} onLogout={() => navigate("auth")} />
+      <NavBar role="student" navigate={navigate} activeScreen="student-applications" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} />
 
       {/* Header */}
       <div
@@ -135,6 +139,7 @@ export default function StudentApplications({ state, navigate }: Props) {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        {loadError && <div className="form-error mb-5" role="alert">{loadError}</div>}
         {apps.length === 0 ? (
           <div className="bg-white rounded-3xl border border-[#e8eef4] text-center py-20 shadow-sm">
             <ArdyMark className="empty-squirrel mx-auto mb-4" />
@@ -151,8 +156,7 @@ export default function StudentApplications({ state, navigate }: Props) {
         ) : (
           <div className="space-y-4">
             {apps.map((app) => {
-              const offer = OFFERS.find((o) => o.id === app.offerId);
-              const logo = offer?.logo ?? "?";
+              const logo = app.company.slice(0, 2).toUpperCase();
               const bg = logoStyle[logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
               const cfg = statusConfig[app.status];
               const stepIndex = app.status === "Rechazada" ? 0 : steps.indexOf(app.status as (typeof steps)[number]);
@@ -226,7 +230,7 @@ export default function StudentApplications({ state, navigate }: Props) {
 
                     <div className="mt-5 pt-4 border-t border-[#f8fafc] flex justify-end">
                       <button
-                        onClick={() => navigate("offer-detail", { selectedOffer: offer ?? null })}
+                        onClick={() => navigate("student-dashboard")}
                         className="text-xs font-semibold text-[#0d2240]/60 hover:text-[#0d2240] flex items-center gap-1"
                       >
                         Ver oferta
