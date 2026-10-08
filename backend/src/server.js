@@ -8,6 +8,7 @@ import authRouter from './routes/auth.routes.js';
 import healthRouter from './routes/health.routes.js';
 import offersRouter from './routes/offers.routes.js';
 import profileRouter from './routes/profile.routes.js';
+import verificationsRouter from './routes/verifications.routes.js';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/offers', offersRouter);
 app.use('/api/applications', applicationsRouter);
+app.use('/api/verifications', verificationsRouter);
 
 app.get('/api/db-check', async (_request, response) => {
   const result = await testDatabaseConnection();
