@@ -89,3 +89,22 @@ La verificación de una organización se registra en `verificaciones` (historial
    ```
 
 La API usa PostgreSQL para autenticación, perfiles, ofertas y postulaciones. Las migraciones existentes actualizan bases creadas con una versión anterior sin volver a ejecutar el esquema inicial ni borrar información.
+
+## Migraciones automáticas (Fase 5)
+
+Al arrancar, la API ejecuta `schema.sql` si la base está vacía y luego aplica, en orden alfabético, los archivos de `backend/database/migrations/` que no figuren en la tabla `schema_migrations`:
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| `nombre` | `TEXT` (PK) | Nombre del archivo de migración. |
+| `applied_at` | `TIMESTAMPTZ` | Momento en que se aplicó. |
+
+Toda migración nueva debe ser idempotente (`IF NOT EXISTS`, `UPDATE` con condición) y nombrarse `AAAAMMDD_descripcion.sql`.
+
+| Migración | Propósito |
+| --- | --- |
+| `20261008_offer_details.sql` | Área, requisitos, duración, horario y correo de contacto en ofertas. |
+| `20261008_organization_verification.sql` | Tabla `verificaciones` y columna `organizaciones.verificada`. |
+| `20261009_normalize_offer_modality.sql` | Normaliza la modalidad a `Presencial`, `Remota` o `Híbrida` y repara ciudades con codificación dañada. |
+
+La modalidad de una oferta se valida en la API contra esos tres valores; las variantes (`remoto`, `hibrido`) se convierten al valor canónico.

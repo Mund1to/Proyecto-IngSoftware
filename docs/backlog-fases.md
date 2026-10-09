@@ -76,6 +76,21 @@ El detalle de cierre está en [`informe-cierre-fase-3.md`](informe-cierre-fase-3
 
 El detalle de cierre está en [`informe-cierre-fase-4.md`](informe-cierre-fase-4.md).
 
+## Fase 5 — Calidad y pruebas
+
+**Objetivo:** estabilizar el sistema tras completar el backlog funcional.
+
+- Corregir la pantalla en blanco tras iniciar sesión en Vercel. ✅ Completada
+- Dar función a los botones pendientes (notificaciones, guardar, ver oferta, retirar postulación, perfil de empresa, cambio de contraseña). ✅ Completada
+- Endurecer la seguridad: roles desde la base, `JWT_SECRET` obligatorio, límite de intentos de login, verificación solo por funcionarios. ✅ Completada
+- Administración de usuarios y roles. ✅ Completada
+- Migraciones versionadas. ✅ Completada
+- Pruebas automatizadas del backend y del frontend. ✅ Completada
+
+**Criterio de salida:** `npm test` pasa en backend y frontend, y los flujos principales funcionan de extremo a extremo.
+
+El detalle está en [`informe-fase-5-calidad.md`](informe-fase-5-calidad.md).
+
 ## Orden recomendado
 
 ```text

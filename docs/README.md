@@ -9,6 +9,7 @@ Esta carpeta contiene la documentación funcional, técnica y de proceso del pro
 - [`informe-actualizacion-roles-ofertas.md`](informe-actualizacion-roles-ofertas.md): cambios de roles, ofertas, permisos y validaciones.
 - [`informe-cierre-fase-3.md`](informe-cierre-fase-3.md): cierre de la Fase 3 con verificación de organizaciones y recomendación de ofertas.
 - [`informe-cierre-fase-4.md`](informe-cierre-fase-4.md): cierre de la Fase 4 con convocatorias públicas y estadísticas de empleo.
+- [`informe-fase-5-calidad.md`](informe-fase-5-calidad.md): auditoría, corrección del inicio de sesión en Vercel, botones sin función, seguridad y pruebas automatizadas.
 - [`despliegue-render-vercel.md`](despliegue-render-vercel.md): despliegue de PostgreSQL y la API en Render, y del frontend en Vercel.
 
 Los documentos de referencia entregados para el proyecto se conservan en `Proyecto-Archivos/docs/`.

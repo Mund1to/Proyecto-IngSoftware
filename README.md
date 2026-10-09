@@ -4,7 +4,7 @@ SIPU (Sistema de Intermediación de Prácticas Universitarias) es una plataforma
 
 ## Estado del proyecto
 
-La **Fase 0 — Base técnica** está preparada: el monorepo incluye un frontend React/Vite, una API Express, documentación de ejecución local y un esquema inicial de PostgreSQL. La **Fase 1** queda cerrada y verificada con autenticación real, gestión de ofertas y flujo de postulaciones para estudiantes y empresas. La **Fase 2** se inicia con la preparación del perfil de candidato externo y la conexión de sus datos al backend. La **Fase 3** queda completa con la bolsa de empleo general: ofertas de empleo, verificación de organizaciones y recomendación de ofertas según perfil.
+La **Fase 0 — Base técnica** está preparada: el monorepo incluye un frontend React/Vite, una API Express, documentación de ejecución local y un esquema inicial de PostgreSQL. La **Fase 1** queda cerrada y verificada con autenticación real, gestión de ofertas y flujo de postulaciones para estudiantes y empresas. La **Fase 2** se inicia con la preparación del perfil de candidato externo y la conexión de sus datos al backend. La **Fase 3** queda completa con la bolsa de empleo general: ofertas de empleo, verificación de organizaciones y recomendación de ofertas según perfil. La **Fase 4** añade convocatorias públicas y estadísticas de empleo. La **Fase 5 — Calidad** corrige el fallo de carga tras iniciar sesión en Vercel, da función a los botones pendientes, endurece la seguridad de la API y añade pruebas automatizadas (80 en el backend y 21 en el frontend).
 
 ## Verificación de cierre de la Fase 1
 
@@ -59,11 +59,34 @@ npm run dev
 
 Vite mostrará la URL local, normalmente `http://localhost:5173`.
 
+### Pruebas
+
+```bash
+cd backend
+npm test        # API contra una base PostgreSQL aislada <base>_test
+
+cd ../frontend
+npm test        # Vitest + Testing Library
+```
+
+Las pruebas del backend crean y borran una base cuyo nombre termina en `_test`; nunca tocan la base de desarrollo.
+
+### Primer administrador
+
+El registro público solo otorga el rol `USUARIO`. Para crear el primer administrador, registre la cuenta desde la aplicación y ejecute:
+
+```bash
+cd backend
+npm run grant-role -- correo@dominio.com ADMINISTRADOR
+```
+
+Después, el administrador gestiona los roles desde la pantalla **Usuarios**.
+
 ### Base de datos
 
 1. Cree una base de datos PostgreSQL llamada `sipu`.
 2. Ajuste `DATABASE_URL` en `backend/.env`.
-3. Ejecute el esquema:
+3. La API crea el esquema y aplica las migraciones al arrancar. Para hacerlo a mano:
 
    ```bash
    psql -U postgres -d sipu -f backend/database/schema.sql
@@ -79,6 +102,7 @@ Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y l
 - [`docs/informe-actualizacion-roles-ofertas.md`](docs/informe-actualizacion-roles-ofertas.md): cambios de roles, ofertas, permisos, validaciones y actualización de base de datos.
 - [`docs/informe-cierre-fase-3.md`](docs/informe-cierre-fase-3.md): cierre de la Fase 3 con verificación de organizaciones y recomendación de ofertas.
 - [`docs/informe-cierre-fase-4.md`](docs/informe-cierre-fase-4.md): cierre de la Fase 4 con convocatorias públicas y estadísticas de empleo.
+- [`docs/informe-fase-5-calidad.md`](docs/informe-fase-5-calidad.md): auditoría de calidad, corrección del login en Vercel y pruebas automatizadas.
 - [`docs/despliegue-render-vercel.md`](docs/despliegue-render-vercel.md): despliegue de PostgreSQL y API en Render, y frontend en Vercel.
 - [`docs/backlog-fases.md`](docs/backlog-fases.md): fases, historias de usuario y prioridades.
 - [`docs/database-schema.md`](docs/database-schema.md): modelo PostgreSQL inicial.
@@ -90,6 +114,7 @@ Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y l
 - **Fase 2:** registro y postulación de candidatos externos.
 - **Fase 3:** bolsa de empleo general y verificación de empleadores.
 - **Fase 4:** convocatorias y estadísticas de empleo público.
+- **Fase 5:** calidad, seguridad y pruebas automatizadas.
 
 ## Modelo de usuarios
 

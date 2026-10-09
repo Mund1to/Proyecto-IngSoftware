@@ -339,6 +339,27 @@ El detalle completo está en [`informe-cierre-fase-3.md`](informe-cierre-fase-3.
 
 Como parte de la Fase 3 se centralizaron helpers para eliminar duplicación: `backend/src/utils/payload.js` y `backend/src/utils/profiles.js`, y `frontend/src/lib/offers.ts`.
 
-## 15. Regla para mantener la documentación
+## 15. Fase 4 — Agencia pública de empleo
+
+- Convocatorias públicas (#18 HU-14): lectura pública y gestión para `ADMINISTRADOR` y `FUNCIONARIO_PUBLICO`.
+- Estadísticas de empleo (#21 HU-17): indicadores agregados sin datos personales.
+
+El detalle está en [`informe-cierre-fase-4.md`](informe-cierre-fase-4.md).
+
+## 16. Fase 5 — Calidad, pruebas y corrección del inicio de sesión
+
+Rama `feature/fase-5-calidad`. Commits:
+
+1. `fix(backend)`: seguridad de autenticación y roles, validaciones, administración de usuarios y migraciones versionadas.
+2. `test(backend)`: 80 pruebas de la API con `node:test` y `supertest` sobre una base `<base>_test`.
+3. `fix(frontend)`: corrección de la pantalla en blanco tras el login, estado de carga, sesión, botones sin función y pantallas nuevas ("Mi empresa", "Usuarios").
+4. `test(frontend)`: 21 pruebas con Vitest y Testing Library.
+5. `docs`: este historial, el informe de la fase y las guías actualizadas.
+
+Causa del fallo en Vercel: una oferta con la modalidad `"H�brida"` (texto enviado sin UTF-8) hacía fallar `ExternalDashboard` y desmontaba la aplicación. El detalle completo, la lista de errores corregidos y los pasos para publicar están en [`informe-fase-5-calidad.md`](informe-fase-5-calidad.md).
+
+Desde esta fase, todo cambio debe mantener en verde `npm test` en `backend` y `frontend`.
+
+## 17. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.
