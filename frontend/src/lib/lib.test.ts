@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mapApiApplications, mapUserToSession, resolveRole, toJobApplications } from "../App";
 import { api, ApiError, PRODUCTION_API_URL, request, resolveApiBaseUrl, SESSION_EXPIRED_EVENT } from "./api";
-import { daysUntil, formatDate, mapApplicationStatus, normalizeModality } from "./offers";
+import { validateFile } from "../components/ProfileFiles";
+import { daysUntil, formatDate, mapApplicationStatus, normalizeModality, offerTypeLabel } from "./offers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -130,5 +131,34 @@ describe("sesión", () => {
     expect(applications[0]).toEqual({ id: 1, offerId: 10, offerTitle: "Oferta", company: "Empresa", appliedDate: "2026-10-01", status: "Aceptada" });
     expect(toJobApplications(applications)).toHaveLength(2);
     expect(toJobApplications(applications)[1]).toMatchObject({ jobId: 11, status: "Retirada" });
+  });
+});
+
+describe("Fase 6", () => {
+  it("etiqueta los tipos de oferta, incluida la formación", () => {
+    expect(offerTypeLabel("FORMACION")).toBe("Formación");
+    expect(offerTypeLabel("EMPLEO_PUBLICO")).toBe("Empleo público");
+    expect(offerTypeLabel("OTRO")).toBe("Oferta");
+  });
+
+  it("valida tipo y tamaño de los archivos antes de subirlos", () => {
+    const pdf = new File(["%PDF-1.4"], "cv.pdf", { type: "application/pdf" });
+    const png = new File(["x"], "foto.png", { type: "image/png" });
+    expect(validateFile("cv", pdf)).toBeNull();
+    expect(validateFile("cv", png)).toMatch(/PDF/);
+    expect(validateFile("foto", png)).toBeNull();
+    const big = new File([new Uint8Array(3 * 1024 * 1024)], "grande.png", { type: "image/png" });
+    expect(validateFile("foto", big)).toMatch(/2 MB/);
+  });
+
+  it("sube archivos con su tipo MIME y nombre codificado", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true, file: {} }), { status: 201, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await api.uploadFile("cv", new File(["%PDF-"], "hoja ñ.pdf", { type: "application/pdf" }), "tok");
+    const [url, init] = fetchMock.mock.calls[0];
+    const headers = init.headers as Headers;
+    expect(String(url)).toMatch(/\/profile\/files\/cv$/);
+    expect(headers.get("Content-Type")).toBe("application/pdf");
+    expect(headers.get("X-File-Name")).toBe(encodeURIComponent("hoja ñ.pdf"));
   });
 });

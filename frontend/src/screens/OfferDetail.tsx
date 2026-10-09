@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
-import { daysUntil, formatDate } from "../lib/offers";
+import { daysUntil, formatDate, offerTypeLabel } from "../lib/offers";
 import { useSavedOffers } from "../lib/useStoredList";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void; applyToOffer: (offer: Offer) => Promise<void> };
@@ -45,7 +45,7 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
             <span className={`status ${closed ? "status-cerrada" : "status-abierta"}`}>{closed ? "Cerrada" : "Abierta"}</span>
             <h1>{offer.title}</h1>
             <p className="verified detail-company">{offer.company}{offer.verified && <span>✓ Organización verificada</span>}</p>
-            <div className="detail-tags"><span>{offer.city}</span><span>{offer.modality}</span><span>{offer.area}</span></div>
+            <div className="detail-tags"><span>{offerTypeLabel(offer.offerType)}</span><span>{offer.city}</span><span>{offer.modality}</span><span>{offer.area}</span></div>
           </div>
         </section>
 
@@ -66,14 +66,14 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
 
           <aside className="apply-card">
             <p className="eyebrow">Tu postulación</p>
-            <h2>{applied ? "Postulación enviada" : "¿Te interesa esta práctica?"}</h2>
+            <h2>{applied ? "Postulación enviada" : offer.offerType === "FORMACION" ? "¿Te interesa esta formación?" : "¿Te interesa esta oferta?"}</h2>
             <p>{applied ? "Puedes consultar el estado en Mis postulaciones." : "Revisa tu perfil y confirma el envío de tu información."}</p>
             {closed && !applied && <div className="form-error">Esta oferta cerró y ya no recibe postulaciones.</div>}
             {applyError && <div className="form-error" role="alert">{applyError}</div>}
             {applied ? (
               <button className="button primary full" onClick={() => navigate("student-applications")}>Ver mi postulación</button>
             ) : (
-              <button className="button primary full" disabled={closed} onClick={() => setConfirming(true)}>Postularme</button>
+              <button className="button primary full" disabled={closed} onClick={() => setConfirming(true)}>{offer.offerType === "FORMACION" ? "Inscribirme" : "Postularme"}</button>
             )}
             <button className="button secondary full" onClick={toggleSaved}>{saved ? "Oferta guardada" : "Guardar oferta"}</button>
             <div className="share-note"><strong>Información compartida</strong><span>Nombre, correo, teléfono y datos académicos de tu perfil.</span></div>

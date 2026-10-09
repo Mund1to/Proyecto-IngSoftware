@@ -3,14 +3,14 @@ import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/offers";
-import { companyInitials, daysUntil, formatSalary, normalizeModality, toNumberOrZero } from "../lib/offers";
+import { companyInitials, daysUntil, formatSalary, normalizeModality, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero, type OfferType } from "../lib/offers";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Draft = {
   title: string; area: string; description: string; program: string; semester: string; skills: string;
   experience: string; languages: string; city: string; modality: Offer["modality"]; duration: string;
   schedule: string; salary: string; salaryMin: string; salaryMax: string; closeDate: string; contact: string;
-  offerType: "PRACTICA" | "EMPLEO" | "EMPLEO_PUBLICO";
+  offerType: OfferType;
 };
 
 const initial: Draft = {
@@ -104,9 +104,12 @@ export default function CompanyDashboard({ state, navigate }: Props) {
     }
   };
   const validate = () => {
-    const salaryOk = draft.offerType === "PRACTICA"
-      ? Boolean(draft.salary)
-      : Boolean(draft.salaryMin && draft.salaryMax && Number(draft.salaryMax) >= Number(draft.salaryMin));
+    // La formación no exige remuneración; la práctica usa un valor y el empleo un rango.
+    const salaryOk = draft.offerType === "FORMACION"
+      ? true
+      : draft.offerType === "PRACTICA"
+        ? Boolean(draft.salary)
+        : Boolean(draft.salaryMin && draft.salaryMax && Number(draft.salaryMax) >= Number(draft.salaryMin));
     const closeDateIsFuture = draft.closeDate && new Date(`${draft.closeDate}T23:59:59.999`).getTime() > Date.now();
 
     if (!draft.title || !draft.description || !draft.program || !draft.skills || !draft.city || !salaryOk || !closeDateIsFuture || !draft.contact) {
@@ -180,8 +183,8 @@ export default function CompanyDashboard({ state, navigate }: Props) {
       contactoEmail: draft.contact,
       fechaPublicacion: new Date().toISOString(),
       fechaCierre: draft.closeDate ? new Date(`${draft.closeDate}T23:59:59.999`).toISOString() : null,
-      remuneracion: draft.offerType === "PRACTICA" ? Number(draft.salary) : Number(draft.salaryMin),
-      remuneracionMaxima: draft.offerType === "PRACTICA" ? null : Number(draft.salaryMax),
+      remuneracion: draft.offerType === "FORMACION" ? null : draft.offerType === "PRACTICA" ? Number(draft.salary) : Number(draft.salaryMin),
+      remuneracionMaxima: draft.offerType === "PRACTICA" || draft.offerType === "FORMACION" ? null : Number(draft.salaryMax),
     };
 
     try {
@@ -215,7 +218,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
             <section className="preview-card">
               <span className="status status-abierta">Abierta</span>
               <h2>{draft.title}</h2><p className="verified">{state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Organización"}{state.currentUser?.organizacionVerificada && <span>✓ Organización verificada</span>}</p>
-              <div className="detail-tags"><span>{draft.city}</span><span>{draft.modality}</span><span>{draft.area}</span><span>{draft.offerType}</span><span>{draft.offerType === "PRACTICA" ? `${draft.salary} COP` : `${draft.salaryMin} - ${draft.salaryMax} COP`}</span></div>
+              <div className="detail-tags"><span>{draft.city}</span><span>{draft.modality}</span><span>{draft.area}</span><span>{offerTypeLabel(draft.offerType)}</span>{draft.offerType !== "FORMACION" && <span>{draft.offerType === "PRACTICA" ? `${draft.salary} COP` : `${draft.salaryMin} - ${draft.salaryMax} COP`}</span>}</div>
               <h3>Descripción</h3><p>{draft.description}</p>
               <h3>Requisitos</h3><ul className="check-list"><li>{draft.program}</li><li>{draft.skills}</li><li>{draft.experience}</li></ul>
               <h3>Condiciones</h3><p>{draft.duration} · {draft.schedule} · Cierre {formatDate(draft.closeDate)}</p>
@@ -225,10 +228,11 @@ export default function CompanyDashboard({ state, navigate }: Props) {
           </>
         ) : (
           <>
-            <div className="page-title"><p className="eyebrow">{editingId ? "Edición de oferta" : "Paso 1 de 2"}</p><h1>{editingId ? "Modificar oferta" : `Crear oferta ${draft.offerType === "PRACTICA" ? "de práctica" : draft.offerType === "EMPLEO" ? "laboral" : "pública"}`}</h1><p>Los campos marcados con * son obligatorios.</p></div>
+            <div className="page-title"><p className="eyebrow">{editingId ? "Edición de oferta" : "Paso 1 de 2"}</p><h1>{editingId ? "Modificar oferta" : `Crear oferta ${draft.offerType === "PRACTICA" ? "de práctica" : draft.offerType === "EMPLEO" ? "laboral" : draft.offerType === "FORMACION" ? "de formación" : "pública"}`}</h1><p>Los campos marcados con * son obligatorios.</p></div>
             <form className="publish-form" onSubmit={(event) => { event.preventDefault(); validate(); }}>
               <FormSection title="Información del cargo" description="Describe la oportunidad con claridad.">
-                <Input label="Título del cargo *" value={draft.title} onChange={(value) => update("title", value)} />
+                <Select label="Tipo de oferta *" value={draft.offerType} options={Object.keys(OFFER_TYPE_LABELS)} labels={Object.values(OFFER_TYPE_LABELS)} onChange={(value) => update("offerType", value)} />
+                <Input label={draft.offerType === "FORMACION" ? "Nombre del curso o programa *" : "Título del cargo *"} value={draft.title} onChange={(value) => update("title", value)} />
                 <Input label="Área *" value={draft.area} onChange={(value) => update("area", value)} />
                 <TextArea label="Descripción *" value={draft.description} onChange={(value) => update("description", value)} />
               </FormSection>
@@ -244,7 +248,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
                 <Select label="Modalidad *" value={draft.modality} options={["Presencial", "Remota", "Híbrida"]} onChange={(value) => update("modality", value)} />
                 <Input label="Duración" value={draft.duration} onChange={(value) => update("duration", value)} />
                 <Input label="Horario" value={draft.schedule} onChange={(value) => update("schedule", value)} />
-                {draft.offerType === "PRACTICA" ? (
+                {draft.offerType === "FORMACION" ? null : draft.offerType === "PRACTICA" ? (
                   <Input label="Remuneración mensual COP *" value={draft.salary} onChange={(value) => update("salary", value)} />
                 ) : (
                   <>
@@ -292,7 +296,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
                 <div>
                   <span className={`status ${offer.status === "PUBLICADA" ? "status-abierta" : "status-cerrada"}`}>{offer.status === "PUBLICADA" ? "Publicada" : offer.status === "BORRADOR" ? "Borrador" : offer.status === "CANCELADA" ? "Cancelada" : "Cerrada"}</span>
                   <h3>{offer.title}</h3>
-                  <p>{offer.city} · {offer.modality} · Cierra {formatDate(offer.closeDate)}</p>
+                  <p>{offerTypeLabel(offer.offerType)} · {offer.city} · {offer.modality} · Cierra {formatDate(offer.closeDate, "sin fecha")}</p>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
                   <strong>{offer.applicants ?? 0} postulantes</strong>
@@ -335,8 +339,8 @@ function FormSection({ title, description, children }: { title: string; descript
 function Input({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
   return <label className="field"><span>{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} /></label>;
 }
-function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
-  return <label className="field"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option}>{option}</option>)}</select></label>;
+function Select({ label, value, options, labels, onChange }: { label: string; value: string; options: string[]; labels?: string[]; onChange: (value: string) => void }) {
+  return <label className="field"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option, index) => <option key={option} value={option}>{labels?.[index] ?? option}</option>)}</select></label>;
 }
 function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="field full-span"><span>{label}</span><textarea rows={5} value={value} onChange={(event) => onChange(event.target.value)} /></label>;

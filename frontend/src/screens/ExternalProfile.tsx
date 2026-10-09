@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { AppState, Screen } from "../App";
 import ChangePasswordCard from "../components/ChangePasswordCard";
 import NavBar from "../components/NavBar";
-import useStoredList from "../lib/useStoredList";
+import { FileCard, ProfileAvatar, findFile } from "../components/ProfileFiles";
+import ProfileSections from "../components/ProfileSections";
 
 type Props = {
   state: AppState;
   navigate: (screen: Screen) => void;
   updateExternalProfile?: (payload: Record<string, unknown>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  refreshCurrentUser: () => Promise<void>;
 };
 
 const tabs = [
@@ -19,9 +21,7 @@ const tabs = [
 ] as const;
 type Tab = (typeof tabs)[number]["id"];
 
-export default function ExternalProfile({ state, navigate, updateExternalProfile, changePassword }: Props) {
-  const [cvName, setCvName] = useState("");
-  const [fileError, setFileError] = useState("");
+export default function ExternalProfile({ state, navigate, updateExternalProfile, changePassword, refreshCurrentUser }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("info");
 
   const user = state.currentUser;
@@ -33,13 +33,6 @@ export default function ExternalProfile({ state, navigate, updateExternalProfile
     user?.disponibilidad,
     user?.resumen,
   ].filter(Boolean).length / 5 * 100);
-  const selectPdf = (file?: File) => {
-    setFileError("");
-    if (!file) return;
-    if (file.type !== "application/pdf") return setFileError("Selecciona un archivo PDF.");
-    if (file.size > 5 * 1024 * 1024) return setFileError("El PDF no puede superar 5 MB.");
-    setCvName(file.name);
-  };
   const initials = (user?.nombreCompleto || "Candidato Externo")
     .split(" ")
     .filter(Boolean)
@@ -86,14 +79,7 @@ export default function ExternalProfile({ state, navigate, updateExternalProfile
 
           <div className="px-6 pb-6">
             <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-10 mb-5">
-              <div className="relative w-fit">
-                <div
-                  className="w-20 h-20 rounded-2xl border-4 border-white flex items-center justify-center shadow-lg"
-                  style={{ background: "linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)" }}
-                >
-                  <span className="text-white font-bold text-2xl">{initials || "CE"}</span>
-                </div>
-              </div>
+              <ProfileAvatar token={state.token} photo={findFile(user?.archivos, "FOTO")} initials={initials || "CE"} onChanged={refreshCurrentUser} gradient="linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)" />
 
               <div className="flex-1 min-w-0 sm:pb-1">
                 <h2 className="text-xl font-bold text-[#0d2240]">{user?.nombreCompleto ?? "Candidato Externo"}</h2>
@@ -121,30 +107,9 @@ export default function ExternalProfile({ state, navigate, updateExternalProfile
                 </div>
               </div>
 
-              {/* CV */}
+              {/* Hoja de vida */}
               <div className="sm:ml-auto">
-                <div className={`rounded-xl border-2 border-dashed p-4 text-center min-w-[160px] ${cvName ? "border-[#16a34a]/30 bg-[#f0fdf4]" : "border-[#e2e8f0] bg-[#f8fafc]"}`}>
-                  {cvName ? (
-                    <>
-                      <div className="text-[#16a34a] text-2xl mb-1">📄</div>
-                      <p className="text-xs font-bold text-[#16a34a] break-all">{cvName}</p>
-                      <p className="text-[10px] text-[#64748b] mt-0.5">Seleccionado en este dispositivo</p>
-                      <label className="mt-1.5 block text-[11px] text-[#0d2240] font-semibold hover:underline cursor-pointer">
-                        Actualizar CV
-                        <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => selectPdf(event.target.files?.[0])} />
-                      </label>
-                    </>
-                  ) : (
-                    <label className="cursor-pointer">
-                      <div className="text-2xl mb-1">📎</div>
-                      <p className="text-xs font-bold text-[#0d2240]">Subir hoja de vida</p>
-                      <p className="text-[10px] text-[#94a3b8]">PDF · máx 5 MB</p>
-                      <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => selectPdf(event.target.files?.[0])} />
-                    </label>
-                  )}
-                </div>
-                {fileError && <p className="mt-2 max-w-[180px] text-xs text-red-600" role="alert">{fileError}</p>}
-                {cvName && <p className="mt-2 max-w-[180px] text-[10px] text-[#64748b]">El archivo queda en este dispositivo. Para compartirlo con las empresas agrega un enlace en Info personal.</p>}
+                <FileCard token={state.token} kind="cv" current={findFile(user?.archivos, "CV")} onChanged={refreshCurrentUser} />
                 {user?.cvUrl && <a className="mt-2 block text-[11px] font-semibold text-blue-700 underline" href={user.cvUrl} target="_blank" rel="noreferrer">Ver hoja de vida enlazada</a>}
               </div>
             </div>
@@ -191,9 +156,9 @@ export default function ExternalProfile({ state, navigate, updateExternalProfile
           </div>
           <div className="p-7">
             {activeTab === "info" && <ExternalInfoTab state={state} onSave={updateExternalProfile} />}
-            {activeTab === "experience" && <ExternalExperienceTab profileId={profileId} />}
-            {activeTab === "education" && <ExternalEducationTab profileId={profileId} />}
-            {activeTab === "skills" && <ExternalSkillsTab profileId={profileId} />}
+            {activeTab === "experience" && <ProfileSections token={state.token} section="experience" skillCategories={["Frontend", "Backend", "Cloud & DevOps", "Idiomas", "Blandas"]} legacyPrefix="external" profileId={profileId} />}
+            {activeTab === "education" && <ProfileSections token={state.token} section="education" skillCategories={["Frontend", "Backend", "Cloud & DevOps", "Idiomas", "Blandas"]} legacyPrefix="external" profileId={profileId} />}
+            {activeTab === "skills" && <ProfileSections token={state.token} section="skills" skillCategories={["Frontend", "Backend", "Cloud & DevOps", "Idiomas", "Blandas"]} legacyPrefix="external" profileId={profileId} />}
           </div>
         </div>
 
@@ -336,142 +301,6 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
           {loading ? "Guardando..." : "Guardar cambios"}
         </button>
       </div>
-    </div>
-  );
-}
-
-type ExperienceEntry = { id: string; logo: string; bg: string; title: string; company: string; period: string; desc: string };
-const initialExperience: ExperienceEntry[] = [];
-
-function ExternalExperienceTab({ profileId }: { profileId: number | string }) {
-  const [entries, setEntries] = useStoredList(`sipu-external-experience-v2-${profileId}`, initialExperience);
-  const edit = (entry: ExperienceEntry) => {
-    const title = window.prompt("Cargo", entry.title);
-    if (title === null) return;
-    const company = window.prompt("Empresa", entry.company);
-    if (company === null) return;
-    const period = window.prompt("Periodo", entry.period);
-    if (period === null) return;
-    const desc = window.prompt("Descripción", entry.desc);
-    if (desc === null) return;
-    setEntries((current) => current.map((item) => item.id === entry.id ? { ...item, title, company, period, desc } : item));
-  };
-  const add = () => {
-    const title = window.prompt("Cargo o experiencia");
-    if (!title?.trim()) return;
-    const company = window.prompt("Empresa");
-    if (!company?.trim()) return;
-    const period = window.prompt("Periodo");
-    if (!period?.trim()) return;
-    const desc = window.prompt("Descripción") ?? "";
-    setEntries((current) => [...current, { id: crypto.randomUUID(), logo: company.slice(0, 2).toUpperCase(), bg: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)", title, company, period, desc }]);
-  };
-
-  return (
-    <div className="space-y-4">
-      {entries.map((e) => (
-        <div key={e.id} className="flex items-start gap-4 p-5 rounded-2xl bg-[#f8fafc] border border-[#e8eef4]">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm" style={{ background: e.bg }}>
-            <span className="text-white text-xs font-bold">{e.logo}</span>
-          </div>
-          <div className="flex-1">
-            <h4 className="font-bold text-[#0d2240] text-sm">{e.title}</h4>
-            <p className="text-[#64748b] text-sm font-medium">{e.company}</p>
-            <p className="text-[#94a3b8] text-xs mt-0.5">{e.period}</p>
-            <p className="text-[#475569] text-sm mt-2 leading-relaxed">{e.desc}</p>
-          </div>
-          <button onClick={() => edit(e)} className="text-xs text-[#94a3b8] hover:text-[#64748b] font-medium flex-shrink-0">Editar</button>
-        </div>
-      ))}
-      <button onClick={add} className="w-full py-3.5 border-2 border-dashed border-[#e2e8f0] rounded-2xl text-sm font-semibold text-[#94a3b8] hover:border-[#0d2240]/30 hover:text-[#0d2240] flex items-center justify-center gap-2">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        Agregar experiencia
-      </button>
-    </div>
-  );
-}
-
-type EducationEntry = { id: string; logo: string; bg: string; title: string; institution: string; period: string };
-const initialEducation: EducationEntry[] = [];
-
-function ExternalEducationTab({ profileId }: { profileId: number | string }) {
-  const [entries, setEntries] = useStoredList(`sipu-external-education-v2-${profileId}`, initialEducation);
-  const edit = (entry: EducationEntry) => {
-    const title = window.prompt("Título de la formación", entry.title);
-    if (title === null) return;
-    const institution = window.prompt("Institución", entry.institution);
-    if (institution === null) return;
-    const period = window.prompt("Periodo", entry.period);
-    if (period === null) return;
-    setEntries((current) => current.map((item) => item.id === entry.id ? { ...item, title, institution, period } : item));
-  };
-  const add = () => {
-    const title = window.prompt("Título de la formación");
-    if (!title?.trim()) return;
-    const institution = window.prompt("Institución");
-    if (!institution?.trim()) return;
-    const period = window.prompt("Periodo");
-    if (!period?.trim()) return;
-    setEntries((current) => [...current, { id: crypto.randomUUID(), logo: title.slice(0, 2).toUpperCase(), bg: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)", title, institution, period }]);
-  };
-
-  return (
-    <div className="space-y-4">
-      {entries.map((e) => (
-        <div key={e.id} className="flex items-start gap-4 p-5 rounded-2xl bg-[#f8fafc] border border-[#e8eef4]">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm" style={{ background: e.bg }}>
-            <span className="text-white text-xs font-bold">{e.logo}</span>
-          </div>
-          <div className="flex-1">
-            <h4 className="font-bold text-[#0d2240] text-sm">{e.title}</h4>
-            <p className="text-[#64748b] text-sm">{e.institution}</p>
-            <p className="text-[#94a3b8] text-xs mt-1">{e.period}</p>
-          </div>
-          <button onClick={() => edit(e)} className="text-xs text-[#94a3b8] hover:text-[#64748b] font-medium">Editar</button>
-        </div>
-      ))}
-      <button onClick={add} className="w-full py-3.5 border-2 border-dashed border-[#e2e8f0] rounded-2xl text-sm font-semibold text-[#94a3b8] hover:border-[#0d2240]/30 hover:text-[#0d2240] flex items-center justify-center gap-2">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        Agregar educación
-      </button>
-    </div>
-  );
-}
-
-type SkillCategory = { label: string; skills: string[]; style: string };
-const initialSkills: SkillCategory[] = [
-    { label: "Frontend", skills: [], style: "bg-blue-50 text-blue-700" },
-    { label: "Backend", skills: [], style: "bg-violet-50 text-violet-700" },
-    { label: "Cloud & DevOps", skills: [], style: "bg-sky-50 text-sky-700" },
-    { label: "Idiomas", skills: [], style: "bg-amber-50 text-amber-700" },
-    { label: "Blandas", skills: [], style: "bg-emerald-50 text-emerald-700" },
-];
-
-function ExternalSkillsTab({ profileId }: { profileId: number | string }) {
-  const [categories, setCategories] = useStoredList(`sipu-external-skills-v2-${profileId}`, initialSkills);
-
-  return (
-    <div className="space-y-7">
-      {categories.map((cat) => (
-        <div key={cat.label}>
-          <div className="flex items-center gap-2 mb-3">
-            <h4 className="text-sm font-bold text-[#0d2240]">{cat.label}</h4>
-            <div className="flex-1 h-px bg-[#f1f5f9]" />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {cat.skills.map((s) => (
-              <span key={s} className={`text-sm px-3.5 py-1.5 rounded-full font-semibold ${cat.style}`}>{s}</span>
-            ))}
-            <button onClick={() => { const skill = window.prompt(`Agregar habilidad en ${cat.label}`); if (skill?.trim()) setCategories((current) => current.map((item) => item.label === cat.label && !item.skills.includes(skill.trim()) ? { ...item, skills: [...item.skills, skill.trim()] } : item)); }} className={`text-sm px-3.5 py-1.5 rounded-full font-semibold border-2 border-dashed opacity-70 hover:opacity-100 ${cat.style}`}>
-              + Agregar
-            </button>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

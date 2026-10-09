@@ -12,7 +12,7 @@ type Props = {
 
 const AREAS = ["Todas", "Tecnología", "Marketing", "Contabilidad", "Recursos Humanos", "Producción", "Jurídica", "Diseño"];
 const MODALITIES = ["Todas", "Presencial", "Remota", "Híbrida"];
-const TYPES = ["Todos", "Práctica", "Tiempo completo", "Medio tiempo", "Contrato", "Freelance"];
+const TYPES = ["Todos", "Práctica", "Tiempo completo", "Medio tiempo", "Contrato", "Freelance", "Formación"];
 
 const modalityStyle: Record<string, { bg: string; text: string; dot: string }> = {
   Presencial: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-400" },
@@ -26,6 +26,7 @@ const typeStyle: Record<string, string> = {
   "Medio tiempo": "bg-sky-50 text-sky-700",
   Contrato: "bg-orange-50 text-orange-700",
   Freelance: "bg-pink-50 text-pink-700",
+  "Formación": "bg-indigo-50 text-indigo-700",
 };
 
 const logoStyle: Record<string, string> = {
@@ -50,7 +51,7 @@ export const mapOfferToJob = (offer: any): Job => ({
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
   area: offer.area ?? "General",
   modality: normalizeModality(offer.modalidad ?? offer.modality),
-  type: offer.tipo === "PRACTICA" ? "Práctica" : (offer.tipo === "EMPLEO_PUBLICO" ? "Contrato" : "Tiempo completo"),
+  type: offer.tipo === "PRACTICA" ? "Práctica" : offer.tipo === "FORMACION" ? "Formación" : offer.tipo === "EMPLEO_PUBLICO" ? "Contrato" : "Tiempo completo",
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? "",
   salaryMin: toNumberOrZero(offer.remuneracion ?? offer.salaryMin),
   salaryMax: toNumberOrZero(offer.remuneracion_maxima ?? offer.remuneracionMaxima ?? offer.salaryMax ?? offer.remuneracion),

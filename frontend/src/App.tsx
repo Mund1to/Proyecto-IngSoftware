@@ -1,6 +1,6 @@
 import { Component, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, SESSION_EXPIRED_EVENT, type ApiUser } from "./lib/api";
-import { mapApplicationStatus, type ApplicationStatus } from "./lib/offers";
+import { api, SESSION_EXPIRED_EVENT, type ApiUser, type StoredFile } from "./lib/api";
+import { mapApplicationStatus, type ApplicationStatus, type OfferType } from "./lib/offers";
 import { isAdminUser, SessionContext } from "./lib/session";
 import AuthScreen from "./screens/AuthScreen";
 import StudentDashboard from "./screens/StudentDashboard";
@@ -60,6 +60,7 @@ export type UserSession = {
   descripcionOrganizacion?: string | null;
   profileTypes: string[];
   roles: string[];
+  archivos?: StoredFile[];
 };
 
 export type Offer = {
@@ -75,7 +76,7 @@ export type Offer = {
   description: string;
   requirements: string[];
   applicants?: number;
-  offerType?: "PRACTICA" | "EMPLEO" | "EMPLEO_PUBLICO";
+  offerType?: OfferType;
   status?: string;
   verified?: boolean;
   duration?: string | null;
@@ -85,7 +86,7 @@ export type Offer = {
   salaryMax?: number | null;
 };
 
-export type JobType = "Práctica" | "Tiempo completo" | "Medio tiempo" | "Contrato" | "Freelance";
+export type JobType = "Práctica" | "Tiempo completo" | "Medio tiempo" | "Contrato" | "Freelance" | "Formación";
 
 export type Job = {
   id: number;
@@ -169,6 +170,7 @@ export const mapUserToSession = (user: ApiUser): UserSession => {
     descripcionOrganizacion: organizationProfile?.descripcion,
     profileTypes: profileTypes.length ? profileTypes : ["ESTUDIANTE"],
     roles: user.roles ?? ["USUARIO"],
+    archivos: user.archivos ?? [],
   };
 };
 
@@ -198,6 +200,8 @@ export type AppState = {
   token: string | null;
   booting: boolean;
   notice: string;
+  // Token de recuperación recibido en el enlace del correo (?reset=...).
+  resetToken: string | null;
   currentUser: UserSession | null;
   selectedOffer: Offer | null;
   selectedJob: Job | null;
@@ -206,6 +210,11 @@ export type AppState = {
   applications: Application[];
   jobApplications: JobApplication[];
 };
+
+function readResetToken(): string | null {
+  const token = new URLSearchParams(window.location.search).get("reset");
+  return token && /^[a-f0-9]{64}$/.test(token) ? token : null;
+}
 
 function readStoredToken(): string | null {
   try {
@@ -230,15 +239,23 @@ const signedOutState = {
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => {
-    const storedToken = readStoredToken();
+    const resetToken = readResetToken();
+    // Al abrir un enlace de recuperación se ignora la sesión guardada.
+    const storedToken = resetToken ? null : readStoredToken();
     return {
       ...signedOutState,
       token: storedToken,
       // Con un token guardado se muestra una pantalla de carga mientras se valida.
       booting: Boolean(storedToken),
       notice: "",
+      resetToken,
     };
   });
+
+  const clearResetToken = () => {
+    window.history.replaceState(null, "", window.location.pathname);
+    setState((current) => ({ ...current, resetToken: null }));
+  };
 
   useEffect(() => {
     try {
@@ -370,8 +387,16 @@ export default function App() {
     setCurrentUser(response.user);
   };
 
+  // El cambio de contraseña cierra las demás sesiones y entrega un token nuevo.
   const changePassword = async (currentPassword: string, newPassword: string) => {
-    await api.changePassword(currentPassword, newPassword, requireToken());
+    const response = await api.changePassword(currentPassword, newPassword, requireToken());
+    if (response.token) setState((current) => ({ ...current, token: response.token }));
+  };
+
+  // Recarga la cuenta tras cambios que el servidor calcula (por ejemplo, archivos).
+  const refreshCurrentUser = async () => {
+    const response = await api.getCurrentUser(requireToken());
+    setCurrentUser(response.user);
   };
 
   const applyToOffer = async (offer: Offer) => {
@@ -420,6 +445,7 @@ export default function App() {
   const props = {
     state, navigate, applyToOffer, applyToJob, withdrawApplication, reloadApplications, updateCandidateStatus,
     updateExternalProfile, updateStudentProfile, updateOrganizationProfile, changePassword, login, register,
+    refreshCurrentUser, clearResetToken,
   };
 
   // Una pantalla que pide un rol distinto al de la sesión vuelve al inicio del rol.

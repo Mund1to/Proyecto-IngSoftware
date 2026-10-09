@@ -45,7 +45,17 @@ export type ApiUser = {
   roles?: string[];
   profileTypes?: string[];
   perfiles?: ApiProfile[];
+  archivos?: StoredFile[];
 };
+
+export type FileKind = 'cv' | 'foto';
+
+export type StoredFile = { tipo: 'CV' | 'FOTO'; nombre: string; mime: string; tamano: number; createdAt?: string; created_at?: string };
+
+export type EducationItem = { id?: number | string; titulo: string; institucion: string; periodo: string };
+export type ExperienceItem = { id?: number | string; cargo: string; empresa: string; periodo: string; descripcion?: string | null };
+export type SkillItem = { id?: number | string; categoria: string; nombre: string };
+export type ProfileDetails = { education: EducationItem[]; experience: ExperienceItem[]; skills: SkillItem[] };
 
 export type AdminUser = {
   id: number | string;
@@ -70,7 +80,7 @@ export class ApiError extends Error {
 export async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(options.headers ?? {});
 
-  if (options.body && !(options.body instanceof FormData)) {
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -110,6 +120,39 @@ export async function request<T>(path: string, options: RequestInit = {}, token?
   return (payload ?? ({} as T)) as T;
 }
 
+// Descarga un archivo protegido (requiere el token) y devuelve un Blob.
+export async function requestBlob(path: string, token: string): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch {
+    throw new ApiError('No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.', 0);
+  }
+
+  if (!response.ok) {
+    const payload = (response.headers.get('content-type') ?? '').includes('application/json') ? await response.json() : null;
+    if (response.status === 401 && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    throw new ApiError(payload?.message ?? 'No se pudo descargar el archivo.', response.status);
+  }
+
+  return response.blob();
+}
+
+// Abre un archivo protegido en una pestaña nueva.
+export async function openProtectedFile(path: string, token: string) {
+  // La pestaña se abre antes de la descarga para que el navegador no la bloquee.
+  const tab = window.open('', '_blank');
+  try {
+    const url = URL.createObjectURL(await requestBlob(path, token));
+    if (tab) tab.location.href = url;
+    else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) {
+    tab?.close();
+    throw error;
+  }
+}
+
 const json = (method: string, body?: unknown): RequestInit => ({
   method,
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -123,6 +166,12 @@ export const api = {
   register: (payload: Record<string, unknown>) =>
     request<{ ok: boolean; token: string; user: ApiUser }>(`/auth/register`, json('POST', payload)),
 
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean; message: string }>(`/auth/forgot-password`, json('POST', { email })),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: boolean; message: string }>(`/auth/reset-password`, json('POST', { token, password })),
+
   login: (payload: Record<string, unknown>) =>
     request<{ ok: boolean; token: string; user: ApiUser }>(`/auth/login`, json('POST', payload)),
 
@@ -132,7 +181,36 @@ export const api = {
     request<UserResponse>(`/profile/me`, json('PUT', payload), token),
 
   changePassword: (currentPassword: string, newPassword: string, token: string) =>
-    request<{ ok: boolean; message: string }>(`/profile/password`, json('PUT', { currentPassword, newPassword }), token),
+    request<{ ok: boolean; message: string; token: string }>(`/profile/password`, json('PUT', { currentPassword, newPassword }), token),
+
+  getProfileDetails: (token: string) =>
+    request<{ ok: boolean; details: ProfileDetails }>(`/profile/details`, {}, token),
+
+  saveEducation: (items: EducationItem[], token: string) =>
+    request<{ ok: boolean; details: ProfileDetails }>(`/profile/education`, json('PUT', { items }), token),
+
+  saveExperience: (items: ExperienceItem[], token: string) =>
+    request<{ ok: boolean; details: ProfileDetails }>(`/profile/experience`, json('PUT', { items }), token),
+
+  saveSkills: (items: SkillItem[], token: string) =>
+    request<{ ok: boolean; details: ProfileDetails }>(`/profile/skills`, json('PUT', { items }), token),
+
+  uploadFile: (kind: FileKind, file: File, token: string) =>
+    request<{ ok: boolean; file: StoredFile }>(`/profile/files/${kind}`, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
+    }, token),
+
+  deleteFile: (kind: FileKind, token: string) =>
+    request<{ ok: boolean }>(`/profile/files/${kind}`, json('DELETE'), token),
+
+  getFile: (kind: FileKind, token: string) => requestBlob(`/profile/files/${kind}`, token),
+
+  openMyFile: (kind: FileKind, token: string) => openProtectedFile(`/profile/files/${kind}`, token),
+
+  openApplicationCv: (applicationId: string | number, token: string) =>
+    openProtectedFile(`/applications/${applicationId}/cv`, token),
 
   updateStudentProfile: (payload: Record<string, unknown>, token: string) =>
     request<UserResponse>(`/profile/student`, json('PUT', payload), token),

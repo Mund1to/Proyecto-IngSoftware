@@ -12,6 +12,7 @@ const baseState: AppState = {
   token: "tok",
   booting: false,
   notice: "",
+  resetToken: null,
   currentUser: { id: 1, email: "c@x.co", nombreCompleto: "Carla Ruiz", profileTypes: ["CANDIDATO_EXTERNO"], roles: ["USUARIO"] },
   selectedOffer: null,
   selectedJob: null,
@@ -124,5 +125,46 @@ describe("App: inicio de sesión", () => {
     expect(await screen.findByText("Estadísticas de empleo")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Usuarios" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Mis postulaciones" })).toBeNull();
+  });
+});
+
+describe("App: recuperación de contraseña", () => {
+  it("envía el enlace desde '¿Olvidaste tu contraseña?'", async () => {
+    const fetchMock = vi.fn((url: string) => Promise.resolve(url.endsWith("/health")
+      ? jsonResponse(200, { status: "ok" })
+      : jsonResponse(200, { ok: true, message: "Si el correo está registrado, recibirás un enlace para restablecer la contraseña." })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "¿Olvidaste tu contraseña?" }));
+    fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "ana@x.co" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar enlace" }));
+
+    expect(await screen.findByText(/recibirás un enlace/)).toBeTruthy();
+    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/auth/forgot-password"));
+    expect(JSON.parse(String((call as unknown as [string, RequestInit])[1].body))).toEqual({ email: "ana@x.co" });
+  });
+
+  it("abre el formulario de nueva contraseña desde el enlace del correo", async () => {
+    const token = "a".repeat(64);
+    window.history.replaceState(null, "", `/?reset=${token}`);
+    localStorage.setItem("sipu-token", "sesion-vieja");
+    const fetchMock = vi.fn((url: string) => Promise.resolve(url.endsWith("/health")
+      ? jsonResponse(200, { status: "ok" })
+      : jsonResponse(200, { ok: true, message: "Contraseña restablecida. Ya puedes iniciar sesión." })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    expect(screen.getByText("Crea una nueva contraseña")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Nueva contraseña"), { target: { value: "Nueva12345" } });
+    fireEvent.change(screen.getByLabelText("Confirmar contraseña"), { target: { value: "Nueva12345" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar nueva contraseña" }));
+
+    expect(await screen.findByText("Contraseña restablecida. Ya puedes iniciar sesión.")).toBeTruthy();
+    expect(screen.getByText("Bienvenido de nuevo")).toBeTruthy();
+    expect(window.location.search).toBe("");
+    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/auth/reset-password"));
+    expect(JSON.parse(String((call as unknown as [string, RequestInit])[1].body))).toEqual({ token, password: "Nueva12345" });
   });
 });

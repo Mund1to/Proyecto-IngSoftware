@@ -38,7 +38,7 @@ const mapStatus = (status?: string): Candidate["status"] => {
   }
 };
 
-type Candidate = { id: number; name: string; career: string; semester: string; university: string; email: string; phone: string; summary: string; cvUrl: string; city: string; appliedDate: string; status: "En revisión" | "Aceptada" | "Rechazada" | "Retirada"; skills: string[] };
+type Candidate = { id: number; name: string; career: string; semester: string; university: string; email: string; phone: string; summary: string; cvUrl: string; hasCv: boolean; education: { titulo: string; institucion: string; periodo: string }[]; experience: { cargo: string; empresa: string; periodo: string; descripcion?: string | null }[]; city: string; appliedDate: string; status: "En revisión" | "Aceptada" | "Rechazada" | "Retirada"; skills: string[] };
 
 export default function CompanyApplicants({ state, navigate, updateCandidateStatus }: Props) {
   const offer = state.selectedCompanyOffer;
@@ -74,10 +74,13 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
           phone: item.postulante_telefono ?? "No reportado",
           summary: item.resumen ?? "",
           cvUrl: item.cv_url ?? "",
+          hasCv: Boolean(item.tiene_cv),
+          education: Array.isArray(item.educacion) ? item.educacion : [],
+          experience: Array.isArray(item.experiencia) ? item.experiencia : [],
           city: item.candidato_ubicacion ?? "No reportada",
           appliedDate: (item.created_at ?? new Date().toISOString()).slice(0, 10),
           status: mapStatus(item.estado),
-          skills: [],
+          skills: Array.isArray(item.habilidades) ? item.habilidades : [],
         }));
         setCandidates(mapped);
       })
@@ -360,8 +363,23 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
               <div className="space-y-5">
                 <Section title="Formación">
                   <p className="text-sm font-semibold text-[#1e293b]">{selected.career}</p>
-                  <p className="text-sm text-[#64748b]">Semestre: {selected.semester}</p>
+                  {selected.semester !== "No reportado" && <p className="text-sm text-[#64748b]">Semestre: {selected.semester}</p>}
+                  {selected.education.map((item, index) => (
+                    <p key={index} className="text-sm text-[#475569] mt-1"><strong>{item.titulo}</strong> · {item.institucion} · {item.periodo}</p>
+                  ))}
                 </Section>
+
+                {selected.experience.length > 0 && (
+                  <Section title="Experiencia">
+                    {selected.experience.map((item, index) => (
+                      <div key={index} className="mb-2">
+                        <p className="text-sm font-semibold text-[#1e293b]">{item.cargo} · {item.empresa}</p>
+                        <p className="text-xs text-[#94a3b8]">{item.periodo}</p>
+                        {item.descripcion && <p className="text-sm text-[#475569]">{item.descripcion}</p>}
+                      </div>
+                    ))}
+                  </Section>
+                )}
 
                 {selected.summary && <Section title="Resumen profesional"><p className="text-sm text-[#475569]">{selected.summary}</p></Section>}
 
@@ -384,7 +402,18 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                   </p>
                 </Section>
 
-                {selected.cvUrl ? <a className="text-sm font-semibold text-blue-700 underline" href={selected.cvUrl} target="_blank" rel="noreferrer">Abrir hoja de vida</a> : <p className="text-sm text-[#64748b]">No hay una hoja de vida adjunta a esta postulación.</p>}
+                <div className="flex flex-wrap gap-4">
+                  {selected.hasCv && (
+                    <button
+                      className="text-sm font-semibold text-blue-700 underline"
+                      onClick={() => state.token && void api.openApplicationCv(selected.id, state.token).catch((error) => setActionError(error instanceof Error ? error.message : "No se pudo abrir la hoja de vida."))}
+                    >
+                      Descargar hoja de vida (PDF)
+                    </button>
+                  )}
+                  {selected.cvUrl && <a className="text-sm font-semibold text-blue-700 underline" href={selected.cvUrl} target="_blank" rel="noreferrer">Abrir enlace de hoja de vida</a>}
+                  {!selected.hasCv && !selected.cvUrl && <p className="text-sm text-[#64748b]">El candidato no adjuntó hoja de vida.</p>}
+                </div>
               </div>
 
               {selected.status === "En revisión" && (

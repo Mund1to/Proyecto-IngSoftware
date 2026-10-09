@@ -9,8 +9,9 @@ type Props = {
   navigate: (screen: Screen, extra?: Partial<AppState>) => void;
   login?: (email: string, password: string) => Promise<void>;
   register?: (payload: Record<string, unknown>) => Promise<void>;
+  clearResetToken?: () => void;
 };
-type View = "login" | "register" | "forgot";
+type View = "login" | "register" | "forgot" | "reset";
 
 type AccountType = Exclude<Role, "admin">;
 
@@ -20,8 +21,17 @@ const roles: { id: AccountType; title: string; description: string }[] = [
   { id: "external", title: "Profesional", description: "Consulta las vacantes disponibles de la bolsa general." },
 ];
 
-export default function AuthScreen({ state, login, register }: Props) {
-  const [view, setView] = useState<View>("login");
+const copy: Record<View, { eyebrow: string; title: string; intro: string }> = {
+  login: { eyebrow: "Acceso seguro", title: "Bienvenido de nuevo", intro: "Ingresa con el correo asociado a tu cuenta." },
+  register: { eyebrow: "Nueva cuenta", title: "Crea tu cuenta", intro: "Selecciona el tipo de cuenta y completa tus datos." },
+  forgot: { eyebrow: "Recupera tu acceso", title: "Restablece tu contraseña", intro: "Te enviaremos un enlace si el correo está registrado." },
+  reset: { eyebrow: "Recupera tu acceso", title: "Crea una nueva contraseña", intro: "El enlace es válido durante 60 minutos y se usa una sola vez." },
+};
+
+const isStrongPassword = (value: string) => value.length >= 8 && /[A-Z]/.test(value) && /\d/.test(value);
+
+export default function AuthScreen({ state, login, register, clearResetToken }: Props) {
+  const [view, setView] = useState<View>(state?.resetToken ? "reset" : "login");
   const [role, setRole] = useState<AccountType>("student");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -29,6 +39,7 @@ export default function AuthScreen({ state, login, register }: Props) {
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [slowServer, setSlowServer] = useState(false);
   const slowTimer = useRef<number>();
@@ -39,9 +50,12 @@ export default function AuthScreen({ state, login, register }: Props) {
     return () => window.clearTimeout(slowTimer.current);
   }, []);
 
-  const reset = (next: View) => {
+  const changeView = (next: View) => {
     setView(next);
     setError("");
+    setInfo("");
+    setPassword("");
+    setConfirm("");
   };
 
   // Ejecuta la petición mostrando un aviso si el servidor tarda en responder.
@@ -64,12 +78,34 @@ export default function AuthScreen({ state, login, register }: Props) {
     event.preventDefault();
     setError("");
     if (submitting) return;
+
+    if (view === "reset") {
+      if (!isStrongPassword(password)) return setError("La contraseña debe cumplir todos los requisitos.");
+      if (password !== confirm) return setError("Las contraseñas no coinciden.");
+      const token = state?.resetToken;
+      if (!token) return setError("El enlace de recuperación no es válido. Solicita uno nuevo.");
+      await runRequest(async () => {
+        const response = await api.resetPassword(token, password);
+        clearResetToken?.();
+        changeView("login");
+        setInfo(response.message);
+      }, "No se pudo restablecer la contraseña.");
+      return;
+    }
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("Ingresa un correo válido.");
-    if (view === "forgot") return;
+
+    if (view === "forgot") {
+      await runRequest(async () => {
+        const response = await api.forgotPassword(email.trim());
+        setInfo(response.message);
+      }, "No se pudo enviar el enlace.");
+      return;
+    }
+
     if (view === "register") {
       if (!name.trim()) return setError("Ingresa tu nombre completo.");
-      if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password))
-        return setError("La contraseña debe cumplir todos los requisitos.");
+      if (!isStrongPassword(password)) return setError("La contraseña debe cumplir todos los requisitos.");
       if (password !== confirm) return setError("Las contraseñas no coinciden.");
 
       if (!register) return;
@@ -82,11 +118,18 @@ export default function AuthScreen({ state, login, register }: Props) {
       }), "No se pudo crear la cuenta.");
       return;
     }
-    if (!password) return setError("Ingresa tu contraseña.");
 
+    if (!password) return setError("Ingresa tu contraseña.");
     if (!login) return;
     await runRequest(() => login(email.trim(), password), "No se pudo iniciar sesión.");
   };
+
+  const submitLabel = submitting
+    ? { login: "Iniciando sesión...", register: "Creando cuenta...", forgot: "Enviando...", reset: "Guardando..." }[view]
+    : { login: "Iniciar sesión", register: "Crear cuenta", forgot: "Enviar enlace", reset: "Guardar nueva contraseña" }[view];
+
+  const needsPassword = view !== "forgot";
+  const needsConfirm = view === "register" || view === "reset";
 
   return (
     <main className="auth-shell">
@@ -109,25 +152,14 @@ export default function AuthScreen({ state, login, register }: Props) {
       <section className="auth-panel">
         <div className="auth-mobile-logo"><Logo /></div>
         <div className="auth-card">
-          <p className="eyebrow">{view === "login" ? "Acceso seguro" : view === "register" ? "Nueva cuenta" : "Recupera tu acceso"}</p>
-          <h2>{view === "login" ? "Bienvenido de nuevo" : view === "register" ? "Crea tu cuenta" : "Restablece tu contraseña"}</h2>
-          <p className="muted">
-            {view === "login"
-              ? "Ingresa con el correo asociado a tu cuenta."
-              : view === "register"
-                ? "Selecciona el tipo de cuenta y completa tus datos."
-                : "SIPU aún no envía correos de recuperación."}
-          </p>
+          <p className="eyebrow">{copy[view].eyebrow}</p>
+          <h2>{copy[view].title}</h2>
+          <p className="muted">{copy[view].intro}</p>
 
-          {state?.notice && view === "login" && <div className="form-error" role="status">{state.notice}</div>}
+          {state?.notice && view === "login" && !info && <div className="form-error" role="status">{state.notice}</div>}
+          {info && <div className="success-panel" role="status"><p>{info}</p></div>}
 
-          {view === "forgot" ? (
-            <div className="success-panel" role="status">
-              <strong>¿Cómo recuperar el acceso?</strong>
-              <p>Escribe a la oficina de prácticas o al administrador de SIPU desde el correo registrado y solicita el restablecimiento. Si recuerdas tu contraseña actual, puedes cambiarla desde tu perfil después de iniciar sesión.</p>
-              <button className="button primary" onClick={() => reset("login")}>Volver a iniciar sesión</button>
-            </div>
-          ) : (
+          {!(view === "forgot" && info) && (
             <form onSubmit={submit} noValidate aria-busy={submitting}>
               {view === "register" && (
                 <>
@@ -143,17 +175,23 @@ export default function AuthScreen({ state, login, register }: Props) {
                   <Field label={role === "company" ? "Nombre de la organización" : "Nombre completo"} value={name} onChange={setName} autoComplete={role === "company" ? "organization" : "name"} />
                 </>
               )}
-              <Field
-                label={view === "register" && role === "student" ? "Correo institucional" : view === "register" && role === "company" ? "Correo corporativo" : "Correo"}
-                value={email}
-                onChange={setEmail}
-                type="email"
-                autoComplete="email"
-                hint={view === "register" ? role === "student" ? "Verificaremos tu vínculo con Unibagué mediante este correo." : role === "company" ? "La organización debe verificarse antes de publicar ofertas." : "Usa un correo que consultes con frecuencia." : undefined}
-              />
-              <Field label="Contraseña" value={password} onChange={setPassword} type={showPassword ? "text" : "password"} autoComplete={view === "login" ? "current-password" : "new-password"} />
-              <label className="check-row"><input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} /> Mostrar contraseña</label>
-              {view === "register" && (
+              {view !== "reset" && (
+                <Field
+                  label={view === "register" && role === "student" ? "Correo institucional" : view === "register" && role === "company" ? "Correo corporativo" : "Correo"}
+                  value={email}
+                  onChange={setEmail}
+                  type="email"
+                  autoComplete="email"
+                  hint={view === "register" ? role === "student" ? "Verificaremos tu vínculo con Unibagué mediante este correo." : role === "company" ? "La organización debe verificarse antes de publicar ofertas." : "Usa un correo que consultes con frecuencia." : undefined}
+                />
+              )}
+              {needsPassword && (
+                <>
+                  <Field label={view === "reset" ? "Nueva contraseña" : "Contraseña"} value={password} onChange={setPassword} type={showPassword ? "text" : "password"} autoComplete={view === "login" ? "current-password" : "new-password"} />
+                  <label className="check-row"><input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} /> Mostrar contraseña</label>
+                </>
+              )}
+              {needsConfirm && (
                 <>
                   <Field label="Confirmar contraseña" value={confirm} onChange={setConfirm} type={showPassword ? "text" : "password"} autoComplete="new-password" />
                   <ul className="password-rules" aria-label="Requisitos de contraseña">
@@ -165,23 +203,24 @@ export default function AuthScreen({ state, login, register }: Props) {
               )}
               {error && <div className="form-error" role="alert">{error}</div>}
               {slowServer && <p className="muted" role="status">El servidor se está activando. Esto puede tardar hasta un minuto la primera vez.</p>}
-              <button className="button primary full" type="submit" disabled={submitting}>
-                {submitting
-                  ? view === "login" ? "Iniciando sesión..." : "Creando cuenta..."
-                  : view === "login" ? "Iniciar sesión" : "Crear cuenta"}
-              </button>
+              <button className="button primary full" type="submit" disabled={submitting}>{submitLabel}</button>
             </form>
           )}
 
           <div className="auth-actions">
             {view === "login" ? (
               <>
-                <button className="text-button" onClick={() => reset("forgot")}>¿Olvidaste tu contraseña?</button>
-                <p>¿Aún no tienes cuenta? <button className="text-button" onClick={() => reset("register")}>Crear cuenta</button></p>
+                <button className="text-button" onClick={() => changeView("forgot")}>¿Olvidaste tu contraseña?</button>
+                <p>¿Aún no tienes cuenta? <button className="text-button" onClick={() => changeView("register")}>Crear cuenta</button></p>
               </>
-            ) : view === "register" ? (
-              <p>¿Ya tienes una cuenta? <button className="text-button" onClick={() => reset("login")}>Iniciar sesión</button></p>
-            ) : null}
+            ) : (
+              <p>
+                {view === "register" ? "¿Ya tienes una cuenta? " : ""}
+                <button className="text-button" onClick={() => { if (view === "reset") clearResetToken?.(); changeView("login"); }}>
+                  {view === "register" ? "Iniciar sesión" : "Volver a iniciar sesión"}
+                </button>
+              </p>
+            )}
           </div>
           <p className="legal">Al continuar confirmas que tus datos se usarán para gestionar tu cuenta y tus postulaciones.</p>
         </div>

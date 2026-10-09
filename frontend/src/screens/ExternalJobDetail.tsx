@@ -210,7 +210,7 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
                   className="w-full py-3.5 rounded-xl text-white text-sm font-bold shadow-lg shadow-green-900/20 hover:opacity-90 active:scale-[0.98]"
                   style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", transition: "opacity 0.15s, transform 0.1s" }}
                 >
-                  {applying ? "Enviando..." : daysLeft < 0 ? "Oferta cerrada" : "Aplicar ahora"}
+                  {applying ? "Enviando..." : daysLeft < 0 ? "Oferta cerrada" : job.type === "Formación" ? "Inscribirme" : "Aplicar ahora"}
                 </button>
               )}
               {applyError && <div className="form-error mt-3" role="alert">{applyError}</div>}

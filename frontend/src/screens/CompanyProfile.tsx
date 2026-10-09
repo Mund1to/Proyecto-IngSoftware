@@ -2,19 +2,21 @@ import { useEffect, useState } from "react";
 import { AppState, Screen } from "../App";
 import ChangePasswordCard from "../components/ChangePasswordCard";
 import NavBar from "../components/NavBar";
+import { ProfileAvatar, findFile } from "../components/ProfileFiles";
 
 type Props = {
   state: AppState;
   navigate: (screen: Screen, extra?: Partial<AppState>) => void;
   updateOrganizationProfile: (payload: Record<string, unknown>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  refreshCurrentUser: () => Promise<void>;
 };
 
 const inputClass = "w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white";
 const labelClass = "block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5";
 
 // Datos de la organización: antes no existía una pantalla para editarlos.
-export default function CompanyProfile({ state, navigate, updateOrganizationProfile, changePassword }: Props) {
+export default function CompanyProfile({ state, navigate, updateOrganizationProfile, changePassword, refreshCurrentUser }: Props) {
   const user = state.currentUser;
   const initialForm = () => ({
     razonSocial: user?.organizacionNombre ?? "",
@@ -60,8 +62,19 @@ export default function CompanyProfile({ state, navigate, updateOrganizationProf
       <NavBar role="company" navigate={navigate} activeScreen="company-profile" userName={user?.organizacionNombre ?? user?.nombreCompleto ?? "Empresa"} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        <h1 className="text-2xl font-bold text-[#0d2240] mb-1">Mi empresa</h1>
-        <p className="text-[#64748b] text-sm mb-6">Estos datos acompañan cada oferta que publicas.</p>
+        <div className="flex items-center gap-5 mb-6">
+          <ProfileAvatar
+            token={state.token}
+            photo={findFile(user?.archivos, "FOTO")}
+            initials={(user?.organizacionNombre ?? "E").slice(0, 2).toUpperCase()}
+            onChanged={refreshCurrentUser}
+            gradient="linear-gradient(135deg, #0d2240 0%, #163456 100%)"
+          />
+          <div>
+            <h1 className="text-2xl font-bold text-[#0d2240] mb-1">Mi empresa</h1>
+            <p className="text-[#64748b] text-sm">Estos datos acompañan cada oferta que publicas. Usa el ícono de la cámara para subir el logo.</p>
+          </div>
+        </div>
 
         <div className={`rounded-2xl border p-4 mb-6 text-sm ${verified ? "bg-[#f0fdf4] border-[#bbf7d0] text-[#15803d]" : "bg-amber-50 border-amber-200 text-amber-800"}`} role="status">
           {verified

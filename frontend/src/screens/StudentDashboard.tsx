@@ -3,7 +3,7 @@ import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import { api } from "../lib/api";
-import { companyInitials, daysUntil, formatDate, formatSalary, isValidDate, normalizeModality, toNumberOrZero } from "../lib/offers";
+import { companyInitials, daysUntil, formatDate, formatSalary, isValidDate, normalizeModality, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero } from "../lib/offers";
 import { useSavedOffers } from "../lib/useStoredList";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
@@ -39,6 +39,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
   const [city, setCity] = useState("Todas");
   const [area, setArea] = useState("Todas");
   const [modality, setModality] = useState("Todas");
+  const [offerType, setOfferType] = useState("Todas");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
   const [saved, setSaved] = useSavedOffers(state.currentUser?.id);
@@ -80,18 +81,19 @@ export default function StudentDashboard({ state, navigate }: Props) {
     (city === "Todas" || offer.city === city) &&
     (area === "Todas" || offer.area === area) &&
     (modality === "Todas" || offer.modality === modality) &&
+    (offerType === "Todas" || offer.offerType === offerType) &&
     (!onlySaved || saved.includes(offer.id)) &&
     (!search || `${offer.title} ${offer.company}`.toLowerCase().includes(search.toLowerCase()))
   ).sort((a, b) => sort === "closing"
     ? daysUntil(a.closeDate) - daysUntil(b.closeDate)
     : sort === "salary"
       ? salaryNumber(b.salary) - salaryNumber(a.salary)
-      : b.id - a.id), [area, city, modality, search, sort, offers, onlySaved, saved]);
+      : b.id - a.id), [area, city, modality, offerType, search, sort, offers, onlySaved, saved]);
 
   const applied = new Set(state.applications.map((item) => item.offerId));
   const openCount = filtered.filter((offer) => !isValidDate(offer.closeDate) || daysUntil(offer.closeDate) >= 0).length;
-  const hasFilters = city !== "Todas" || area !== "Todas" || modality !== "Todas" || Boolean(search) || onlySaved;
-  const clear = () => { setCity("Todas"); setArea("Todas"); setModality("Todas"); setSearch(""); setOnlySaved(false); };
+  const hasFilters = city !== "Todas" || area !== "Todas" || modality !== "Todas" || offerType !== "Todas" || Boolean(search) || onlySaved;
+  const clear = () => { setCity("Todas"); setArea("Todas"); setModality("Todas"); setOfferType("Todas"); setSearch(""); setOnlySaved(false); };
 
   return (
     <div className="app-shell">
@@ -114,6 +116,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
             <Filter label="Ciudad" value={city} options={[...new Set([...cities, ...offers.map((offer) => offer.city)])]} onChange={setCity} />
             <Filter label="Área" value={area} options={[...new Set([...areas, ...offers.map((offer) => offer.area)])]} onChange={setArea} />
             <Filter label="Modalidad" value={modality} options={modalities} onChange={setModality} />
+            <Filter label="Tipo" value={offerType} options={["Todas", ...Object.keys(OFFER_TYPE_LABELS)]} labels={["Todas", ...Object.values(OFFER_TYPE_LABELS)]} onChange={setOfferType} />
             <Filter label="Ordenar por" value={sort} options={["recent", "closing", "salary"]} labels={["Más recientes", "Fecha de cierre", "Mayor remuneración"]} onChange={(value) => setSort(value as Sort)} />
             <label className="check-row"><input type="checkbox" checked={onlySaved} onChange={(e) => setOnlySaved(e.target.checked)} /> Solo guardadas ({saved.length})</label>
             {hasFilters && <button className="button secondary clear-filters" onClick={clear}>Limpiar filtros</button>}
@@ -171,6 +174,7 @@ function OfferCard({ offer, applied, saved, onSave, onOpen }: { offer: Offer; ap
         <dl className="offer-meta">
           <div><dt>Ciudad</dt><dd>{offer.city}</dd></div>
           <div><dt>Modalidad</dt><dd>{offer.modality}</dd></div>
+          <div><dt>Tipo</dt><dd>{offerTypeLabel(offer.offerType)}</dd></div>
           <div><dt>Área</dt><dd>{offer.area}</dd></div>
           <div><dt>Remuneración</dt><dd>{offer.salary} COP</dd></div>
         </dl>

@@ -34,6 +34,7 @@ const shortLabel: Record<string, string> = {
   PRACTICA: "Prácticas",
   EMPLEO: "Empleos",
   EMPLEO_PUBLICO: "Empleo público",
+  FORMACION: "Formación",
 };
 
 // #21 HU-17: indicadores agregados de empleo (Fase 4).

@@ -63,3 +63,14 @@ export function mapApplicationStatus(status?: string): ApplicationStatus {
       return "Enviada";
   }
 }
+
+export type OfferType = "PRACTICA" | "EMPLEO" | "EMPLEO_PUBLICO" | "FORMACION";
+
+export const OFFER_TYPE_LABELS: Record<OfferType, string> = {
+  PRACTICA: "Práctica",
+  EMPLEO: "Empleo",
+  EMPLEO_PUBLICO: "Empleo público",
+  FORMACION: "Formación",
+};
+
+export const offerTypeLabel = (value: unknown) => OFFER_TYPE_LABELS[value as OfferType] ?? "Oferta";
