@@ -1,7 +1,8 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App, { type AppState } from "../App";
 import ExternalDashboard from "./ExternalDashboard";
+import StudentDashboard from "./StudentDashboard";
 
 const jsonResponse = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -45,6 +46,60 @@ describe("ExternalDashboard", () => {
 
     expect(await screen.findByText("Práctica de prueba")).toBeTruthy();
     expect(screen.getAllByText("Híbrida").length).toBeGreaterThan(0);
+  });
+});
+
+describe("StudentDashboard: filtros desplegables", () => {
+  const studentState: AppState = {
+    ...baseState,
+    screen: "student-dashboard",
+    role: "student",
+    currentUser: { id: 2, email: "e@x.co", nombreCompleto: "Eva Díaz", profileTypes: ["ESTUDIANTE"], roles: ["USUARIO"] },
+  };
+  const offer = (id: number, titulo: string, ubicacion: string) => ({
+    ...brokenOffer, id: String(id), titulo, ubicacion, modalidad: "Presencial", empresa: `Empresa ${id}`,
+  });
+
+  const renderDashboard = async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => jsonResponse(200, {
+      ok: true, offers: [offer(1, "Práctica en Ibagué", "Ibagué"), offer(2, "Práctica en Cali", "Cali"), offer(3, "Empleo en Ibagué", "Ibagué")],
+    })));
+    render(<StudentDashboard state={studentState} navigate={vi.fn()} />);
+    await screen.findByText("Práctica en Cali");
+  };
+
+  it("filtra por ciudad con el menú, muestra el chip y lo quita", async () => {
+    await renderDashboard();
+
+    const trigger = screen.getByRole("button", { name: /Ciudad/ });
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const option = within(screen.getByRole("listbox", { name: "Ciudad" })).getByRole("option", { name: /Ibagué/ });
+    expect(option.textContent).toContain("2");
+    fireEvent.click(option);
+
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.getByRole("button", { name: "Quitar filtro Ciudad: Ibagué" })).toBeTruthy();
+    expect(screen.queryByText("Práctica en Cali")).toBeNull();
+    expect(screen.getByText("Práctica en Ibagué")).toBeTruthy();
+    expect(screen.getByText("2 ofertas abiertas")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quitar filtro Ciudad: Ibagué" }));
+    expect(screen.getByRole("button", { name: /Ciudad/ }).textContent).toContain("Todas");
+    expect(screen.queryByText("Filtros activos:")).toBeNull();
+    expect(screen.getByText("Práctica en Cali")).toBeTruthy();
+  });
+
+  it("cierra el menú con Escape", async () => {
+    await renderDashboard();
+
+    fireEvent.click(screen.getByRole("button", { name: /Ciudad/ }));
+    const listbox = screen.getByRole("listbox", { name: "Ciudad" });
+    expect(document.activeElement?.getAttribute("aria-selected")).toBe("true");
+    fireEvent.keyDown(listbox, { key: "Escape" });
+
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.getByRole("button", { name: /Ciudad/ }).getAttribute("aria-expanded")).toBe("false");
   });
 });
 

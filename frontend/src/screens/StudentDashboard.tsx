@@ -2,13 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
+import FilterDropdown, { FilterOption } from "../components/FilterDropdown";
 import { api } from "../lib/api";
 import { companyInitials, daysUntil, formatDate, formatSalary, isValidDate, normalizeModality, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero } from "../lib/offers";
 import { useSavedOffers } from "../lib/useStoredList";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Sort = "recent" | "closing" | "salary";
+type FilterKey = "city" | "area" | "modality" | "offerType";
 
+const FILTER_KEYS: FilterKey[] = ["city", "area", "modality", "offerType"];
+const SORT_OPTIONS: FilterOption[] = [
+  { value: "recent", label: "Más recientes" },
+  { value: "closing", label: "Fecha de cierre" },
+  { value: "salary", label: "Mayor remuneración" },
+];
 const cities = ["Todas", "Bogotá", "Medellín", "Cali", "Ibagué"];
 const areas = ["Todas", "Tecnología", "Marketing", "Contabilidad", "Recursos Humanos", "Producción"];
 const modalities = ["Todas", "Presencial", "Remota", "Híbrida"];
@@ -77,14 +85,17 @@ export default function StudentDashboard({ state, navigate }: Props) {
     };
   }, [state.token]);
 
-  const filtered = useMemo(() => offers.filter((offer) =>
-    (city === "Todas" || offer.city === city) &&
-    (area === "Todas" || offer.area === area) &&
-    (modality === "Todas" || offer.modality === modality) &&
-    (offerType === "Todas" || offer.offerType === offerType) &&
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
+
+  const values: Record<FilterKey, string> = { city, area, modality, offerType };
+  // Cumple todos los filtros activos salvo `except`; sirve para la lista y para
+  // el contador de cada opción, que no cuenta el filtro propio.
+  const matches = (offer: Offer, except?: FilterKey) =>
+    FILTER_KEYS.every((key) => key === except || values[key] === "Todas" || offer[key] === values[key]) &&
     (!onlySaved || saved.includes(offer.id)) &&
-    (!search || `${offer.title} ${offer.company}`.toLowerCase().includes(search.toLowerCase()))
-  ).sort((a, b) => sort === "closing"
+    (!search || `${offer.title} ${offer.company}`.toLowerCase().includes(search.toLowerCase()));
+
+  const filtered = useMemo(() => offers.filter((offer) => matches(offer)).sort((a, b) => sort === "closing"
     ? daysUntil(a.closeDate) - daysUntil(b.closeDate)
     : sort === "salary"
       ? salaryNumber(b.salary) - salaryNumber(a.salary)
@@ -92,8 +103,36 @@ export default function StudentDashboard({ state, navigate }: Props) {
 
   const applied = new Set(state.applications.map((item) => item.offerId));
   const openCount = filtered.filter((offer) => !isValidDate(offer.closeDate) || daysUntil(offer.closeDate) >= 0).length;
-  const hasFilters = city !== "Todas" || area !== "Todas" || modality !== "Todas" || offerType !== "Todas" || Boolean(search) || onlySaved;
-  const clear = () => { setCity("Todas"); setArea("Todas"); setModality("Todas"); setOfferType("Todas"); setSearch(""); setOnlySaved(false); };
+  const clear = () => { setCity("Todas"); setArea("Todas"); setModality("Todas"); setOfferType("Todas"); setSort("recent"); setSearch(""); setOnlySaved(false); };
+
+  const withCounts = (key: FilterKey, options: string[], labels?: string[]): FilterOption[] => {
+    const pool = offers.filter((offer) => matches(offer, key));
+    return options.map((option, index) => ({
+      value: option,
+      label: labels?.[index] ?? option,
+      count: option === "Todas" ? pool.length : pool.filter((offer) => offer[key] === option).length,
+    }));
+  };
+
+  const typeOptions = ["Todas", ...Object.keys(OFFER_TYPE_LABELS)];
+  const typeLabels = ["Todas", ...Object.values(OFFER_TYPE_LABELS)];
+  const filters: { key: FilterKey | "sort"; label: string; value: string; defaultValue: string; options: FilterOption[]; onChange: (value: string) => void }[] = [
+    { key: "city", label: "Ciudad", value: city, defaultValue: "Todas", options: withCounts("city", [...new Set([...cities, ...offers.map((offer) => offer.city)])]), onChange: setCity },
+    { key: "area", label: "Área", value: area, defaultValue: "Todas", options: withCounts("area", [...new Set([...areas, ...offers.map((offer) => offer.area)])]), onChange: setArea },
+    { key: "modality", label: "Modalidad", value: modality, defaultValue: "Todas", options: withCounts("modality", modalities), onChange: setModality },
+    { key: "offerType", label: "Tipo", value: offerType, defaultValue: "Todas", options: withCounts("offerType", typeOptions, typeLabels), onChange: setOfferType },
+    { key: "sort", label: "Ordenar por", value: sort, defaultValue: "recent", options: SORT_OPTIONS, onChange: (value) => setSort(value as Sort) },
+  ];
+
+  const activeChips: { key: string; text: string; remove: () => void }[] = filters
+    .filter((filter) => filter.value !== filter.defaultValue)
+    .map((filter) => ({
+      key: filter.key,
+      text: `${filter.label}: ${filter.options.find((option) => option.value === filter.value)?.label ?? filter.value}`,
+      remove: () => filter.onChange(filter.defaultValue),
+    }));
+  if (onlySaved) activeChips.push({ key: "saved", text: "Solo guardadas", remove: () => setOnlySaved(false) });
+  const resultKey = [city, area, modality, offerType, sort, onlySaved, search].join("|");
 
   return (
     <div className="app-shell">
@@ -113,23 +152,44 @@ export default function StudentDashboard({ state, navigate }: Props) {
 
         <section className="container catalog">
           <div className="filter-card" aria-label="Filtros de ofertas">
-            <Filter label="Ciudad" value={city} options={[...new Set([...cities, ...offers.map((offer) => offer.city)])]} onChange={setCity} />
-            <Filter label="Área" value={area} options={[...new Set([...areas, ...offers.map((offer) => offer.area)])]} onChange={setArea} />
-            <Filter label="Modalidad" value={modality} options={modalities} onChange={setModality} />
-            <Filter label="Tipo" value={offerType} options={["Todas", ...Object.keys(OFFER_TYPE_LABELS)]} labels={["Todas", ...Object.values(OFFER_TYPE_LABELS)]} onChange={setOfferType} />
-            <Filter label="Ordenar por" value={sort} options={["recent", "closing", "salary"]} labels={["Más recientes", "Fecha de cierre", "Mayor remuneración"]} onChange={(value) => setSort(value as Sort)} />
-            <label className="check-row"><input type="checkbox" checked={onlySaved} onChange={(e) => setOnlySaved(e.target.checked)} /> Solo guardadas ({saved.length})</label>
-            {hasFilters && <button className="button secondary clear-filters" onClick={clear}>Limpiar filtros</button>}
+            {filters.map((filter) => (
+              <FilterDropdown
+                key={filter.key}
+                label={filter.label}
+                value={filter.value}
+                defaultValue={filter.defaultValue}
+                options={filter.options}
+                open={openFilter === filter.key}
+                onOpenChange={(open) => setOpenFilter((current) => open ? filter.key : current === filter.key ? null : current)}
+                onChange={filter.onChange}
+              />
+            ))}
+            <button type="button" className={onlySaved ? "saved-toggle is-active" : "saved-toggle"} aria-pressed={onlySaved} onClick={() => setOnlySaved(!onlySaved)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z" /></svg>
+              Solo guardadas ({saved.length})
+            </button>
+            {activeChips.length > 0 && (
+              <div className="active-filters">
+                <span className="active-filters-label">Filtros activos:</span>
+                {activeChips.map((chip) => (
+                  <button key={chip.key} type="button" className="filter-chip" aria-label={`Quitar filtro ${chip.text}`} onClick={chip.remove}>
+                    {chip.text}
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </button>
+                ))}
+                <button type="button" className="text-button active-filters-clear" onClick={clear}>Limpiar filtros</button>
+              </div>
+            )}
           </div>
 
           <div className="catalog-heading">
-            <div><p className="eyebrow">Resultados</p><h2>{openCount} ofertas abiertas</h2></div>
+            <div><p className="eyebrow">Resultados</p><h2>{openCount === 1 ? "1 oferta abierta" : `${openCount} ofertas abiertas`}</h2></div>
             <p className="muted">Ofertas publicadas por organizaciones registradas en SIPU</p>
           </div>
 
           {loadError && <div className="form-error" role="alert">{loadError}</div>}
           {filtered.length ? (
-            <div className="offer-grid">
+            <div className="offer-grid" key={resultKey}>
               {filtered.map((offer) => (
                 <OfferCard
                   key={offer.id}
@@ -152,10 +212,6 @@ export default function StudentDashboard({ state, navigate }: Props) {
       </main>
     </div>
   );
-}
-
-function Filter({ label, value, options, labels, onChange }: { label: string; value: string; options: string[]; labels?: string[]; onChange: (value: string) => void }) {
-  return <label className="filter"><span>{label}</span><select value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option, index) => <option key={option} value={option}>{labels?.[index] ?? option}</option>)}</select></label>;
 }
 
 function OfferCard({ offer, applied, saved, onSave, onOpen }: { offer: Offer; applied: boolean; saved: boolean; onSave: () => void; onOpen: () => void }) {
