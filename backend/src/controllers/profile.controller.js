@@ -1,5 +1,5 @@
+import bcrypt from 'bcrypt';
 import { pool } from '../config/database.js';
-import { getOrganizationProfileId } from '../utils/profiles.js';
 import { getBodyValue, hasBodyValue, toNullableString } from '../utils/payload.js';
 
 function mapProfile(profile) {
@@ -134,7 +134,9 @@ export async function updateCurrentUserController(request, response) {
     console.error('updateCurrentUserController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo actualizar el usuario.' });
   }
-}export async function updateStudentProfileController(request, response) {
+}
+
+export async function updateStudentProfileController(request, response) {
   const payload = request.body ?? {};
   const universityKeys = ['universidad'];
   const programKeys = ['programaAcademico', 'programa_academico'];
@@ -190,29 +192,46 @@ export async function updateCurrentUserController(request, response) {
   }
 }
 
+// Construye "columna = CASE WHEN enviado THEN valor ELSE columna END" para que
+// solo cambien los campos presentes en el cuerpo y puedan vaciarse con null o "".
+function buildOptionalUpdate(payload, fields, alias, offset = 0) {
+  const assignments = [];
+  const values = [];
+
+  for (const [column, keys] of Object.entries(fields)) {
+    values.push(hasBodyValue(payload, keys), toNullableString(getBodyValue(payload, keys)));
+    assignments.push(`${column} = CASE WHEN $${offset + values.length - 1}::boolean THEN $${offset + values.length}::text ELSE ${alias}.${column} END`);
+  }
+
+  return { assignments, values };
+}
+
 export async function updateOrganizationProfileController(request, response) {
   const payload = request.body ?? {};
+  const razonSocialKeys = ['razonSocial', 'razon_social'];
+
+  if (hasBodyValue(payload, razonSocialKeys) && !toNullableString(getBodyValue(payload, razonSocialKeys))) {
+    return response.status(400).json({ ok: false, message: 'La razón social no puede quedar vacía.' });
+  }
+
+  const { assignments, values } = buildOptionalUpdate(payload, {
+    identificacion_fiscal: ['identificacionFiscal', 'identificacion_fiscal'],
+    sitio_web: ['sitioWeb', 'sitio_web'],
+    descripcion: ['descripcion'],
+  }, 'o', 1);
 
   try {
     const result = await pool.query(
       `UPDATE organizaciones o
        SET razon_social = COALESCE($1, o.razon_social),
-           identificacion_fiscal = COALESCE($2, o.identificacion_fiscal),
-           sitio_web = COALESCE($3, o.sitio_web),
-           descripcion = COALESCE($4, o.descripcion),
+           ${assignments.join(',\n           ')},
            updated_at = NOW()
        FROM perfiles p
        WHERE o.perfil_id = p.id
-         AND p.usuario_id = $5
+         AND p.usuario_id = $${values.length + 2}
          AND p.tipo = 'ORGANIZACION'
        RETURNING o.perfil_id`,
-      [
-        toNullableString(getBodyValue(payload, ['razonSocial', 'razon_social'])),
-        toNullableString(getBodyValue(payload, ['identificacionFiscal', 'identificacion_fiscal'])),
-        toNullableString(getBodyValue(payload, ['sitioWeb', 'sitio_web'])),
-        toNullableString(getBodyValue(payload, ['descripcion'])),
-        request.auth.sub,
-      ]
+      [toNullableString(getBodyValue(payload, razonSocialKeys)), ...values, request.auth.sub]
     );
 
     if (result.rowCount === 0) {
@@ -222,6 +241,9 @@ export async function updateOrganizationProfileController(request, response) {
     const user = await findUserProfile(request.auth.sub);
     return response.json({ ok: true, user: serializeUser(user) });
   } catch (error) {
+    if (error?.code === '23505') {
+      return response.status(409).json({ ok: false, message: 'La identificación fiscal ya está registrada por otra organización.' });
+    }
     console.error('updateOrganizationProfileController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo actualizar el perfil de organización.' });
   }
@@ -229,36 +251,107 @@ export async function updateOrganizationProfileController(request, response) {
 
 export async function updateExternalProfileController(request, response) {
   const payload = request.body ?? {};
+  const cvUrl = toNullableString(getBodyValue(payload, ['cvUrl', 'cv_url']));
+
+  if (cvUrl && !/^https?:\/\/\S+$/i.test(cvUrl)) {
+    return response.status(400).json({ ok: false, message: 'El enlace de la hoja de vida debe empezar por http:// o https://.' });
+  }
+
+  const nombreCompleto = getBodyValue(payload, ['nombreCompleto', 'nombre_completo', 'nombre']);
+  if (nombreCompleto !== undefined && !String(nombreCompleto).trim()) {
+    return response.status(400).json({ ok: false, message: 'El nombre completo no puede estar vacío.' });
+  }
+
+  const { assignments, values } = buildOptionalUpdate(payload, {
+    resumen: ['resumen'],
+    ubicacion: ['ubicacion'],
+    disponibilidad: ['disponibilidad'],
+    cv_url: ['cvUrl', 'cv_url'],
+  }, 'pc');
+
+  const client = await pool.connect();
 
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    const result = await client.query(
       `UPDATE perfiles_candidato pc
-       SET resumen = COALESCE($1, pc.resumen),
-           ubicacion = COALESCE($2, pc.ubicacion),
-           disponibilidad = COALESCE($3, pc.disponibilidad),
-           cv_url = COALESCE($4, pc.cv_url)
+       SET ${assignments.join(',\n           ')}
        FROM perfiles p
        WHERE pc.perfil_id = p.id
-         AND p.usuario_id = $5
+         AND p.usuario_id = $${values.length + 1}
          AND p.tipo = 'CANDIDATO_EXTERNO'
        RETURNING pc.perfil_id`,
-      [
-        toNullableString(getBodyValue(payload, ['resumen'])),
-        toNullableString(getBodyValue(payload, ['ubicacion'])),
-        toNullableString(getBodyValue(payload, ['disponibilidad'])),
-        toNullableString(getBodyValue(payload, ['cvUrl', 'cv_url'])),
-        request.auth.sub,
-      ]
+      [...values, request.auth.sub]
     );
 
     if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
       return response.status(404).json({ ok: false, message: 'No existe un perfil de candidato externo para este usuario.' });
     }
+
+    // El formulario del candidato también envía nombre y teléfono de la cuenta.
+    const phoneKeys = ['telefono', 'phone'];
+    if (nombreCompleto !== undefined || hasBodyValue(payload, phoneKeys)) {
+      await client.query(
+        `UPDATE usuarios
+         SET nombre_completo = COALESCE($1, nombre_completo),
+             telefono = CASE WHEN $2::boolean THEN $3 ELSE telefono END,
+             updated_at = NOW()
+         WHERE id = $4`,
+        [
+          nombreCompleto === undefined ? null : String(nombreCompleto).trim(),
+          hasBodyValue(payload, phoneKeys),
+          toNullableString(getBodyValue(payload, phoneKeys)),
+          request.auth.sub,
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
 
     const user = await findUserProfile(request.auth.sub);
     return response.json({ ok: true, user: serializeUser(user) });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('updateExternalProfileController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo actualizar el perfil de candidato externo.' });
+  } finally {
+    client.release();
+  }
+}
+
+export async function changePasswordController(request, response) {
+  const payload = request.body ?? {};
+  const currentPassword = getBodyValue(payload, ['currentPassword', 'contrasenaActual', 'passwordActual']);
+  const newPassword = getBodyValue(payload, ['newPassword', 'contrasenaNueva', 'passwordNueva']);
+
+  if (!currentPassword || !newPassword) {
+    return response.status(400).json({ ok: false, message: 'Debe indicar la contraseña actual y la nueva.' });
+  }
+
+  if (String(newPassword).length < 8) {
+    return response.status(400).json({ ok: false, message: 'La contraseña debe tener al menos 8 caracteres.' });
+  }
+
+  try {
+    const result = await pool.query('SELECT password_hash FROM usuarios WHERE id = $1', [request.auth.sub]);
+
+    if (result.rowCount === 0) {
+      return response.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    }
+
+    const matches = await bcrypt.compare(String(currentPassword), result.rows[0].password_hash);
+    if (!matches) {
+      return response.status(400).json({ ok: false, message: 'La contraseña actual no es correcta.' });
+    }
+
+    const passwordHash = await bcrypt.hash(String(newPassword), 10);
+    await pool.query('UPDATE usuarios SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, request.auth.sub]);
+
+    return response.json({ ok: true, message: 'Contraseña actualizada.' });
+  } catch (error) {
+    console.error('changePasswordController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudo cambiar la contraseña.' });
   }
 }

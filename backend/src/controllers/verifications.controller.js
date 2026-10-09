@@ -3,43 +3,11 @@ import { getBodyValue, toNullableString } from '../utils/payload.js';
 
 const VERIFICATION_STATUSES = ['PENDIENTE', 'APROBADA', 'RECHAZADA'];
 
-// Determina si el usuario autenticado puede revisar verificaciones.
-// Solo administradores o funcionarios públicos, o cualquier usuario cuya
-// organización ya esté verificada (revisor de confianza).
-async function canReviewVerifications(userId) {
-  const result = await pool.query(
-    `SELECT
-       COALESCE(array_agg(DISTINCT r.nombre) FILTER (WHERE r.nombre IS NOT NULL), ARRAY[]::VARCHAR[]) AS roles,
-       BOOL_OR(o.verificada) AS owns_verified_organization
-     FROM usuarios u
-     LEFT JOIN usuario_roles ur ON ur.usuario_id = u.id
-     LEFT JOIN roles r ON r.id = ur.rol_id
-     LEFT JOIN perfiles p ON p.usuario_id = u.id AND p.tipo = 'ORGANIZACION'
-     LEFT JOIN organizaciones o ON o.perfil_id = p.id
-     WHERE u.id = $1
-     GROUP BY u.id`,
-    [userId]
-  );
-
-  const row = result.rows[0];
-  if (!row) return false;
-
-  const roles = Array.isArray(row.roles) ? row.roles : [];
-  return roles.includes('ADMINISTRADOR')
-    || roles.includes('FUNCIONARIO_PUBLICO')
-    || row.owns_verified_organization === true;
-}
+// El acceso se restringe en la ruta a ADMINISTRADOR y FUNCIONARIO_PUBLICO.
 
 // Lista las organizaciones con su estado de verificación más reciente.
 export async function listOrganizationsController(request, response) {
   try {
-    if (!(await canReviewVerifications(request.auth.sub))) {
-      return response.status(403).json({
-        ok: false,
-        message: 'No tiene permisos para consultar las verificaciones.',
-      });
-    }
-
     const result = await pool.query(
       `SELECT o.perfil_id AS organizacion_id,
               o.razon_social,
@@ -81,13 +49,6 @@ export async function updateOrganizationVerificationController(request, response
     return response.status(400).json({
       ok: false,
       message: 'El estado de verificación debe ser PENDIENTE, APROBADA o RECHAZADA.',
-    });
-  }
-
-  if (!(await canReviewVerifications(request.auth.sub))) {
-    return response.status(403).json({
-      ok: false,
-      message: 'No tiene permisos para revisar verificaciones.',
     });
   }
 

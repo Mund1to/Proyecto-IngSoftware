@@ -1,6 +1,9 @@
 import { pool } from '../config/database.js';
 import { getOrganizationProfileId } from '../utils/profiles.js';
 
+// Estados que puede asignar la organización. RETIRADA solo la aplica el candidato.
+const COMPANY_STATUSES = ['ENVIADA', 'EN_REVISION', 'PRESELECCIONADA', 'RECHAZADA', 'ACEPTADA'];
+
 async function getCurrentCandidateProfileId(userId) {
   const result = await pool.query(
     `SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo IN ('ESTUDIANTE', 'CANDIDATO_EXTERNO') ORDER BY CASE WHEN tipo = 'CANDIDATO_EXTERNO' THEN 1 ELSE 2 END ASC LIMIT 1`,
@@ -127,6 +130,11 @@ export async function applyToOfferController(request, response) {
 
     return response.status(201).json({ ok: true, application: result.rows[0] });
   } catch (error) {
+    // Dos envíos simultáneos pueden superar la comprobación previa; la restricción
+    // única de la tabla lo detecta.
+    if (error?.code === '23505') {
+      return response.status(409).json({ ok: false, message: 'Ya existe una postulación para esta oferta.' });
+    }
     console.error('applyToOfferController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo registrar la postulación.' });
   }
@@ -137,13 +145,13 @@ export async function updateApplicationStatusController(request, response) {
   const payload = request.body ?? {};
   const nextStatus = String(payload.estado ?? payload.status ?? '').trim().toUpperCase();
 
-  if (!['ENVIADA', 'EN_REVISION', 'PRESELECCIONADA', 'RECHAZADA', 'RETIRADA', 'ACEPTADA'].includes(nextStatus)) {
+  if (!COMPANY_STATUSES.includes(nextStatus)) {
     return response.status(400).json({ ok: false, message: 'El estado de la postulación no es válido.' });
   }
 
   try {
     const applicationResult = await pool.query(
-      `SELECT p.id, p.oferta_id, o.organizacion_id
+      `SELECT p.id, p.oferta_id, p.estado, o.organizacion_id
        FROM postulaciones p
        INNER JOIN ofertas o ON o.id = p.oferta_id
        WHERE p.id = $1`,
@@ -161,6 +169,10 @@ export async function updateApplicationStatusController(request, response) {
       return response.status(403).json({ ok: false, message: 'No tienes permisos para cambiar el estado de esta postulación.' });
     }
 
+    if (app.estado === 'RETIRADA') {
+      return response.status(409).json({ ok: false, message: 'El candidato retiró esta postulación.' });
+    }
+
     const result = await pool.query(
       `UPDATE postulaciones
        SET estado = $1,
@@ -174,5 +186,40 @@ export async function updateApplicationStatusController(request, response) {
   } catch (error) {
     console.error('updateApplicationStatusController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo actualizar la postulación.' });
+  }
+}
+
+// El candidato puede retirar su postulación mientras no esté resuelta.
+export async function withdrawApplicationController(request, response) {
+  const { id } = request.params;
+  const candidateProfileId = await getCurrentCandidateProfileId(request.auth.sub);
+
+  if (!candidateProfileId) {
+    return response.status(403).json({ ok: false, message: 'Solo un candidato o estudiante puede retirar sus postulaciones.' });
+  }
+
+  try {
+    const existing = await pool.query(
+      `SELECT id, estado FROM postulaciones WHERE id = $1 AND candidato_id = $2`,
+      [id, candidateProfileId]
+    );
+
+    if (existing.rowCount === 0) {
+      return response.status(404).json({ ok: false, message: 'Postulación no encontrada.' });
+    }
+
+    if (['ACEPTADA', 'RECHAZADA', 'RETIRADA'].includes(existing.rows[0].estado)) {
+      return response.status(409).json({ ok: false, message: 'La postulación ya fue resuelta y no puede retirarse.' });
+    }
+
+    const result = await pool.query(
+      `UPDATE postulaciones SET estado = 'RETIRADA', updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [id]
+    );
+
+    return response.json({ ok: true, application: result.rows[0] });
+  } catch (error) {
+    console.error('withdrawApplicationController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudo retirar la postulación.' });
   }
 }

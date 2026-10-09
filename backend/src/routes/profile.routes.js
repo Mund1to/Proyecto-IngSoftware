@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  changePasswordController,
   getCurrentUserController,
   updateCurrentUserController,
   updateExternalProfileController,
@@ -12,6 +13,7 @@ const profileRouter = Router();
 
 profileRouter.get('/me', authenticate, getCurrentUserController);
 profileRouter.put('/me', authenticate, updateCurrentUserController);
+profileRouter.put('/password', authenticate, changePasswordController);
 profileRouter.put('/student', authenticate, updateStudentProfileController);
 profileRouter.put('/organization', authenticate, updateOrganizationProfileController);
 profileRouter.put('/external', authenticate, updateExternalProfileController);

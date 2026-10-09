@@ -4,10 +4,13 @@ import {
   updateOrganizationVerificationController,
 } from '../controllers/verifications.controller.js';
 import { authenticate, requireRole } from '../middleware/auth.middleware.js';
+import { registerIdParams } from '../utils/params.js';
 
-const verificationsRouter = Router();
+const verificationsRouter = registerIdParams(Router());
 
-verificationsRouter.get('/organizations', authenticate, requireRole('USUARIO'), listOrganizationsController);
-verificationsRouter.patch('/organizations/:organizationId', authenticate, requireRole('USUARIO'), updateOrganizationVerificationController);
+// Solo administradores y funcionarios públicos revisan verificaciones.
+const canReview = [authenticate, requireRole('ADMINISTRADOR', 'FUNCIONARIO_PUBLICO')];
+verificationsRouter.get('/organizations', ...canReview, listOrganizationsController);
+verificationsRouter.patch('/organizations/:organizationId', ...canReview, updateOrganizationVerificationController);
 
 export default verificationsRouter;

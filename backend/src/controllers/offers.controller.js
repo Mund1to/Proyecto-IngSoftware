@@ -1,19 +1,123 @@
 import { pool } from '../config/database.js';
 import { getOrganizationProfileId } from '../utils/profiles.js';
+import { MODALITIES, OFFER_STATUSES, OFFER_TYPES, normalizeModality } from '../utils/offers.js';
 import {
   getBodyValue,
+  hasBodyValue,
   normalizeNumber,
   normalizeString,
   normalizeStringList,
 } from '../utils/payload.js';
 
-const OFFER_TYPES = ['PRACTICA', 'EMPLEO', 'EMPLEO_PUBLICO'];
-const OFFER_STATUSES = ['BORRADOR', 'PUBLICADA', 'CERRADA', 'CANCELADA'];
+// Campos editables de una oferta: claves aceptadas en el cuerpo y columna asociada.
+const OFFER_FIELDS = {
+  titulo: ['titulo', 'title'],
+  descripcion: ['descripcion', 'description'],
+  tipo: ['tipo', 'type'],
+  estado: ['estado', 'status'],
+  ubicacion: ['ubicacion', 'location'],
+  modalidad: ['modalidad', 'modality'],
+  area: ['area'],
+  requisitos: ['requisitos', 'requirements'],
+  duracion: ['duracion', 'duration'],
+  horario: ['horario', 'schedule'],
+  contacto_email: ['contactoEmail', 'contacto_email', 'contact_email', 'contact'],
+  remuneracion: ['remuneracion', 'salary', 'salario', 'salaryMin'],
+  remuneracion_maxima: ['remuneracionMaxima', 'remuneracion_maxima', 'salaryMax'],
+  fecha_publicacion: ['fechaPublicacion', 'fecha_publicacion', 'publishedAt'],
+  fecha_cierre: ['fechaCierre', 'fecha_cierre', 'closeAt'],
+};
+
+const REQUIRED_TEXT_FIELDS = ['titulo', 'descripcion', 'tipo', 'estado', 'area'];
+
+function isValidDateValue(value) {
+  return Number.isFinite(new Date(value).getTime());
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+// Normaliza y valida los campos de una oferta presentes en el cuerpo.
+// Devuelve { values } con los valores listos para SQL o { error } con el mensaje.
+function parseOfferPayload(payload) {
+  const values = {};
+
+  for (const [column, keys] of Object.entries(OFFER_FIELDS)) {
+    if (!hasBodyValue(payload, keys)) continue;
+    const raw = getBodyValue(payload, keys) ?? null;
+
+    if (column === 'requisitos') {
+      values[column] = normalizeStringList(raw);
+    } else if (column === 'remuneracion' || column === 'remuneracion_maxima') {
+      const amount = normalizeNumber(raw);
+      if (raw !== null && raw !== '' && (amount === null || amount < 0)) {
+        return { error: 'La remuneración debe ser un número positivo.' };
+      }
+      values[column] = amount;
+    } else if (column === 'fecha_publicacion' || column === 'fecha_cierre') {
+      const date = raw === null || raw === '' ? null : String(raw);
+      if (date !== null && !isValidDateValue(date)) {
+        return { error: 'Las fechas de la oferta no son válidas.' };
+      }
+      values[column] = date;
+    } else {
+      values[column] = normalizeString(raw);
+    }
+  }
+
+  if (values.tipo) {
+    values.tipo = values.tipo.toUpperCase();
+    if (!OFFER_TYPES.includes(values.tipo)) {
+      return { error: 'El tipo de oferta debe ser PRACTICA, EMPLEO o EMPLEO_PUBLICO.' };
+    }
+  }
+
+  if (values.estado) {
+    values.estado = values.estado.toUpperCase();
+    if (!OFFER_STATUSES.includes(values.estado)) {
+      return { error: 'El estado de la oferta no es válido.' };
+    }
+  }
+
+  if (values.modalidad !== undefined) {
+    const modality = normalizeModality(values.modalidad);
+    if (modality === undefined) {
+      return { error: `La modalidad debe ser ${MODALITIES.join(', ')}.` };
+    }
+    values.modalidad = modality;
+  }
+
+  if (values.contacto_email && !isValidEmail(values.contacto_email)) {
+    return { error: 'El correo de contacto no tiene un formato válido.' };
+  }
+
+  if (values.fecha_cierre && new Date(values.fecha_cierre) <= new Date()) {
+    return { error: 'La fecha de cierre debe ser una fecha futura válida.' };
+  }
+
+  return { values };
+}
+
+// Reglas que dependen de varios campos; se evalúan sobre la oferta resultante.
+function validateOfferState(offer) {
+  if (offer.remuneracion !== null && offer.remuneracion_maxima !== null
+    && Number(offer.remuneracion_maxima) < Number(offer.remuneracion)) {
+    return 'La remuneración máxima no puede ser menor que la mínima.';
+  }
+
+  if (offer.fecha_cierre && offer.fecha_publicacion
+    && new Date(offer.fecha_cierre) < new Date(offer.fecha_publicacion)) {
+    return 'La fecha de cierre no puede ser anterior a la de publicación.';
+  }
+
+  return null;
+}
 
 // #20 HU-16: recomienda ofertas publicadas ordenadas por afinidad con el perfil.
 // La puntuación combina área, ubicación, requisitos y tipo de oferta. No excluye
 // ofertas: las ordena, para que el candidato siempre vea todo el catálogo.
-function scoreOffer(offer, profile) {
+export function scoreOffer(offer, profile) {
   let score = 0;
 
   const normalize = (value) => String(value ?? '').trim().toLowerCase();
@@ -165,86 +269,72 @@ export async function createOfferController(request, response) {
     return response.status(403).json({ ok: false, message: 'Solo una organización puede publicar ofertas.' });
   }
 
-  const payload = request.body ?? {};
-  const title = normalizeString(getBodyValue(payload, ['titulo', 'title']));
-  const description = normalizeString(getBodyValue(payload, ['descripcion', 'description']));
-  const type = normalizeString(getBodyValue(payload, ['tipo', 'type']));
-  const status = normalizeString(getBodyValue(payload, ['estado', 'status'])) ?? 'BORRADOR';
-  const location = normalizeString(getBodyValue(payload, ['ubicacion', 'location']));
-  const modality = normalizeString(getBodyValue(payload, ['modalidad', 'modality']));
-  const area = normalizeString(getBodyValue(payload, ['area'])) ?? 'General';
-  const requirements = normalizeStringList(getBodyValue(payload, ['requisitos', 'requirements']));
-  const duration = normalizeString(getBodyValue(payload, ['duracion', 'duration']));
-  const schedule = normalizeString(getBodyValue(payload, ['horario', 'schedule']));
-  const contactEmail = normalizeString(getBodyValue(payload, ['contactoEmail', 'contact_email', 'contact']));
-  const remuneration = normalizeNumber(getBodyValue(payload, ['remuneracion', 'salary', 'salario', 'salaryMin']));
-  const remunerationMax = normalizeNumber(getBodyValue(payload, ['remuneracionMaxima', 'remuneracion_maxima', 'salaryMax']));
-  const publicationDate = getBodyValue(payload, ['fechaPublicacion', 'fecha_publicacion', 'publishedAt']) ?? null;
-  const closeDate = getBodyValue(payload, ['fechaCierre', 'fecha_cierre', 'closeAt']) ?? null;
+  const parsed = parseOfferPayload(request.body ?? {});
+  if (parsed.error) {
+    return response.status(400).json({ ok: false, message: parsed.error });
+  }
 
-  if (!title || !description || !type) {
+  const offer = {
+    titulo: null,
+    descripcion: null,
+    tipo: null,
+    ubicacion: null,
+    modalidad: null,
+    requisitos: [],
+    duracion: null,
+    horario: null,
+    contacto_email: null,
+    remuneracion: null,
+    remuneracion_maxima: null,
+    fecha_publicacion: null,
+    fecha_cierre: null,
+    ...parsed.values,
+    estado: parsed.values.estado ?? 'BORRADOR',
+    area: parsed.values.area ?? 'General',
+  };
+
+  if (!offer.titulo || !offer.descripcion || !offer.tipo) {
     return response.status(400).json({
       ok: false,
       message: 'Se requieren título, descripción y tipo de oferta.',
     });
   }
 
-  if (!OFFER_TYPES.includes(type.toUpperCase())) {
-    return response.status(400).json({
-      ok: false,
-      message: 'El tipo de oferta debe ser PRACTICA, EMPLEO o EMPLEO_PUBLICO.',
-    });
+  // Una oferta publicada siempre registra cuándo se publicó.
+  if (offer.estado === 'PUBLICADA' && !offer.fecha_publicacion) {
+    offer.fecha_publicacion = new Date().toISOString();
   }
 
-  if (!OFFER_STATUSES.includes(status.toUpperCase())) {
-    return response.status(400).json({
-      ok: false,
-      message: 'El estado de la oferta no es válido.',
-    });
-  }
-
-  if (closeDate && (!Number.isFinite(new Date(closeDate).getTime()) || new Date(closeDate) <= new Date())) {
-    return response.status(400).json({ ok: false, message: 'La fecha de cierre debe ser una fecha futura válida.' });
+  const stateError = validateOfferState(offer);
+  if (stateError) {
+    return response.status(400).json({ ok: false, message: stateError });
   }
 
   try {
     const result = await pool.query(
       `INSERT INTO ofertas (
-        organizacion_id,
-        titulo,
-        descripcion,
-        tipo,
-        estado,
-        ubicacion,
-        modalidad,
-        area,
-        requisitos,
-        duracion,
-        horario,
-        contacto_email,
-        remuneracion,
-        remuneracion_maxima,
-        fecha_publicacion,
-        fecha_cierre
+        organizacion_id, titulo, descripcion, tipo, estado, ubicacion, modalidad, area,
+        requisitos, duracion, horario, contacto_email, remuneracion, remuneracion_maxima,
+        fecha_publicacion, fecha_cierre
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *`,
       [
         organizationId,
-        title,
-        description,
-        type.toUpperCase(),
-        status.toUpperCase(),
-        location,
-        modality,
-        area,
-        requirements,
-        duration,
-        schedule,
-        contactEmail,
-        remuneration,
-        remunerationMax,
-        publicationDate ?? null,
-        closeDate ?? null,
+        offer.titulo,
+        offer.descripcion,
+        offer.tipo,
+        offer.estado,
+        offer.ubicacion,
+        offer.modalidad,
+        offer.area,
+        offer.requisitos,
+        offer.duracion,
+        offer.horario,
+        offer.contacto_email,
+        offer.remuneracion,
+        offer.remuneracion_maxima,
+        offer.fecha_publicacion,
+        offer.fecha_cierre,
       ]
     );
 
@@ -255,6 +345,8 @@ export async function createOfferController(request, response) {
   }
 }
 
+// Actualización parcial: solo cambian los campos enviados. Los campos opcionales
+// pueden vaciarse enviando null o una cadena vacía; los obligatorios no.
 export async function updateOfferController(request, response) {
   const organizationId = await getOrganizationProfileId(request.auth.sub);
   const { id } = request.params;
@@ -263,26 +355,20 @@ export async function updateOfferController(request, response) {
     return response.status(403).json({ ok: false, message: 'Solo una organización puede actualizar ofertas.' });
   }
 
-  const payload = request.body ?? {};
-  const title = getBodyValue(payload, ['titulo', 'title']);
-  const description = getBodyValue(payload, ['descripcion', 'description']);
-  const type = getBodyValue(payload, ['tipo', 'type']);
-  const status = getBodyValue(payload, ['estado', 'status']);
-  const location = getBodyValue(payload, ['ubicacion', 'location']);
-  const modality = getBodyValue(payload, ['modalidad', 'modality']);
-  const area = getBodyValue(payload, ['area']);
-  const requirements = getBodyValue(payload, ['requisitos', 'requirements']);
-  const duration = getBodyValue(payload, ['duracion', 'duration']);
-  const schedule = getBodyValue(payload, ['horario', 'schedule']);
-  const contactEmail = getBodyValue(payload, ['contactoEmail', 'contact_email', 'contact']);
-  const remuneration = normalizeNumber(getBodyValue(payload, ['remuneracion', 'salary', 'salario', 'salaryMin']));
-  const remunerationMax = normalizeNumber(getBodyValue(payload, ['remuneracionMaxima', 'remuneracion_maxima', 'salaryMax']));
-  const publicationDate = getBodyValue(payload, ['fechaPublicacion', 'fecha_publicacion', 'publishedAt']);
-  const closeDate = getBodyValue(payload, ['fechaCierre', 'fecha_cierre', 'closeAt']);
+  const parsed = parseOfferPayload(request.body ?? {});
+  if (parsed.error) {
+    return response.status(400).json({ ok: false, message: parsed.error });
+  }
+
+  const changes = parsed.values;
+  const clearedRequired = REQUIRED_TEXT_FIELDS.find((column) => column in changes && !changes[column]);
+  if (clearedRequired) {
+    return response.status(400).json({ ok: false, message: 'Título, descripción, tipo, estado y área no pueden quedar vacíos.' });
+  }
 
   try {
     const existing = await pool.query(
-      `SELECT id FROM ofertas WHERE id = $1 AND organizacion_id = $2`,
+      `SELECT * FROM ofertas WHERE id = $1 AND organizacion_id = $2`,
       [id, organizationId]
     );
 
@@ -290,57 +376,28 @@ export async function updateOfferController(request, response) {
       return response.status(404).json({ ok: false, message: 'No se encontró una oferta propia para actualizar.' });
     }
 
-    if (type && !OFFER_TYPES.includes(String(type).toUpperCase())) {
-      return response.status(400).json({ ok: false, message: 'El tipo de oferta no es válido.' });
+    const current = existing.rows[0];
+    if (changes.estado === 'PUBLICADA' && !current.fecha_publicacion && !changes.fecha_publicacion) {
+      changes.fecha_publicacion = new Date().toISOString();
     }
 
-    if (status && !OFFER_STATUSES.includes(String(status).toUpperCase())) {
-      return response.status(400).json({ ok: false, message: 'El estado de la oferta no es válido.' });
+    const stateError = validateOfferState({ ...current, ...changes });
+    if (stateError) {
+      return response.status(400).json({ ok: false, message: stateError });
     }
 
-    if (closeDate && (!Number.isFinite(new Date(closeDate).getTime()) || new Date(closeDate) <= new Date())) {
-      return response.status(400).json({ ok: false, message: 'La fecha de cierre debe ser una fecha futura válida.' });
+    const columns = Object.keys(changes);
+    if (columns.length === 0) {
+      return response.json({ ok: true, offer: current });
     }
 
+    const assignments = columns.map((column, index) => `${column} = $${index + 1}`);
     const result = await pool.query(
       `UPDATE ofertas
-       SET titulo = COALESCE($1, titulo),
-           descripcion = COALESCE($2, descripcion),
-           tipo = COALESCE($3, tipo),
-           estado = COALESCE($4, estado),
-           ubicacion = COALESCE($5, ubicacion),
-           modalidad = COALESCE($6, modalidad),
-           area = COALESCE($7, area),
-           requisitos = COALESCE($8, requisitos),
-           duracion = COALESCE($9, duracion),
-           horario = COALESCE($10, horario),
-           contacto_email = COALESCE($11, contacto_email),
-           remuneracion = COALESCE($12, remuneracion),
-           remuneracion_maxima = COALESCE($13, remuneracion_maxima),
-           fecha_publicacion = COALESCE($14, fecha_publicacion),
-           fecha_cierre = COALESCE($15, fecha_cierre),
-           updated_at = NOW()
-       WHERE id = $16 AND organizacion_id = $17
+       SET ${assignments.join(', ')}, updated_at = NOW()
+       WHERE id = $${columns.length + 1} AND organizacion_id = $${columns.length + 2}
        RETURNING *`,
-      [
-        normalizeString(title),
-        normalizeString(description),
-        type ? String(type).toUpperCase() : null,
-        status ? String(status).toUpperCase() : null,
-        normalizeString(location),
-        normalizeString(modality),
-        normalizeString(area),
-        requirements === undefined ? null : normalizeStringList(requirements),
-        normalizeString(duration),
-        normalizeString(schedule),
-        normalizeString(contactEmail),
-        remuneration,
-        remunerationMax,
-        publicationDate ?? null,
-        closeDate ?? null,
-        id,
-        organizationId,
-      ]
+      [...columns.map((column) => changes[column]), id, organizationId]
     );
 
     return response.json({ ok: true, offer: result.rows[0] });

@@ -9,8 +9,9 @@ import {
   updateOfferController,
 } from '../controllers/offers.controller.js';
 import { authenticate, requireRole } from '../middleware/auth.middleware.js';
+import { registerIdParams } from '../utils/params.js';
 
-const offersRouter = Router();
+const offersRouter = registerIdParams(Router());
 
 offersRouter.get('/', listOffersController);
 offersRouter.get('/recommended', authenticate, requireRole('USUARIO'), listRecommendedOffersController);

@@ -242,7 +242,7 @@ export async function loginController(request, response) {
     const userResult = await pool.query(
       `SELECT u.id, u.email, u.password_hash, u.nombre_completo, u.telefono, u.activo,
               COALESCE(array_agg(DISTINCT r.nombre ORDER BY r.nombre) FILTER (WHERE r.nombre IS NOT NULL), ARRAY[]::VARCHAR[]) AS roles,
-              COALESCE(array_agg(DISTINCT p.tipo) FILTER (WHERE p.tipo IS NOT NULL), ARRAY[]::profile_type[]) AS profile_types
+              COALESCE(array_agg(DISTINCT p.tipo::text) FILTER (WHERE p.tipo IS NOT NULL), ARRAY[]::text[]) AS profile_types
        FROM usuarios u
        LEFT JOIN usuario_roles ur ON ur.usuario_id = u.id
        LEFT JOIN roles r ON r.id = ur.rol_id

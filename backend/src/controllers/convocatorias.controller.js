@@ -1,5 +1,5 @@
 import { pool } from '../config/database.js';
-import { getBodyValue, normalizeString, toNullableString } from '../utils/payload.js';
+import { getBodyValue, hasBodyValue, normalizeString, toNullableString } from '../utils/payload.js';
 
 // #18 HU-14: convocatorias públicas (Fase 4).
 // Lectura abierta a cualquier usuario; creación y edición solo para
@@ -12,7 +12,7 @@ function isValidDate(value) {
 export async function listConvocatoriasController(_request, response) {
   try {
     const result = await pool.query(
-      `SELECT c.*, COUNT(o.id) AS total_ofertas
+      `SELECT c.*, COUNT(o.id)::int AS total_ofertas
        FROM convocatorias c
        LEFT JOIN ofertas o ON o.convocatoria_id = c.id
        GROUP BY c.id
@@ -31,7 +31,7 @@ export async function getConvocatoriaByIdController(request, response) {
 
   try {
     const result = await pool.query(
-      `SELECT c.*, COUNT(o.id) AS total_ofertas
+      `SELECT c.*, COUNT(o.id)::int AS total_ofertas
        FROM convocatorias c
        LEFT JOIN ofertas o ON o.convocatoria_id = c.id
        WHERE c.id = $1
@@ -112,9 +112,9 @@ export async function updateConvocatoriaController(request, response) {
       [
         titulo,
         descripcion,
-        getBodyValue(payload, ['fechaInicio', 'fecha_inicio']) !== undefined,
+        hasBodyValue(payload, ['fechaInicio', 'fecha_inicio']),
         fechaInicio,
-        getBodyValue(payload, ['fechaFin', 'fecha_fin']) !== undefined,
+        hasBodyValue(payload, ['fechaFin', 'fecha_fin']),
         fechaFin,
         id,
       ]
@@ -126,6 +126,10 @@ export async function updateConvocatoriaController(request, response) {
 
     return response.json({ ok: true, convocatoria: result.rows[0] });
   } catch (error) {
+    // La fecha enviada choca con la que ya estaba guardada (restricción de la tabla).
+    if (error?.code === '23514') {
+      return response.status(400).json({ ok: false, message: 'La fecha de fin no puede ser anterior a la de inicio.' });
+    }
     console.error('updateConvocatoriaController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo actualizar la convocatoria.' });
   }
@@ -151,24 +155,39 @@ export async function deleteConvocatoriaController(request, response) {
   }
 }
 
-// Asocia o desasocia una oferta a una convocatoria.
-// Solo la organización propietaria de la oferta o un funcionario puede hacerlo.
-export async function assignOfferToConvocatoriaController(request, response) {
-  const { id, offerId } = request.params;
-  const payload = request.body ?? {};
-  const rawConvocatoriaId = getBodyValue(payload, ['convocatoriaId', 'convocatoria_id']);
-  const convocatoriaId = rawConvocatoriaId === null ? null : Number(rawConvocatoriaId);
-
-  if (rawConvocatoriaId !== null && !Number.isInteger(convocatoriaId)) {
-    return response.status(400).json({ ok: false, message: 'La convocatoria indicada no es válida.' });
-  }
+export async function listConvocatoriaOffersController(request, response) {
+  const { id } = request.params;
 
   try {
-    if (convocatoriaId !== null) {
-      const exists = await pool.query('SELECT id FROM convocatorias WHERE id = $1', [convocatoriaId]);
-      if (exists.rowCount === 0) {
-        return response.status(404).json({ ok: false, message: 'Convocatoria no encontrada.' });
-      }
+    const exists = await pool.query('SELECT id FROM convocatorias WHERE id = $1', [id]);
+    if (exists.rowCount === 0) {
+      return response.status(404).json({ ok: false, message: 'Convocatoria no encontrada.' });
+    }
+
+    const result = await pool.query(
+      `SELECT o.*, org.razon_social AS empresa, org.verificada
+       FROM ofertas o
+       INNER JOIN organizaciones org ON org.perfil_id = o.organizacion_id
+       WHERE o.convocatoria_id = $1 AND o.estado = 'PUBLICADA'
+       ORDER BY o.created_at DESC`,
+      [id]
+    );
+
+    return response.json({ ok: true, offers: result.rows });
+  } catch (error) {
+    console.error('listConvocatoriaOffersController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudieron listar las ofertas de la convocatoria.' });
+  }
+}
+
+// Asocia la oferta :offerId a la convocatoria :id.
+export async function assignOfferToConvocatoriaController(request, response) {
+  const { id, offerId } = request.params;
+
+  try {
+    const exists = await pool.query('SELECT id FROM convocatorias WHERE id = $1', [id]);
+    if (exists.rowCount === 0) {
+      return response.status(404).json({ ok: false, message: 'Convocatoria no encontrada.' });
     }
 
     const result = await pool.query(
@@ -176,7 +195,7 @@ export async function assignOfferToConvocatoriaController(request, response) {
        SET convocatoria_id = $1, updated_at = NOW()
        WHERE id = $2
        RETURNING id, convocatoria_id`,
-      [convocatoriaId, offerId]
+      [id, offerId]
     );
 
     if (result.rowCount === 0) {
@@ -187,5 +206,29 @@ export async function assignOfferToConvocatoriaController(request, response) {
   } catch (error) {
     console.error('assignOfferToConvocatoriaController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo asociar la oferta a la convocatoria.' });
+  }
+}
+
+// Quita la oferta :offerId de la convocatoria :id.
+export async function unassignOfferFromConvocatoriaController(request, response) {
+  const { id, offerId } = request.params;
+
+  try {
+    const result = await pool.query(
+      `UPDATE ofertas
+       SET convocatoria_id = NULL, updated_at = NOW()
+       WHERE id = $1 AND convocatoria_id = $2
+       RETURNING id, convocatoria_id`,
+      [offerId, id]
+    );
+
+    if (result.rowCount === 0) {
+      return response.status(404).json({ ok: false, message: 'La oferta no pertenece a esta convocatoria.' });
+    }
+
+    return response.json({ ok: true, offer: result.rows[0] });
+  } catch (error) {
+    console.error('unassignOfferFromConvocatoriaController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudo quitar la oferta de la convocatoria.' });
   }
 }
