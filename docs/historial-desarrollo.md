@@ -372,6 +372,11 @@ Decisiones: los archivos se guardan en PostgreSQL (`BYTEA`) porque el disco de R
 
 El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-archivos.md).
 
+### Mejoras de interfaz posteriores
+
+- `feat(frontend)`: los filtros del catálogo del estudiante pasan de `<select>` nativos a menús desplegables accesibles (`components/FilterDropdown.tsx`). Cada opción muestra cuántas ofertas quedarían, "Solo guardadas" es un botón y una fila de "Filtros activos" permite quitar cada filtro. "Limpiar filtros" también restablece el orden. Dos pruebas nuevas en `screens.test.tsx`.
+- `docs`: [`diseno/brief-claude-design.md`](diseno/brief-claude-design.md), un brief de todas las pantallas para rediseñar SIPU con Claude Design.
+
 ## 18. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.
