@@ -1,7 +1,9 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/database.js';
 import { env } from '../config/env.js';
+import { sendEmail } from '../utils/mailer.js';
 import { getBodyValue } from '../utils/payload.js';
 
 const PROFILE_TYPES = new Map([
@@ -31,7 +33,7 @@ function normalizeProfileType(value) {
   return PROFILE_TYPES.get(normalized) ?? String(value).trim().toUpperCase();
 }
 
-function buildToken(user) {
+export function buildToken(user) {
   return jwt.sign(
     {
       sub: String(user.id),
@@ -39,6 +41,7 @@ function buildToken(user) {
       nombreCompleto: user.nombre_completo,
       roles: user.roles ?? [],
       profileTypes: user.profileTypes ?? [],
+      ver: Number(user.token_version ?? 0),
     },
     env.jwtSecret,
     { expiresIn: env.jwtExpiresIn }
@@ -240,7 +243,7 @@ export async function loginController(request, response) {
 
   try {
     const userResult = await pool.query(
-      `SELECT u.id, u.email, u.password_hash, u.nombre_completo, u.telefono, u.activo,
+      `SELECT u.id, u.email, u.password_hash, u.nombre_completo, u.telefono, u.activo, u.token_version,
               COALESCE(array_agg(DISTINCT r.nombre ORDER BY r.nombre) FILTER (WHERE r.nombre IS NOT NULL), ARRAY[]::VARCHAR[]) AS roles,
               COALESCE(array_agg(DISTINCT p.tipo::text) FILTER (WHERE p.tipo IS NOT NULL), ARRAY[]::text[]) AS profile_types
        FROM usuarios u
@@ -248,7 +251,7 @@ export async function loginController(request, response) {
        LEFT JOIN roles r ON r.id = ur.rol_id
        LEFT JOIN perfiles p ON p.usuario_id = u.id
        WHERE LOWER(u.email) = LOWER($1)
-       GROUP BY u.id, u.email, u.password_hash, u.nombre_completo, u.telefono, u.activo`,
+       GROUP BY u.id, u.email, u.password_hash, u.nombre_completo, u.telefono, u.activo, u.token_version`,
       [email]
     );
 
@@ -295,3 +298,103 @@ export async function loginController(request, response) {
   }
 }
 
+
+const RESET_TOKEN_TTL_MINUTES = 60;
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+// Responde siempre lo mismo para no revelar qué correos están registrados.
+export async function forgotPasswordController(request, response) {
+  const email = normalizeEmail(getBodyValue(request.body ?? {}, ['email', 'correo']));
+  const genericResponse = {
+    ok: true,
+    message: 'Si el correo está registrado, recibirás un enlace para restablecer la contraseña.',
+  };
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return response.status(400).json({ ok: false, message: 'El email no tiene un formato válido.' });
+  }
+
+  try {
+    const userResult = await pool.query(
+      'SELECT id, nombre_completo FROM usuarios WHERE LOWER(email) = LOWER($1) AND activo',
+      [email]
+    );
+    if (userResult.rowCount === 0) return response.json(genericResponse);
+
+    const user = userResult.rows[0];
+    const token = crypto.randomBytes(32).toString('hex');
+
+    // Solo el enlace más reciente sigue siendo válido.
+    await pool.query('UPDATE password_resets SET used_at = NOW() WHERE usuario_id = $1 AND used_at IS NULL', [user.id]);
+    await pool.query(
+      `INSERT INTO password_resets (usuario_id, token_hash, expires_at)
+       VALUES ($1, $2, NOW() + ($3 || ' minutes')::interval)`,
+      [user.id, hashToken(token), String(RESET_TOKEN_TTL_MINUTES)]
+    );
+
+    const link = `${env.appUrl}/?reset=${token}`;
+    // Un fallo del proveedor se registra pero no cambia la respuesta, para no
+    // revelar que el correo existe.
+    await sendEmail({
+      to: email,
+      subject: 'Restablece tu contraseña de SIPU',
+      text: `Hola ${user.nombre_completo}:\n\nPara crear una nueva contraseña abre este enlace (vence en ${RESET_TOKEN_TTL_MINUTES} minutos):\n${link}\n\nSi no solicitaste el cambio, ignora este mensaje.`,
+      html: `<p>Hola ${escapeHtml(user.nombre_completo)}:</p><p>Para crear una nueva contraseña abre este enlace (vence en ${RESET_TOKEN_TTL_MINUTES} minutos):</p><p><a href="${link}">Restablecer contraseña</a></p><p>Si no solicitaste el cambio, ignora este mensaje.</p>`,
+    }).catch((error) => console.error('forgotPassword sendEmail error:', error));
+
+    return response.json(genericResponse);
+  } catch (error) {
+    console.error('forgotPasswordController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudo procesar la solicitud.' });
+  }
+}
+
+export async function resetPasswordController(request, response) {
+  const payload = request.body ?? {};
+  const token = String(getBodyValue(payload, ['token']) ?? '').trim();
+  const password = getBodyValue(payload, ['password', 'contrasena', 'newPassword']);
+
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    return response.status(400).json({ ok: false, message: 'El enlace de recuperación no es válido.' });
+  }
+
+  if (!password || String(password).length < 8) {
+    return response.status(400).json({ ok: false, message: 'La contraseña debe tener al menos 8 caracteres.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const reset = await client.query(
+      `SELECT id, usuario_id FROM password_resets
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+       FOR UPDATE`,
+      [hashToken(token)]
+    );
+
+    if (reset.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return response.status(400).json({ ok: false, message: 'El enlace de recuperación venció o ya fue usado. Solicita uno nuevo.' });
+    }
+
+    const passwordHash = await bcrypt.hash(String(password), 10);
+    await client.query(
+      `UPDATE usuarios SET password_hash = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2`,
+      [passwordHash, reset.rows[0].usuario_id]
+    );
+    await client.query('UPDATE password_resets SET used_at = NOW() WHERE id = $1', [reset.rows[0].id]);
+    await client.query('COMMIT');
+
+    return response.json({ ok: true, message: 'Contraseña restablecida. Ya puedes iniciar sesión.' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('resetPasswordController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudo restablecer la contraseña.' });
+  } finally {
+    client.release();
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}

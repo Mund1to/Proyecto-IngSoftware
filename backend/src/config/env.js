@@ -23,4 +23,8 @@ export const env = {
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigins,
+  // URL pública del frontend; se usa en los enlaces de los correos.
+  appUrl: (process.env.APP_URL || corsOrigins[0] || 'http://localhost:5173').replace(/\/+$/, ''),
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  mailFrom: process.env.MAIL_FROM || 'SIPU <onboarding@resend.dev>',
 };

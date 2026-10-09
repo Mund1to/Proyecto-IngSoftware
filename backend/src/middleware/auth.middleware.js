@@ -7,7 +7,7 @@ import { env } from '../config/env.js';
 // o desactiva la cuenta, el cambio aplica de inmediato aunque el token siga vigente.
 export async function loadAccount(userId) {
   const result = await pool.query(
-    `SELECT u.activo,
+    `SELECT u.activo, u.token_version,
             COALESCE(array_agg(DISTINCT r.nombre) FILTER (WHERE r.nombre IS NOT NULL), ARRAY[]::VARCHAR[]) AS roles
      FROM usuarios u
      LEFT JOIN usuario_roles ur ON ur.usuario_id = u.id
@@ -54,6 +54,11 @@ export async function authenticate(request, response, next) {
 
     if (!account.activo) {
       return response.status(403).json({ ok: false, message: 'El usuario está inactivo.' });
+    }
+
+    // Un cambio o restablecimiento de contraseña cierra las sesiones anteriores.
+    if (Number(payload.ver ?? 0) !== Number(account.token_version ?? 0)) {
+      return response.status(401).json({ ok: false, message: 'La contraseña cambió. Inicia sesión nuevamente.' });
     }
 
     request.auth = { ...payload, roles: account.roles };

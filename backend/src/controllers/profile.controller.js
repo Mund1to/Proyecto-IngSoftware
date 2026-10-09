@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { buildToken } from './auth.controller.js';
 import { pool } from '../config/database.js';
 import { getBodyValue, hasBodyValue, toNullableString } from '../utils/payload.js';
 
@@ -49,7 +50,13 @@ async function findUserProfile(userId, client = pool) {
                 'cv_url', pc.cv_url
               )) FILTER (WHERE p.id IS NOT NULL),
               '[]'::json
-            ) AS perfiles
+            ) AS perfiles,
+            COALESCE((
+              SELECT json_agg(json_build_object('tipo', a.tipo, 'nombre', a.nombre, 'mime', a.mime, 'tamano', a.tamano, 'createdAt', a.created_at))
+              FROM archivos a
+              INNER JOIN perfiles pa ON pa.id = a.perfil_id
+              WHERE pa.usuario_id = u.id
+            ), '[]'::json) AS archivos
      FROM usuarios u
      LEFT JOIN usuario_roles ur ON ur.usuario_id = u.id
      LEFT JOIN roles r ON r.id = ur.rol_id
@@ -75,6 +82,7 @@ function serializeUser(user) {
     createdAt: user.created_at,
     roles: user.roles,
     perfiles: (user.perfiles ?? []).map(mapProfile),
+    archivos: user.archivos ?? [],
   };
 }
 
@@ -335,7 +343,7 @@ export async function changePasswordController(request, response) {
   }
 
   try {
-    const result = await pool.query('SELECT password_hash FROM usuarios WHERE id = $1', [request.auth.sub]);
+    const result = await pool.query('SELECT email, nombre_completo, password_hash FROM usuarios WHERE id = $1', [request.auth.sub]);
 
     if (result.rowCount === 0) {
       return response.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
@@ -347,9 +355,23 @@ export async function changePasswordController(request, response) {
     }
 
     const passwordHash = await bcrypt.hash(String(newPassword), 10);
-    await pool.query('UPDATE usuarios SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, request.auth.sub]);
+    // Incrementar token_version cierra las demás sesiones abiertas; se entrega
+    // un token nuevo para que esta sesión continúe.
+    const updated = await pool.query(
+      `UPDATE usuarios SET password_hash = $1, token_version = token_version + 1, updated_at = NOW()
+       WHERE id = $2 RETURNING token_version`,
+      [passwordHash, request.auth.sub]
+    );
+    const user = result.rows[0];
+    const token = buildToken({
+      id: request.auth.sub,
+      email: user.email,
+      nombre_completo: user.nombre_completo,
+      roles: request.auth.roles,
+      token_version: updated.rows[0].token_version,
+    });
 
-    return response.json({ ok: true, message: 'Contraseña actualizada.' });
+    return response.json({ ok: true, message: 'Contraseña actualizada.', token });
   } catch (error) {
     console.error('changePasswordController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo cambiar la contraseña.' });

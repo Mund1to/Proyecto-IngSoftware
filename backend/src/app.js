@@ -26,6 +26,7 @@ app.use(express.json({ limit: '1mb' }));
 // Un cliente que no envía UTF-8 deja caracteres de reemplazo (U+FFFD) en el
 // texto; se rechaza la petición en lugar de guardar datos dañados.
 function containsReplacementChar(value) {
+  if (Buffer.isBuffer(value)) return false;
   if (typeof value === 'string') return value.includes('�');
   if (Array.isArray(value)) return value.some(containsReplacementChar);
   if (value && typeof value === 'object') return Object.values(value).some(containsReplacementChar);
@@ -77,6 +78,10 @@ app.use('/api', (_request, response) => {
 });
 
 app.use((error, _request, response, _next) => {
+  if (error?.type === 'entity.too.large') {
+    return response.status(413).json({ ok: false, message: 'El archivo o la petición superan el tamaño máximo permitido.' });
+  }
+
   if (error?.type === 'entity.parse.failed') {
     return response.status(400).json({ ok: false, message: 'El cuerpo de la petición no es JSON válido.' });
   }

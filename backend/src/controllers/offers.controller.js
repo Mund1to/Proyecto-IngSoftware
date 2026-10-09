@@ -69,7 +69,7 @@ function parseOfferPayload(payload) {
   if (values.tipo) {
     values.tipo = values.tipo.toUpperCase();
     if (!OFFER_TYPES.includes(values.tipo)) {
-      return { error: 'El tipo de oferta debe ser PRACTICA, EMPLEO o EMPLEO_PUBLICO.' };
+      return { error: `El tipo de oferta debe ser ${OFFER_TYPES.join(', ')}.` };
     }
   }
 
@@ -128,8 +128,10 @@ export function scoreOffer(offer, profile) {
 
   const profileArea = normalize(profile.programa_academico ?? profile.resumen);
   const profileCity = normalize(profile.ubicacion);
-  const profileSkills = String(profile.resumen ?? '')
-    .split(/[,\n]/)
+  const profileSkills = [
+    ...String(profile.resumen ?? '').split(/[,\n]/),
+    ...(Array.isArray(profile.habilidades) ? profile.habilidades : []),
+  ]
     .map(normalize)
     .filter(Boolean);
 
@@ -149,6 +151,8 @@ export function scoreOffer(offer, profile) {
   const isStudent = profile.tipo === 'ESTUDIANTE';
   if (isStudent && offerType === 'practica') score += 20;
   if (!isStudent && (offerType === 'empleo' || offerType === 'empleo_publico')) score += 20;
+  // La formación es útil para cualquier perfil.
+  if (offerType === 'formacion') score += 10;
 
   return score;
 }
@@ -156,7 +160,8 @@ export function scoreOffer(offer, profile) {
 export async function listRecommendedOffersController(request, response) {
   try {
     const profileResult = await pool.query(
-      `SELECT p.tipo, pe.programa_academico, pc.resumen, pc.ubicacion
+      `SELECT p.tipo, pe.programa_academico, pc.resumen, pc.ubicacion,
+              COALESCE((SELECT array_agg(h.nombre::text) FROM perfil_habilidades h WHERE h.perfil_id = p.id), ARRAY[]::text[]) AS habilidades
        FROM perfiles p
        LEFT JOIN perfiles_estudiante pe ON pe.perfil_id = p.id
        LEFT JOIN perfiles_candidato pc ON pc.perfil_id = p.id

@@ -1,4 +1,4 @@
-export const OFFER_TYPES = ['PRACTICA', 'EMPLEO', 'EMPLEO_PUBLICO'];
+export const OFFER_TYPES = ['PRACTICA', 'EMPLEO', 'EMPLEO_PUBLICO', 'FORMACION'];
 export const OFFER_STATUSES = ['BORRADOR', 'PUBLICADA', 'CERRADA', 'CANCELADA'];
 export const MODALITIES = ['Presencial', 'Remota', 'Híbrida'];
 

@@ -1,5 +1,6 @@
 import { pool } from '../config/database.js';
 import { getOrganizationProfileId } from '../utils/profiles.js';
+import { sendStoredFile } from './profileDetails.controller.js';
 
 // Estados que puede asignar la organización. RETIRADA solo la aplica el candidato.
 const COMPANY_STATUSES = ['ENVIADA', 'EN_REVISION', 'PRESELECCIONADA', 'RECHAZADA', 'ACEPTADA'];
@@ -65,7 +66,14 @@ export async function listApplicationsForOfferController(request, response) {
     const result = await pool.query(
       `SELECT p.*, u.nombre_completo AS postulante_nombre, u.email AS postulante_email, u.telefono AS postulante_telefono,
               pf.tipo AS perfil_tipo, pe.programa_academico, pe.semestre, pe.universidad,
-              pc.resumen, pc.ubicacion AS candidato_ubicacion, pc.disponibilidad, pc.cv_url
+              pc.resumen, pc.ubicacion AS candidato_ubicacion, pc.disponibilidad, pc.cv_url,
+              EXISTS (SELECT 1 FROM archivos a WHERE a.perfil_id = pf.id AND a.tipo = 'CV') AS tiene_cv,
+              COALESCE((SELECT json_agg(json_build_object('titulo', e.titulo, 'institucion', e.institucion, 'periodo', e.periodo) ORDER BY e.orden, e.id)
+                        FROM perfil_educacion e WHERE e.perfil_id = pf.id), '[]'::json) AS educacion,
+              COALESCE((SELECT json_agg(json_build_object('cargo', x.cargo, 'empresa', x.empresa, 'periodo', x.periodo, 'descripcion', x.descripcion) ORDER BY x.orden, x.id)
+                        FROM perfil_experiencia x WHERE x.perfil_id = pf.id), '[]'::json) AS experiencia,
+              COALESCE((SELECT json_agg(h.nombre ORDER BY h.categoria, h.id)
+                        FROM perfil_habilidades h WHERE h.perfil_id = pf.id), '[]'::json) AS habilidades
        FROM postulaciones p
        INNER JOIN perfiles pf ON pf.id = p.candidato_id
        INNER JOIN usuarios u ON u.id = pf.usuario_id
@@ -221,5 +229,40 @@ export async function withdrawApplicationController(request, response) {
   } catch (error) {
     console.error('withdrawApplicationController error:', error);
     return response.status(500).json({ ok: false, message: 'No se pudo retirar la postulación.' });
+  }
+}
+
+// La organización dueña de la oferta descarga la hoja de vida del postulante.
+export async function getApplicationCvController(request, response) {
+  const { id } = request.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT o.organizacion_id, a.nombre, a.mime, a.tamano, a.contenido
+       FROM postulaciones p
+       INNER JOIN ofertas o ON o.id = p.oferta_id
+       LEFT JOIN archivos a ON a.perfil_id = p.candidato_id AND a.tipo = 'CV'
+       WHERE p.id = $1`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return response.status(404).json({ ok: false, message: 'Postulación no encontrada.' });
+    }
+
+    const row = result.rows[0];
+    const organizationProfileId = await getOrganizationProfileId(request.auth.sub);
+    if (String(organizationProfileId) !== String(row.organizacion_id)) {
+      return response.status(403).json({ ok: false, message: 'No tienes permisos para ver esta hoja de vida.' });
+    }
+
+    if (!row.contenido) {
+      return response.status(404).json({ ok: false, message: 'El candidato no ha subido una hoja de vida.' });
+    }
+
+    return sendStoredFile(response, row);
+  } catch (error) {
+    console.error('getApplicationCvController error:', error);
+    return response.status(500).json({ ok: false, message: 'No se pudo obtener la hoja de vida.' });
   }
 }

@@ -34,3 +34,10 @@ export const loginRateLimiter = createRateLimiter({
   keyGenerator: (request) => `${request.ip}:${String(request.body?.email ?? request.body?.correo ?? '').trim().toLowerCase()}`,
   message: 'Demasiados intentos de inicio de sesión. Espera unos minutos e inténtalo de nuevo.',
 });
+
+export const passwordResetRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyGenerator: (request) => `${request.ip}:${String(request.body?.email ?? request.body?.correo ?? '').trim().toLowerCase()}`,
+  message: 'Demasiadas solicitudes de recuperación. Espera unos minutos e inténtalo de nuevo.',
+});
