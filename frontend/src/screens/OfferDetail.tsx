@@ -1,22 +1,27 @@
 import { useState } from "react";
 import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
-import { formatDate } from "./StudentDashboard";
+import { daysUntil, formatDate } from "../lib/offers";
+import { useSavedOffers } from "../lib/useStoredList";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void; applyToOffer: (offer: Offer) => Promise<void> };
 
 export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
   const offer = state.selectedOffer;
   const [applied, setApplied] = useState(offer ? state.applications.some((item) => item.offerId === offer.id) : false);
-  const [saved, setSaved] = useState(false);
+  const [savedOffers, setSavedOffers] = useSavedOffers(state.currentUser?.id);
   const [confirming, setConfirming] = useState(false);
   const [success, setSuccess] = useState(false);
   const [applyError, setApplyError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   if (!offer) return null;
 
-  const closed = +new Date(offer.closeDate) < Date.now();
+  const saved = savedOffers.includes(offer.id);
+  const toggleSaved = () => setSavedOffers((current) => saved ? current.filter((id) => id !== offer.id) : [...current, offer.id]);
+  const closed = daysUntil(offer.closeDate) < 0;
   const submit = async () => {
     setApplyError("");
+    setSubmitting(true);
     try {
       await applyToOffer(offer);
       setApplied(true);
@@ -24,6 +29,8 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
       setSuccess(true);
     } catch (error) {
       setApplyError(error instanceof Error ? error.message : "No se pudo enviar la postulación.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -45,21 +52,22 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
         <div className="detail-layout">
           <div className="detail-content">
             <Info title="Remuneración"><p className="salary">{offer.salary} COP</p></Info>
-            <Info title="Fecha límite"><p>{formatDate(offer.closeDate)}</p></Info>
+            <Info title="Fecha límite"><p>{formatDate(offer.closeDate, "Sin fecha de cierre")}</p></Info>
             <Info title="Descripción"><p>{offer.description}</p></Info>
             <Info title="Requisitos">
-              <ul className="check-list">{offer.requirements.map((item) => <li key={item}>{item}</li>)}</ul>
+              <ul className="check-list">{offer.requirements.length ? offer.requirements.map((item, index) => <li key={index}>{item}</li>) : <li>Sin requisitos especificados.</li>}</ul>
             </Info>
             <div className="two-column-info">
               {offer.duration && <Info title="Duración"><p>{offer.duration}</p></Info>}
               {offer.schedule && <Info title="Horario"><p>{offer.schedule}</p></Info>}
+              {offer.contactEmail && <Info title="Contacto"><p>{offer.contactEmail}</p></Info>}
             </div>
           </div>
 
           <aside className="apply-card">
             <p className="eyebrow">Tu postulación</p>
             <h2>{applied ? "Postulación enviada" : "¿Te interesa esta práctica?"}</h2>
-            <p>{applied ? "Estado actual: En revisión. Te notificaremos cualquier cambio." : "Revisa tu perfil y confirma el envío de tu información."}</p>
+            <p>{applied ? "Puedes consultar el estado en Mis postulaciones." : "Revisa tu perfil y confirma el envío de tu información."}</p>
             {closed && !applied && <div className="form-error">Esta oferta cerró y ya no recibe postulaciones.</div>}
             {applyError && <div className="form-error" role="alert">{applyError}</div>}
             {applied ? (
@@ -67,8 +75,8 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
             ) : (
               <button className="button primary full" disabled={closed} onClick={() => setConfirming(true)}>Postularme</button>
             )}
-            <button className="button secondary full" onClick={() => setSaved(!saved)}>{saved ? "Oferta guardada" : "Guardar oferta"}</button>
-            <div className="share-note"><strong>Información compartida</strong><span>Perfil profesional, educación, habilidades y CV seleccionado.</span></div>
+            <button className="button secondary full" onClick={toggleSaved}>{saved ? "Oferta guardada" : "Guardar oferta"}</button>
+            <div className="share-note"><strong>Información compartida</strong><span>Nombre, correo, teléfono y datos académicos de tu perfil.</span></div>
           </aside>
         </div>
       </main>
@@ -78,10 +86,10 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
           <section className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onMouseDown={(e) => e.stopPropagation()}>
             <p className="eyebrow">Antes de enviar</p>
             <h2 id="confirm-title">Confirma tu postulación</h2>
-            <p>La empresa recibirá tu perfil SIPU y el siguiente documento:</p>
-            <div className="cv-row"><span aria-hidden="true">PDF</span><div><strong>Hoja de vida</strong><small>Revisa tu perfil antes de enviar la postulación.</small></div><button className="text-button" onClick={() => navigate("student-profile")}>Ver perfil</button></div>
+            <p>La empresa recibirá los datos de tu perfil SIPU:</p>
+            <div className="cv-row"><span aria-hidden="true">SIPU</span><div><strong>Tu perfil SIPU</strong><small>Revisa tu perfil antes de enviar la postulación.</small></div><button className="text-button" onClick={() => navigate("student-profile")}>Ver perfil</button></div>
             {applyError && <div className="form-error" role="alert">{applyError}</div>}
-            <div className="modal-actions"><button className="button secondary" onClick={() => setConfirming(false)}>Cancelar</button><button className="button primary" onClick={() => void submit()}>Confirmar postulación</button></div>
+            <div className="modal-actions"><button className="button secondary" onClick={() => setConfirming(false)}>Cancelar</button><button className="button primary" disabled={submitting} onClick={() => void submit()}>{submitting ? "Enviando..." : "Confirmar postulación"}</button></div>
           </section>
         </div>
       )}
@@ -91,7 +99,7 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
           <section className="modal success-modal" role="dialog" aria-modal="true">
             <div className="success-icon" aria-hidden="true">✓</div>
             <h2>Postulación enviada</h2>
-            <p>Bancolombia recibió tu perfil y CV. Puedes consultar el estado en cualquier momento.</p>
+            <p>{offer.company} recibió tu postulación. Puedes consultar el estado en cualquier momento.</p>
             <button className="button primary full" onClick={() => navigate("student-applications")}>Ver mi postulación</button>
             <button className="button secondary full" onClick={() => setSuccess(false)}>Permanecer aquí</button>
           </section>

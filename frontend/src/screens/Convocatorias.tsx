@@ -17,6 +17,8 @@ type Convocatoria = {
   total_ofertas: string | number;
 };
 
+type LinkedOffer = { id: number | string; titulo: string; empresa: string; convocatoria_id?: number | string | null };
+
 const emptyDraft = { titulo: "", descripcion: "", fechaInicio: "", fechaFin: "" };
 
 // #18 HU-14: gestión de convocatorias públicas (Fase 4).
@@ -26,6 +28,44 @@ export default function Convocatorias({ state, navigate }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [linked, setLinked] = useState<LinkedOffer[]>([]);
+  const [catalog, setCatalog] = useState<LinkedOffer[]>([]);
+  const [selectedOffer, setSelectedOffer] = useState("");
+
+  const loadOffers = async (id: number) => {
+    const [current, all] = await Promise.all([api.getConvocatoriaOffers(id), api.getOffers()]);
+    setLinked(current.offers ?? []);
+    setCatalog(all.offers ?? []);
+    setSelectedOffer("");
+  };
+
+  const toggleOffers = async (id: number) => {
+    if (openId === id) {
+      setOpenId(null);
+      return;
+    }
+    setError("");
+    try {
+      await loadOffers(id);
+      setOpenId(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudieron cargar las ofertas.");
+    }
+  };
+
+  const changeOffer = async (id: number, offerId: string | number, action: "add" | "remove") => {
+    if (!state.token) return;
+    setError("");
+    try {
+      if (action === "add") await api.assignOfferToConvocatoria(id, offerId, state.token);
+      else await api.unassignOfferFromConvocatoria(id, offerId, state.token);
+      await loadOffers(id);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar la convocatoria.");
+    }
+  };
 
   const load = () => {
     api.getConvocatorias()
@@ -79,10 +119,12 @@ export default function Convocatorias({ state, navigate }: Props) {
 
   const remove = async (id: number) => {
     if (!state.token) return;
+    if (!window.confirm("¿Eliminar esta convocatoria? Las ofertas asociadas quedarán sin convocatoria.")) return;
     setError("");
     try {
       await api.deleteConvocatoria(id, state.token);
       if (editingId === id) reset();
+      if (openId === id) setOpenId(null);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo eliminar la convocatoria.");
@@ -93,7 +135,7 @@ export default function Convocatorias({ state, navigate }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="company" navigate={navigate} activeScreen="convocatorias" userName={state.currentUser?.nombreCompleto ?? "Funcionario"} />
+      <NavBar role="admin" navigate={navigate} activeScreen="convocatorias" userName={state.currentUser?.nombreCompleto ?? "Funcionario"} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <h1 className="text-2xl font-bold text-[#0d2240] mb-1">Convocatorias públicas</h1>
@@ -154,11 +196,37 @@ export default function Convocatorias({ state, navigate }: Props) {
                       {convocatoria.fecha_fin && <span>Fin: {convocatoria.fecha_fin.slice(0, 10)}</span>}
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                    <button onClick={() => void toggleOffers(convocatoria.id)} aria-expanded={openId === convocatoria.id} className="text-xs font-semibold text-[#0d2240] border border-[#e2e8f0] rounded-lg px-3 py-1.5 hover:bg-[#f8fafc]">{openId === convocatoria.id ? "Ocultar ofertas" : "Ofertas"}</button>
                     <button onClick={() => startEdit(convocatoria)} className="text-xs font-semibold text-[#0d2240] border border-[#e2e8f0] rounded-lg px-3 py-1.5 hover:bg-[#f8fafc]">Editar</button>
                     <button onClick={() => void remove(convocatoria.id)} className="text-xs font-semibold text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50">Eliminar</button>
                   </div>
                 </div>
+                {openId === convocatoria.id && (
+                  <div className="mt-5 pt-4 border-t border-[#f1f5f9]">
+                    {linked.length === 0 ? (
+                      <p className="text-sm text-[#64748b] mb-3">No hay ofertas publicadas asociadas.</p>
+                    ) : (
+                      <ul className="space-y-2 mb-4">
+                        {linked.map((offer) => (
+                          <li key={offer.id} className="flex items-center justify-between gap-3 text-sm">
+                            <span><strong className="text-[#0d2240]">{offer.titulo}</strong> <span className="text-[#64748b]">· {offer.empresa}</span></span>
+                            <button onClick={() => void changeOffer(convocatoria.id, offer.id, "remove")} className="text-xs font-semibold text-red-600 hover:underline">Quitar</button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="flex gap-2">
+                      <select aria-label="Oferta para asociar" value={selectedOffer} onChange={(e) => setSelectedOffer(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm">
+                        <option value="">Selecciona una oferta publicada</option>
+                        {catalog.filter((offer) => !linked.some((item) => String(item.id) === String(offer.id))).map((offer) => (
+                          <option key={offer.id} value={offer.id}>{offer.titulo} · {offer.empresa}{offer.convocatoria_id ? " (en otra convocatoria)" : ""}</option>
+                        ))}
+                      </select>
+                      <button disabled={!selectedOffer} onClick={() => void changeOffer(convocatoria.id, selectedOffer, "add")} className="button primary disabled:opacity-50">Asociar</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           )}

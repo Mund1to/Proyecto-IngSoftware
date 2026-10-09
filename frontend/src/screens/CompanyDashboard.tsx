@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import { api } from "../lib/api";
-import { formatDate } from "./StudentDashboard";
-import { companyInitials, formatSalary, toNumberOrZero } from "../lib/offers";
+import { formatDate } from "../lib/offers";
+import { companyInitials, daysUntil, formatSalary, normalizeModality, toNumberOrZero } from "../lib/offers";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Draft = {
@@ -27,8 +27,8 @@ const toUiOffer = (offer: any, fallbackCompany = "Empresa", fallbackVerified = f
   logo: companyInitials(offer.empresa ?? offer.company ?? "E"),
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
   area: offer.area ?? "General",
-  modality: (offer.modalidad ?? "Híbrida") as Offer["modality"],
-  closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
+  modality: normalizeModality(offer.modalidad ?? offer.modality),
+  closeDate: offer.fecha_cierre ?? offer.closeDate ?? "",
   salary: formatSalary(offer.remuneracion),
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
@@ -275,7 +275,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
         <section className="container company-content">
           {offersError && <div className="form-error mb-5" role="alert">{offersError}</div>}
           <div className="metric-grid">
-            <button onClick={() => offersListRef.current?.scrollIntoView({ behavior: "smooth" })}><span>Ofertas activas</span><strong>{offers.filter((offer) => offer.status === "PUBLICADA" && new Date(offer.closeDate).getTime() >= Date.now()).length}</strong><small>Ver publicaciones</small></button>
+            <button onClick={() => offersListRef.current?.scrollIntoView({ behavior: "smooth" })}><span>Ofertas activas</span><strong>{offers.filter((offer) => offer.status === "PUBLICADA" && daysUntil(offer.closeDate) >= 0).length}</strong><small>Ver publicaciones</small></button>
             <button disabled={!offers[0]} onClick={() => navigate("company-applicants", { selectedCompanyOffer: offers[0], applicantFilter: "Todos" })}><span>Postulantes</span><strong>{offers.reduce((total, offer) => total + (offer.applicants ?? 0), 0)}</strong><small>Ver todos</small></button>
             <button disabled={!offers[0]} onClick={() => navigate("company-applicants", { selectedCompanyOffer: offers[0], applicantFilter: "En revisión" })}><span>En revisión</span><strong>{pendingApplicants}</strong><small>Revisar candidatos</small></button>
           </div>

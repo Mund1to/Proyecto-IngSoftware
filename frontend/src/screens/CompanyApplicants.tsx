@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../App";
+import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import { api } from "../lib/api";
+import { formatDate } from "../lib/offers";
+import { toUiOffer } from "./StudentDashboard";
 
 type Props = {
   state: AppState;
-  navigate: (screen: Screen) => void;
+  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
   updateCandidateStatus: (id: number, status: "Aceptada" | "Rechazada") => Promise<void>;
 };
 
@@ -13,6 +15,7 @@ const statusConfig = {
   "En revisión": { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dot: "bg-amber-400" },
   Aceptada: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", dot: "bg-green-500" },
   Rechazada: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200", dot: "bg-red-400" },
+  Retirada: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400" },
 };
 
 const avatarGradients = [
@@ -22,8 +25,10 @@ const avatarGradients = [
   "linear-gradient(135deg, #0f766e 0%, #0d6b63 100%)",
 ];
 
-const mapStatus = (status?: string): "En revisión" | "Aceptada" | "Rechazada" => {
+const mapStatus = (status?: string): Candidate["status"] => {
   switch (status) {
+    case "RETIRADA":
+      return "Retirada";
     case "ACEPTADA":
       return "Aceptada";
     case "RECHAZADA":
@@ -33,7 +38,7 @@ const mapStatus = (status?: string): "En revisión" | "Aceptada" | "Rechazada" =
   }
 };
 
-type Candidate = { id: number; name: string; career: string; semester: string; university: string; email: string; phone: string; summary: string; cvUrl: string; city: string; appliedDate: string; status: "En revisión" | "Aceptada" | "Rechazada"; skills: string[] };
+type Candidate = { id: number; name: string; career: string; semester: string; university: string; email: string; phone: string; summary: string; cvUrl: string; city: string; appliedDate: string; status: "En revisión" | "Aceptada" | "Rechazada" | "Retirada"; skills: string[] };
 
 export default function CompanyApplicants({ state, navigate, updateCandidateStatus }: Props) {
   const offer = state.selectedCompanyOffer;
@@ -41,6 +46,18 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [filter, setFilter] = useState<"Todos" | "En revisión" | "Aceptada" | "Rechazada">(state.applicantFilter ?? "Todos");
   const [actionError, setActionError] = useState("");
+  const [myOffers, setMyOffers] = useState<Offer[] | null>(null);
+
+  // Sin oferta seleccionada (entrada desde el menú) se listan las ofertas propias.
+  useEffect(() => {
+    if (offer || !state.token) return;
+    api.getMyOffers(state.token)
+      .then((response) => setMyOffers((response.offers ?? []).map(toUiOffer)))
+      .catch((error) => {
+        setMyOffers([]);
+        setActionError(error instanceof Error ? error.message : "No se pudieron cargar tus ofertas.");
+      });
+  }, [offer, state.token]);
 
   useEffect(() => {
     if (!offer || !state.token) return;
@@ -90,6 +107,41 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
     rejected: candidates.filter((c) => c.status === "Rechazada").length,
   };
 
+  if (!offer) return (
+    <div className="min-h-screen bg-[#f0f4f8]">
+      <NavBar role="company" navigate={navigate} activeScreen="company-applicants" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <h1 className="text-2xl font-bold text-[#0d2240] mb-1">Postulantes</h1>
+        <p className="text-[#64748b] text-sm mb-6">Elige una oferta para revisar sus candidatos.</p>
+        {actionError && <div className="form-error mb-5" role="alert">{actionError}</div>}
+        {myOffers === null ? (
+          <p className="text-sm text-[#64748b]">Cargando ofertas...</p>
+        ) : myOffers.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#e8eef4] text-center py-16">
+            <p className="text-[#64748b] text-sm mb-4">Aún no has publicado ofertas.</p>
+            <button className="button primary" onClick={() => navigate("company-dashboard")}>Crear una oferta</button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {myOffers.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => navigate("company-applicants", { selectedCompanyOffer: item, applicantFilter: "Todos" })}
+                className="w-full text-left bg-white rounded-2xl border border-[#e8eef4] shadow-sm p-5 hover:border-[#94a3b8] flex items-center justify-between gap-4"
+              >
+                <span>
+                  <strong className="block text-[#0d2240]">{item.title}</strong>
+                  <small className="text-[#64748b]">{item.city} · {item.modality} · Cierra {formatDate(item.closeDate, "sin fecha")}</small>
+                </span>
+                <span className="text-sm font-semibold text-[#0d2240]">Ver postulantes →</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
       <NavBar role="company" navigate={navigate} activeScreen="company-applicants" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
@@ -106,7 +158,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
           }} />
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10">
           <button
-            onClick={() => navigate("company-dashboard")}
+            onClick={() => navigate("company-applicants", { selectedCompanyOffer: null })}
             className="flex items-center gap-1.5 text-white/45 hover:text-white/80 text-sm font-medium mb-5"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,7 +221,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
             return (
               <div key={candidate.id} className="bg-white rounded-2xl border border-[#e8eef4] shadow-sm overflow-hidden">
                 {/* Status strip */}
-                <div className={`h-1 ${candidate.status === "Aceptada" ? "bg-[#16a34a]" : candidate.status === "Rechazada" ? "bg-red-400" : "bg-amber-400"}`} />
+                <div className={`h-1 ${candidate.status === "Aceptada" ? "bg-[#16a34a]" : candidate.status === "Rechazada" ? "bg-red-400" : candidate.status === "Retirada" ? "bg-slate-300" : "bg-amber-400"}`} />
 
                 <div className="p-6">
                   <div className="flex items-start gap-4 mb-4">
@@ -241,6 +293,10 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                     ) : candidate.status === "Aceptada" ? (
                       <div className="flex-1 py-2.5 text-center text-sm font-bold text-[#16a34a] bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl">
                         ✓ Aceptado
+                      </div>
+                    ) : candidate.status === "Retirada" ? (
+                      <div className="flex-1 py-2.5 text-center text-sm font-semibold text-slate-500 bg-slate-50 border border-slate-100 rounded-xl">
+                        Retirada por el candidato
                       </div>
                     ) : (
                       <div className="flex-1 py-2.5 text-center text-sm font-semibold text-red-400 bg-red-50 border border-red-100 rounded-xl">

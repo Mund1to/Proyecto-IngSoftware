@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { daysUntil, formatDate } from "../lib/offers";
 import { AppState, Job, Screen } from "../App";
 import NavBar from "../components/NavBar";
 
@@ -33,10 +34,15 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
   const [applyError, setApplyError] = useState("");
   const [applying, setApplying] = useState(false);
 
-  if (!job) { navigate("external-dashboard"); return null; }
+  // Navegar durante el render provoca advertencias de React; se hace en un efecto.
+  useEffect(() => {
+    if (!job) navigate("external-dashboard");
+  }, [job, navigate]);
+
+  if (!job) return null;
 
   const bg = logoStyle[job.logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
-  const daysLeft = Math.ceil((new Date(job.closeDate).getTime() - Date.now()) / 86400000);
+  const daysLeft = daysUntil(job.closeDate);
 
   const handleApply = async () => {
     setApplying(true);
@@ -102,10 +108,10 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
               <div className="flex flex-wrap gap-2">
                 {[
                   { icon: "📍", label: job.city },
-                  { icon: modalityIcon[job.modality], label: job.modality },
+                  { icon: modalityIcon[job.modality] ?? "🔄", label: job.modality },
                   { icon: "📁", label: job.area },
-                  { icon: "🎯", label: `${job.experience} de experiencia` },
-                  { icon: "📅", label: `Cierre: ${new Date(job.closeDate).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}` },
+                  { icon: "🎯", label: job.experience },
+                  { icon: "📅", label: `Cierre: ${formatDate(job.closeDate, "sin fecha")}` },
                 ].map((c) => (
                   <span key={c.label} className="flex items-center gap-1.5 text-sm text-white/70 bg-white/8 border border-white/10 px-3 py-1.5 rounded-xl">
                     <span className="text-base leading-none">{c.icon}</span>
@@ -135,6 +141,7 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
             <div className="bg-white rounded-2xl border border-[#e8eef4] p-7">
               <h2 className="text-lg font-bold text-[#0d2240] mb-5">Requisitos</h2>
               <ul className="space-y-3">
+                {job.requirements.length === 0 && <li className="text-sm text-[#64748b]">Sin requisitos especificados.</li>}
                 {job.requirements.map((req, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-[#475569]">
                     <div className="w-5 h-5 rounded-full bg-[#dcfce7] flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -217,9 +224,9 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
 
               <div className="mt-5 pt-5 border-t border-[#f1f5f9] space-y-3">
                 {[
-                  { label: "Tipo de contrato", value: job.type },
+                  { label: "Tipo de oferta", value: job.type },
                   { label: "Modalidad", value: job.modality },
-                  { label: "Experiencia requerida", value: job.experience },
+                  { label: "Duración", value: job.experience },
                   { label: "Salario", value: job.salaryMin || job.salaryMax ? `${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}` : "A convenir" },
                 ].map((s) => (
                   <div key={s.label} className="flex justify-between text-sm">

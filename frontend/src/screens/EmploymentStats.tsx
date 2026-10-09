@@ -43,7 +43,10 @@ export default function EmploymentStats({ state, navigate }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!state.token) return;
+    if (!state.token) {
+      setLoading(false);
+      return;
+    }
     api.getEmploymentStats(state.token)
       .then((response) => {
         setStats(response.stats);
@@ -92,7 +95,7 @@ export default function EmploymentStats({ state, navigate }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="company" navigate={navigate} activeScreen="employment-stats" userName={state.currentUser?.nombreCompleto ?? "Funcionario"} />
+      <NavBar role="admin" navigate={navigate} activeScreen="employment-stats" userName={state.currentUser?.nombreCompleto ?? "Funcionario"} />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <h1 className="text-2xl font-bold text-[#0d2240] mb-1">Estadísticas de empleo</h1>

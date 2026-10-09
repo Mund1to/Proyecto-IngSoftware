@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { AppState, Screen } from "../App";
+import ChangePasswordCard from "../components/ChangePasswordCard";
 import NavBar from "../components/NavBar";
 import useStoredList from "../lib/useStoredList";
 
-type Props = { state: AppState; navigate: (screen: Screen) => void; updateStudentProfile: (payload: Record<string, unknown>) => Promise<void> };
+type Props = {
+  state: AppState;
+  navigate: (screen: Screen) => void;
+  updateStudentProfile: (payload: Record<string, unknown>) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+};
 
 const tabs = [
   { id: "info", label: "Info personal" },
@@ -13,7 +19,7 @@ const tabs = [
 ] as const;
 type Tab = (typeof tabs)[number]["id"];
 
-export default function StudentProfile({ state, navigate, updateStudentProfile }: Props) {
+export default function StudentProfile({ state, navigate, updateStudentProfile, changePassword }: Props) {
   const [cvName, setCvName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [fileError, setFileError] = useState("");
@@ -129,7 +135,7 @@ export default function StudentProfile({ state, navigate, updateStudentProfile }
                   )}
                 </div>
                 {fileError && <p className="mt-2 max-w-[180px] text-xs text-red-600" role="alert">{fileError}</p>}
-                {cvName && <p className="mt-2 max-w-[180px] text-[10px] text-[#64748b]">El archivo aún no se carga al servidor.</p>}
+                {cvName && <p className="mt-2 max-w-[180px] text-[10px] text-[#64748b]">El archivo queda en este dispositivo; SIPU todavía no almacena archivos.</p>}
               </div>
             </div>
 
@@ -150,7 +156,7 @@ export default function StudentProfile({ state, navigate, updateStudentProfile }
                 />
               </div>
               <p className="text-xs text-[#94a3b8] mt-2">
-                💡 Agrega experiencia laboral para llegar al 100% y destacar frente a las empresas
+                💡 Completa todos los datos de Info personal para llegar al 100% y destacar frente a las empresas
               </p>
             </div>
           </div>
@@ -180,6 +186,8 @@ export default function StudentProfile({ state, navigate, updateStudentProfile }
             {activeTab === "skills" && <SkillsTab profileId={profileId} />}
           </div>
         </div>
+
+        <ChangePasswordCard onChange={changePassword} />
       </div>
     </div>
   );

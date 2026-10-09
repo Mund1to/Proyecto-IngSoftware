@@ -3,7 +3,7 @@ import { AppState, Job, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import { api } from "../lib/api";
-import { companyInitials, toNumberOrZero } from "../lib/offers";
+import { companyInitials, daysUntil, normalizeModality, toNumberOrZero } from "../lib/offers";
 
 type Props = {
   state: AppState;
@@ -42,19 +42,19 @@ const logoStyle: Record<string, string> = {
 const fmt = (n: number) =>
   "$" + (n >= 1000000 ? (n / 1000000).toFixed(1).replace(".0", "") + "M" : (n / 1000) + "K");
 
-const mapOfferToJob = (offer: any): Job => ({
+export const mapOfferToJob = (offer: any): Job => ({
   id: Number(offer.id),
   title: offer.titulo ?? offer.title ?? "Oferta",
   company: offer.empresa ?? offer.company ?? "Empresa",
   logo: companyInitials(offer.empresa ?? offer.company ?? "E"),
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
   area: offer.area ?? "General",
-  modality: (offer.modalidad ?? "Híbrida") as Job["modality"],
+  modality: normalizeModality(offer.modalidad ?? offer.modality),
   type: offer.tipo === "PRACTICA" ? "Práctica" : (offer.tipo === "EMPLEO_PUBLICO" ? "Contrato" : "Tiempo completo"),
-  closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
+  closeDate: offer.fecha_cierre ?? offer.closeDate ?? "",
   salaryMin: toNumberOrZero(offer.remuneracion ?? offer.salaryMin),
   salaryMax: toNumberOrZero(offer.remuneracion_maxima ?? offer.remuneracionMaxima ?? offer.salaryMax ?? offer.remuneracion),
-  experience: offer.experiencia ?? "No especificada",
+  experience: offer.experiencia ?? offer.duracion ?? "No especificada",
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
   benefits: Array.isArray(offer.benefits) ? offer.benefits : [],
@@ -171,7 +171,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2.5 py-5 border-b border-[#e2e8f0]">
           <span className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wide mr-1">Filtrar:</span>
-          <Chip label="Área" value={area} options={AREAS} onChange={setArea} />
+          <Chip label="Área" value={area} options={[...new Set([...AREAS, ...jobs.map((job) => job.area)])]} onChange={setArea} />
           <Chip label="Modalidad" value={modality} options={MODALITIES} onChange={setModality} />
           <Chip label="Tipo" value={type} options={TYPES} onChange={setType} />
           {hasFilters && (
@@ -241,8 +241,8 @@ function Chip({ label, value, options, onChange }: {
 
 function JobCard({ job, isApplied, onClick }: { job: Job; isApplied: boolean; onClick: () => void }) {
   const bg = logoStyle[job.logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
-  const mod = modalityStyle[job.modality];
-  const daysLeft = Math.ceil((new Date(job.closeDate).getTime() - Date.now()) / 86400000);
+  const mod = modalityStyle[job.modality] ?? modalityStyle.Híbrida;
+  const daysLeft = daysUntil(job.closeDate);
 
   return (
     <button
@@ -272,7 +272,7 @@ function JobCard({ job, isApplied, onClick }: { job: Job; isApplied: boolean; on
           <span className={`w-1.5 h-1.5 rounded-full ${mod.dot}`} />
           {job.modality}
         </span>
-        <span className={`text-[11px] px-2.5 py-1 rounded-full font-semibold ${typeStyle[job.type]}`}>{job.type}</span>
+        <span className={`text-[11px] px-2.5 py-1 rounded-full font-semibold ${typeStyle[job.type] ?? "bg-slate-100 text-slate-600"}`}>{job.type}</span>
         <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-slate-100 text-slate-500">{job.area}</span>
       </div>
 
@@ -283,7 +283,7 @@ function JobCard({ job, isApplied, onClick }: { job: Job; isApplied: boolean; on
         </svg>
         <span>{job.city}</span>
         <span className="mx-1 opacity-40">·</span>
-        <span>{job.experience} exp.</span>
+        <span>{job.experience}</span>
         <span className="mx-1 opacity-40">·</span>
         <span>{job.applicants} aplicaron</span>
       </div>
@@ -294,7 +294,7 @@ function JobCard({ job, isApplied, onClick }: { job: Job; isApplied: boolean; on
             {job.salaryMin || job.salaryMax ? `${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}` : "A convenir"}
           </div>
           <div className={`text-[11px] mt-0.5 font-medium ${daysLeft <= 5 ? "text-red-500" : "text-[#94a3b8]"}`}>
-            {daysLeft > 0 ? (daysLeft <= 5 ? `⚠ Cierra en ${daysLeft}d` : `Cierra en ${daysLeft} días`) : "Cerrada"}
+            {!Number.isFinite(daysLeft) ? "Sin fecha de cierre" : daysLeft >= 0 ? (daysLeft <= 5 ? `⚠ Cierra en ${daysLeft}d` : `Cierra en ${daysLeft} días`) : "Cerrada"}
           </div>
         </div>
         {isApplied ? (

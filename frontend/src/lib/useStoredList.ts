@@ -11,8 +11,17 @@ export default function useStoredList<T>(key: string, initialValue: T[]): [T[], 
   });
 
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // Navegador sin almacenamiento disponible: la lista vive solo en memoria.
+    }
   }, [key, value]);
 
   return [value, setValue];
+}
+
+// Ofertas guardadas por el usuario, compartidas entre el catálogo y el detalle.
+export function useSavedOffers(userId: number | string | undefined) {
+  return useStoredList<number>(`sipu-saved-offers-${userId ?? "anon"}`, []);
 }

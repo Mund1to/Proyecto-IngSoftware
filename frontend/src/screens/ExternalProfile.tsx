@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppState, Screen } from "../App";
+import ChangePasswordCard from "../components/ChangePasswordCard";
 import NavBar from "../components/NavBar";
 import useStoredList from "../lib/useStoredList";
 
@@ -7,6 +8,7 @@ type Props = {
   state: AppState;
   navigate: (screen: Screen) => void;
   updateExternalProfile?: (payload: Record<string, unknown>) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 };
 
 const tabs = [
@@ -17,7 +19,7 @@ const tabs = [
 ] as const;
 type Tab = (typeof tabs)[number]["id"];
 
-export default function ExternalProfile({ state, navigate, updateExternalProfile }: Props) {
+export default function ExternalProfile({ state, navigate, updateExternalProfile, changePassword }: Props) {
   const [cvName, setCvName] = useState("");
   const [fileError, setFileError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("info");
@@ -142,7 +144,8 @@ export default function ExternalProfile({ state, navigate, updateExternalProfile
                   )}
                 </div>
                 {fileError && <p className="mt-2 max-w-[180px] text-xs text-red-600" role="alert">{fileError}</p>}
-                {cvName && <p className="mt-2 max-w-[180px] text-[10px] text-[#64748b]">El archivo aún no se carga al servidor.</p>}
+                {cvName && <p className="mt-2 max-w-[180px] text-[10px] text-[#64748b]">El archivo queda en este dispositivo. Para compartirlo con las empresas agrega un enlace en Info personal.</p>}
+                {user?.cvUrl && <a className="mt-2 block text-[11px] font-semibold text-blue-700 underline" href={user.cvUrl} target="_blank" rel="noreferrer">Ver hoja de vida enlazada</a>}
               </div>
             </div>
 
@@ -193,6 +196,8 @@ export default function ExternalProfile({ state, navigate, updateExternalProfile
             {activeTab === "skills" && <ExternalSkillsTab profileId={profileId} />}
           </div>
         </div>
+
+        <ChangePasswordCard onChange={changePassword} />
       </div>
     </div>
   );
@@ -204,6 +209,7 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
   const [ubicacion, setUbicacion] = useState(state.currentUser?.ubicacion ?? "");
   const [disponibilidad, setDisponibilidad] = useState(state.currentUser?.disponibilidad ?? "");
   const [resumen, setResumen] = useState(state.currentUser?.resumen ?? "");
+  const [cvUrl, setCvUrl] = useState(state.currentUser?.cvUrl ?? "");
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -214,12 +220,15 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
     setUbicacion(state.currentUser?.ubicacion ?? "");
     setDisponibilidad(state.currentUser?.disponibilidad ?? "");
     setResumen(state.currentUser?.resumen ?? "");
+    setCvUrl(state.currentUser?.cvUrl ?? "");
   }, [state.currentUser]);
 
   const handleSave = async () => {
     if (!onSave) return;
-    setLoading(true);
     setSaveError("");
+    if (!nombre.trim()) return setSaveError("El nombre completo es obligatorio.");
+    if (cvUrl.trim() && !/^https?:\/\//i.test(cvUrl.trim())) return setSaveError("El enlace de la hoja de vida debe empezar por http:// o https://.");
+    setLoading(true);
     try {
       await onSave({
         nombreCompleto: nombre,
@@ -227,6 +236,7 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
         ubicacion,
         disponibilidad,
         resumen,
+        cvUrl: cvUrl.trim(),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -293,7 +303,18 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Resumen / Perfil laboral</label>
+          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Enlace a tu hoja de vida (Drive, OneDrive, LinkedIn)</label>
+          <input
+            type="url"
+            value={cvUrl}
+            onChange={(e) => setCvUrl(e.target.value)}
+            placeholder="https://"
+            className="w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white focus:ring-3 focus:ring-[#0d2240]/8"
+            style={{ outline: "none" }}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Resumen / Perfil laboral (incluye tus habilidades separadas por comas)</label>
           <textarea
             rows={3}
             value={resumen}

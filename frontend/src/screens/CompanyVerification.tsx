@@ -51,12 +51,13 @@ export default function CompanyVerification({ state, navigate }: Props) {
 
   const changeStatus = async (organizationId: number, status: "APROBADA" | "RECHAZADA") => {
     if (!state.token) return;
+    const observaciones = status === "RECHAZADA" ? window.prompt("Motivo del rechazo (opcional)") ?? undefined : undefined;
     setUpdatingId(organizationId);
     setError("");
     try {
-      const response = await api.updateOrganizationVerification(organizationId, status, state.token);
+      const response = await api.updateOrganizationVerification(organizationId, status, state.token, observaciones);
       setOrganizations((current) => current.map((org) => org.organizacion_id === organizationId
-        ? { ...org, verificada: response.organization?.verificada ?? status === "APROBADA", verificacion_estado: status }
+        ? { ...org, verificada: response.organization?.verificada ?? status === "APROBADA", verificacion_estado: status, observaciones: observaciones ?? org.observaciones }
         : org));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo actualizar la verificación.");
@@ -69,7 +70,7 @@ export default function CompanyVerification({ state, navigate }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
-      <NavBar role="company" navigate={navigate} activeScreen="company-verification" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
+      <NavBar role="admin" navigate={navigate} activeScreen="company-verification" userName={state.currentUser?.nombreCompleto ?? "Administrador"} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">

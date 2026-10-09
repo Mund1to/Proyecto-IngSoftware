@@ -3,24 +3,25 @@ import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import { api } from "../lib/api";
-import { companyInitials, formatSalary, toNumberOrZero } from "../lib/offers";
+import { companyInitials, daysUntil, formatDate, formatSalary, isValidDate, normalizeModality, toNumberOrZero } from "../lib/offers";
+import { useSavedOffers } from "../lib/useStoredList";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Sort = "recent" | "closing" | "salary";
 
-const cities = ["Todas", "Bogotá", "Medellín", "Cali", "Sopó, Cundinamarca"];
+const cities = ["Todas", "Bogotá", "Medellín", "Cali", "Ibagué"];
 const areas = ["Todas", "Tecnología", "Marketing", "Contabilidad", "Recursos Humanos", "Producción"];
 const modalities = ["Todas", "Presencial", "Remota", "Híbrida"];
 
-const toUiOffer = (offer: any): Offer => ({
+export const toUiOffer = (offer: any): Offer => ({
   id: Number(offer.id),
   title: offer.titulo ?? offer.title ?? "Oferta",
   company: offer.empresa ?? offer.company ?? "Empresa",
   logo: companyInitials(offer.empresa ?? offer.company ?? "E"),
   city: offer.ubicacion ?? offer.city ?? "Bogotá",
   area: offer.area ?? "General",
-  modality: (offer.modalidad ?? "Híbrida") as Offer["modality"],
-  closeDate: offer.fecha_cierre ?? offer.closeDate ?? new Date().toISOString(),
+  modality: normalizeModality(offer.modalidad ?? offer.modality),
+  closeDate: offer.fecha_cierre ?? offer.closeDate ?? "",
   salary: formatSalary(offer.remuneracion),
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
@@ -29,6 +30,7 @@ const toUiOffer = (offer: any): Offer => ({
   verified: Boolean(offer.verificada),
   duration: offer.duracion,
   schedule: offer.horario,
+  contactEmail: offer.contacto_email,
   salaryMin: offer.remuneracion === null ? null : toNumberOrZero(offer.remuneracion),
   salaryMax: offer.remuneracion_maxima === null ? null : toNumberOrZero(offer.remuneracion_maxima),
 });
@@ -39,7 +41,8 @@ export default function StudentDashboard({ state, navigate }: Props) {
   const [modality, setModality] = useState("Todas");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
-  const [saved, setSaved] = useState<number[]>([]);
+  const [saved, setSaved] = useSavedOffers(state.currentUser?.id);
+  const [onlySaved, setOnlySaved] = useState(false);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loadError, setLoadError] = useState("");
 
@@ -77,17 +80,18 @@ export default function StudentDashboard({ state, navigate }: Props) {
     (city === "Todas" || offer.city === city) &&
     (area === "Todas" || offer.area === area) &&
     (modality === "Todas" || offer.modality === modality) &&
+    (!onlySaved || saved.includes(offer.id)) &&
     (!search || `${offer.title} ${offer.company}`.toLowerCase().includes(search.toLowerCase()))
   ).sort((a, b) => sort === "closing"
-    ? +new Date(a.closeDate) - +new Date(b.closeDate)
+    ? daysUntil(a.closeDate) - daysUntil(b.closeDate)
     : sort === "salary"
       ? salaryNumber(b.salary) - salaryNumber(a.salary)
-      : b.id - a.id), [area, city, modality, search, sort, offers]);
+      : b.id - a.id), [area, city, modality, search, sort, offers, onlySaved, saved]);
 
   const applied = new Set(state.applications.map((item) => item.offerId));
-  const openCount = filtered.filter((offer) => +new Date(offer.closeDate) >= Date.now()).length;
-  const hasFilters = city !== "Todas" || area !== "Todas" || modality !== "Todas" || Boolean(search);
-  const clear = () => { setCity("Todas"); setArea("Todas"); setModality("Todas"); setSearch(""); };
+  const openCount = filtered.filter((offer) => !isValidDate(offer.closeDate) || daysUntil(offer.closeDate) >= 0).length;
+  const hasFilters = city !== "Todas" || area !== "Todas" || modality !== "Todas" || Boolean(search) || onlySaved;
+  const clear = () => { setCity("Todas"); setArea("Todas"); setModality("Todas"); setSearch(""); setOnlySaved(false); };
 
   return (
     <div className="app-shell">
@@ -107,10 +111,11 @@ export default function StudentDashboard({ state, navigate }: Props) {
 
         <section className="container catalog">
           <div className="filter-card" aria-label="Filtros de ofertas">
-            <Filter label="Ciudad" value={city} options={cities} onChange={setCity} />
+            <Filter label="Ciudad" value={city} options={[...new Set([...cities, ...offers.map((offer) => offer.city)])]} onChange={setCity} />
             <Filter label="Área" value={area} options={[...new Set([...areas, ...offers.map((offer) => offer.area)])]} onChange={setArea} />
             <Filter label="Modalidad" value={modality} options={modalities} onChange={setModality} />
             <Filter label="Ordenar por" value={sort} options={["recent", "closing", "salary"]} labels={["Más recientes", "Fecha de cierre", "Mayor remuneración"]} onChange={(value) => setSort(value as Sort)} />
+            <label className="check-row"><input type="checkbox" checked={onlySaved} onChange={(e) => setOnlySaved(e.target.checked)} /> Solo guardadas ({saved.length})</label>
             {hasFilters && <button className="button secondary clear-filters" onClick={clear}>Limpiar filtros</button>}
           </div>
 
@@ -151,7 +156,7 @@ function Filter({ label, value, options, labels, onChange }: { label: string; va
 }
 
 function OfferCard({ offer, applied, saved, onSave, onOpen }: { offer: Offer; applied: boolean; saved: boolean; onSave: () => void; onOpen: () => void }) {
-  const days = Math.ceil((+new Date(offer.closeDate) - Date.now()) / 86400000);
+  const days = daysUntil(offer.closeDate);
   const status = applied ? "Ya te postulaste" : days < 0 ? "Cerrada" : days <= 14 ? "Cierra pronto" : "Abierta";
   return (
     <article className="offer-card">
@@ -169,11 +174,11 @@ function OfferCard({ offer, applied, saved, onSave, onOpen }: { offer: Offer; ap
           <div><dt>Área</dt><dd>{offer.area}</dd></div>
           <div><dt>Remuneración</dt><dd>{offer.salary} COP</dd></div>
         </dl>
-        <div className="offer-footer"><span>Fecha límite: {formatDate(offer.closeDate)}</span><strong>Ver detalle →</strong></div>
+        <div className="offer-footer"><span>Fecha límite: {formatDate(offer.closeDate, "Sin fecha de cierre")}</span><strong>Ver detalle →</strong></div>
       </button>
     </article>
   );
 }
 
 function salaryNumber(value: string) { return Number(value.replace(/\D/g, "")); }
-export function formatDate(value: string) { return new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(value)).replace(".", ""); }
+

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { Role, Screen } from "../App";
+import { useEffect, useMemo, useState } from "react";
+import { HOME_SCREEN, Role, Screen } from "../App";
+import { useSession } from "../lib/session";
 import UniversityLogo from "./UniversityLogo";
 
 type Props = { role: Role; navigate: (screen: Screen) => void; activeScreen: Screen; userName?: string; onLogout?: () => void };
@@ -13,41 +14,79 @@ const links: Record<Role, { label: string; screen: Screen }[]> = {
   company: [
     { label: "Ofertas", screen: "company-dashboard" },
     { label: "Postulantes", screen: "company-applicants" },
-    { label: "Verificación", screen: "company-verification" },
-    { label: "Convocatorias", screen: "convocatorias" },
-    { label: "Estadísticas", screen: "employment-stats" },
+    { label: "Mi empresa", screen: "company-profile" },
   ],
   external: [
     { label: "Ofertas", screen: "external-dashboard" },
     { label: "Mis postulaciones", screen: "external-applications" },
     { label: "Mi perfil", screen: "external-profile" },
   ],
+  admin: [
+    { label: "Estadísticas", screen: "employment-stats" },
+    { label: "Verificación", screen: "company-verification" },
+    { label: "Convocatorias", screen: "convocatorias" },
+    { label: "Usuarios", screen: "admin-users" },
+  ],
 };
 
-const home: Record<Role, Screen> = { student: "student-dashboard", company: "company-dashboard", external: "external-dashboard" };
+type NotificationItem = { id: string; title: string; detail: string; screen: Screen };
 
-export default function NavBar({ role, navigate, activeScreen, userName, onLogout }: Props) {
+const statusText: Record<string, string> = {
+  "En revisión": "está en revisión",
+  Aceptada: "fue aceptada",
+  Rechazada: "no fue seleccionada",
+};
+
+export default function NavBar({ role: requestedRole, navigate, activeScreen, userName, onLogout }: Props) {
+  const session = useSession();
+  // La sesión manda: un administrador ve su menú aunque la pantalla pida otro.
+  const role = session.role ?? requestedRole;
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState(false);
-  const name = userName ?? (role === "student" ? "Estudiante" : role === "company" ? "Empresa" : "Candidato");
-  const notificationKey = `sipu-read-notifications-${role}-${name}`;
-  const [readNotifications, setReadNotifications] = useState<number[]>(() => {
+  const [showNotifications, setShowNotifications] = useState(false);
+  const name = userName ?? session.currentUser?.nombreCompleto ?? "Usuario";
+  const notificationKey = `sipu-read-notifications-${session.currentUser?.id ?? "anon"}`;
+  const [readNotifications, setReadNotifications] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem(notificationKey) ?? "[]") as number[];
+      return JSON.parse(localStorage.getItem(notificationKey) ?? "[]") as string[];
     } catch {
       return [];
     }
   });
-  const unreadCount = 3 - readNotifications.length;
+
+  // Notificaciones reales: cambios de estado en las postulaciones del candidato.
+  const notifications = useMemo<NotificationItem[]>(() => {
+    const target: Screen = role === "external" ? "external-applications" : "student-applications";
+    const items = role === "external"
+      ? session.jobApplications.map((app) => ({ id: app.id, title: app.jobTitle, company: app.company, status: app.status }))
+      : session.applications.map((app) => ({ id: app.id, title: app.offerTitle, company: app.company, status: app.status }));
+
+    return items
+      .filter((app) => statusText[app.status])
+      .map((app) => ({
+        id: `${app.id}-${app.status}`,
+        title: `Tu postulación ${statusText[app.status]}`,
+        detail: `${app.title} · ${app.company}`,
+        screen: target,
+      }));
+  }, [role, session.applications, session.jobApplications]);
+
+  const unreadCount = notifications.filter((item) => !readNotifications.includes(item.id)).length;
 
   useEffect(() => {
-    localStorage.setItem(notificationKey, JSON.stringify(readNotifications));
+    try {
+      localStorage.setItem(notificationKey, JSON.stringify(readNotifications));
+    } catch {
+      // Sin almacenamiento las notificaciones se marcan como leídas solo en memoria.
+    }
   }, [notificationKey, readNotifications]);
+
+  const markRead = (ids: string[]) => setReadNotifications((current) => [...new Set([...current, ...ids])]);
+  const logout = () => (onLogout ?? session.logout)();
 
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <button className="nav-logo" aria-label="Ir al inicio" onClick={() => navigate(home[role])}>
+        <button className="nav-logo" aria-label="Ir al inicio" onClick={() => navigate(HOME_SCREEN[role])}>
           <UniversityLogo decorative />
         </button>
         <nav className={open ? "main-nav open" : "main-nav"} aria-label="Navegación principal">
@@ -59,28 +98,31 @@ export default function NavBar({ role, navigate, activeScreen, userName, onLogou
         </nav>
         <div className="nav-actions">
           <div className="notification-wrap">
-            <button className="icon-button" aria-label={`Notificaciones, ${unreadCount} sin leer`} aria-expanded={notifications} onClick={() => setNotifications(!notifications)}>
+            <button className="icon-button" aria-label={`Notificaciones, ${unreadCount} sin leer`} aria-expanded={showNotifications} onClick={() => setShowNotifications(!showNotifications)}>
               <BellIcon />{unreadCount > 0 && <span className="badge">{unreadCount}</span>}
             </button>
-            {notifications && (
+            {showNotifications && (
               <div className="notification-panel" role="dialog" aria-label="Notificaciones">
-                <div className="notification-heading"><strong>Notificaciones</strong><button className="text-button" onClick={() => setReadNotifications([0, 1, 2])}>Marcar como leídas</button></div>
-                <Notification id={0} read={readNotifications.includes(0)} title="Tu postulación está en revisión" detail="Bancolombia revisó tu perfil." time="hace 12 min" onClick={() => { setReadNotifications((current) => current.includes(0) ? current : [...current, 0]); setNotifications(false); navigate(role === "student" ? "student-applications" : role === "external" ? "external-applications" : "company-dashboard"); }} />
-                <Notification id={1} read={readNotifications.includes(1)} title="Nueva oferta para ti" detail="Practicante de desarrollo web." time="hace 2 h" onClick={() => { setReadNotifications((current) => current.includes(1) ? current : [...current, 1]); setNotifications(false); navigate(role === "student" ? "student-dashboard" : role === "external" ? "external-dashboard" : "company-dashboard"); }} />
-                <Notification id={2} read={readNotifications.includes(2)} title="Entrevista programada" detail="Consulta los detalles del proceso." time="ayer" onClick={() => { setReadNotifications((current) => current.includes(2) ? current : [...current, 2]); setNotifications(false); navigate(role === "student" ? "student-applications" : role === "external" ? "external-applications" : "company-dashboard"); }} />
+                <div className="notification-heading">
+                  <strong>Notificaciones</strong>
+                  {notifications.length > 0 && <button className="text-button" onClick={() => markRead(notifications.map((item) => item.id))}>Marcar como leídas</button>}
+                </div>
+                {notifications.length === 0 ? (
+                  <p className="muted" style={{ padding: "0.75rem 1rem" }}>No tienes notificaciones nuevas.</p>
+                ) : notifications.map((item) => (
+                  <Notification
+                    key={item.id}
+                    read={readNotifications.includes(item.id)}
+                    title={item.title}
+                    detail={item.detail}
+                    onClick={() => { markRead([item.id]); setShowNotifications(false); navigate(item.screen); }}
+                  />
+                ))}
               </div>
             )}
           </div>
           <span className="user-chip">{name}</span>
-          <button className="icon-button" aria-label="Cerrar sesión" onClick={() => {
-            if (onLogout) {
-              onLogout();
-              return;
-            }
-            localStorage.removeItem("sipu-token");
-            localStorage.removeItem("sipu-user");
-            window.location.reload();
-          }}><ExitIcon /></button>
+          <button className="icon-button" aria-label="Cerrar sesión" title="Cerrar sesión" onClick={logout}><ExitIcon /></button>
           <button className="menu-button" aria-label="Abrir menú" aria-expanded={open} onClick={() => setOpen(!open)}>Menú</button>
         </div>
       </div>
@@ -88,8 +130,8 @@ export default function NavBar({ role, navigate, activeScreen, userName, onLogou
   );
 }
 
-function Notification({ read, title, detail, time, onClick }: { id: number; read: boolean; title: string; detail: string; time: string; onClick: () => void }) {
-  return <button className="notification" onClick={onClick} aria-label={`${title}. ${read ? "Leída" : "No leída"}`}><span className="notification-dot" style={{ opacity: read ? 0.25 : 1 }} /><span><strong>{title}</strong><small>{detail} · {time}</small></span></button>;
+function Notification({ read, title, detail, onClick }: { read: boolean; title: string; detail: string; onClick: () => void }) {
+  return <button className="notification" onClick={onClick} aria-label={`${title}. ${read ? "Leída" : "No leída"}`}><span className="notification-dot" style={{ opacity: read ? 0.25 : 1 }} /><span><strong>{title}</strong><small>{detail}</small></span></button>;
 }
 
 function BellIcon() {

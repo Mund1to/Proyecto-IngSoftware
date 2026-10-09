@@ -1,10 +1,15 @@
+import { useEffect, useState } from "react";
 import { AppState, Screen } from "../App";
+import { api } from "../lib/api";
+import { mapOfferToJob } from "./ExternalDashboard";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 
 type Props = {
   state: AppState;
   navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  reloadApplications: () => Promise<void>;
+  withdrawApplication: (applicationId: number) => Promise<void>;
 };
 
 const statusConfig = {
@@ -13,6 +18,7 @@ const statusConfig = {
   Entrevista: { bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-500", label: "Entrevista" },
   Aceptada: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500", label: "Aceptada" },
   Rechazada: { bg: "bg-red-50", text: "text-red-600", dot: "bg-red-400", label: "Rechazada" },
+  Retirada: { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400", label: "Retirada" },
 };
 
 const logoStyle: Record<string, string> = {
@@ -29,8 +35,37 @@ const logoStyle: Record<string, string> = {
 // 5-step pipeline for professional jobs
 const steps = ["Enviada", "En revisión", "Entrevista", "Aceptada"] as const;
 
-export default function ExternalApplications({ state, navigate }: Props) {
+export default function ExternalApplications({ state, navigate, reloadApplications, withdrawApplication }: Props) {
   const apps = state.jobApplications;
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  useEffect(() => {
+    void reloadApplications();
+  }, [reloadApplications]);
+
+  const openJob = async (jobId: number) => {
+    setError("");
+    try {
+      const response = await api.getOffer(jobId);
+      navigate("external-job-detail", { selectedJob: mapOfferToJob(response.offer) });
+    } catch {
+      setError("Esta vacante ya no está publicada, por eso no se puede abrir su detalle.");
+    }
+  };
+
+  const withdraw = async (applicationId: number) => {
+    if (!window.confirm("¿Retirar esta postulación? La empresa dejará de considerarla.")) return;
+    setBusyId(applicationId);
+    setError("");
+    try {
+      await withdrawApplication(applicationId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo retirar la postulación.");
+    } finally {
+      setBusyId(null);
+    }
+  };
   const counts = {
     total: apps.length,
     active: apps.filter((a) => ["Enviada", "En revisión", "Entrevista"].includes(a.status)).length,
@@ -77,6 +112,7 @@ export default function ExternalApplications({ state, navigate }: Props) {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        {error && <div className="form-error mb-5" role="alert">{error}</div>}
         {apps.length === 0 ? (
           <div className="bg-white rounded-3xl border border-[#e8eef4] text-center py-20 shadow-sm">
             <ArdyMark className="empty-squirrel mx-auto mb-4" />
@@ -93,11 +129,10 @@ export default function ExternalApplications({ state, navigate }: Props) {
         ) : (
           <div className="space-y-4">
             {apps.map((app) => {
-              const job = null;
               const logo = app.company.slice(0, 2).toUpperCase();
               const bg = logoStyle[logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
               const cfg = statusConfig[app.status];
-              const stepIndex = app.status === "Rechazada" ? 0 : steps.indexOf(app.status as (typeof steps)[number]);
+              const stepIndex = app.status === "Rechazada" || app.status === "Retirada" ? 0 : steps.indexOf(app.status as (typeof steps)[number]);
 
               return (
                 <div key={app.id} className="bg-white rounded-2xl border border-[#e8eef4] shadow-sm overflow-hidden">
@@ -126,7 +161,9 @@ export default function ExternalApplications({ state, navigate }: Props) {
                       </span>
                     </div>
 
-                    {app.status !== "Rechazada" ? (
+                    {app.status === "Retirada" ? (
+                      <p className="text-xs text-[#64748b] p-3.5 bg-slate-50 border border-slate-100 rounded-xl">Retiraste esta postulación.</p>
+                    ) : app.status !== "Rechazada" ? (
                       <div className="relative flex items-center">
                         {steps.map((step, i) => {
                           const done = i < stepIndex;
@@ -183,9 +220,18 @@ export default function ExternalApplications({ state, navigate }: Props) {
                       </div>
                     )}
 
-                    <div className="mt-5 pt-4 border-t border-[#f8fafc] flex justify-end">
+                    <div className="mt-5 pt-4 border-t border-[#f8fafc] flex justify-end gap-4">
+                      {(app.status === "Enviada" || app.status === "En revisión") && (
+                        <button
+                          onClick={() => void withdraw(app.id)}
+                          disabled={busyId === app.id}
+                          className="text-xs font-semibold text-red-500 hover:text-red-700 disabled:opacity-50"
+                        >
+                          {busyId === app.id ? "Retirando..." : "Retirar postulación"}
+                        </button>
+                      )}
                       <button
-                        onClick={() => navigate("external-dashboard")}
+                        onClick={() => void openJob(app.jobId)}
                         className="text-xs font-semibold text-[#0d2240]/60 hover:text-[#0d2240] flex items-center gap-1"
                       >
                         Ver vacante
