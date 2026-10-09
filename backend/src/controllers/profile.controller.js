@@ -161,6 +161,7 @@ export async function updateStudentProfileController(request, response) {
   }
 
   try {
+    await ensureProfileDetailRow(pool, request.auth.sub, 'ESTUDIANTE');
     const result = await pool.query(
       `UPDATE perfiles_estudiante pe
        SET universidad = CASE WHEN $1 THEN $2 ELSE pe.universidad END,
@@ -202,6 +203,25 @@ export async function updateStudentProfileController(request, response) {
 
 // Construye "columna = CASE WHEN enviado THEN valor ELSE columna END" para que
 // solo cambien los campos presentes en el cuerpo y puedan vaciarse con null o "".
+// Crea la fila de detalle del perfil si falta (cuentas antiguas o creadas a
+// mano), para que el UPDATE siguiente no responda 404.
+const DETAIL_ROW_SQL = {
+  ESTUDIANTE: `INSERT INTO perfiles_estudiante (perfil_id)
+               SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo = 'ESTUDIANTE'
+               ON CONFLICT (perfil_id) DO NOTHING`,
+  CANDIDATO_EXTERNO: `INSERT INTO perfiles_candidato (perfil_id)
+                      SELECT id FROM perfiles WHERE usuario_id = $1 AND tipo = 'CANDIDATO_EXTERNO'
+                      ON CONFLICT (perfil_id) DO NOTHING`,
+  ORGANIZACION: `INSERT INTO organizaciones (perfil_id, razon_social)
+                 SELECT p.id, u.nombre_completo FROM perfiles p JOIN usuarios u ON u.id = p.usuario_id
+                 WHERE p.usuario_id = $1 AND p.tipo = 'ORGANIZACION'
+                 ON CONFLICT (perfil_id) DO NOTHING`,
+};
+
+function ensureProfileDetailRow(client, userId, profileType) {
+  return client.query(DETAIL_ROW_SQL[profileType], [userId]);
+}
+
 function buildOptionalUpdate(payload, fields, alias, offset = 0) {
   const assignments = [];
   const values = [];
@@ -229,6 +249,7 @@ export async function updateOrganizationProfileController(request, response) {
   }, 'o', 1);
 
   try {
+    await ensureProfileDetailRow(pool, request.auth.sub, 'ORGANIZACION');
     const result = await pool.query(
       `UPDATE organizaciones o
        SET razon_social = COALESCE($1, o.razon_social),
@@ -281,6 +302,7 @@ export async function updateExternalProfileController(request, response) {
 
   try {
     await client.query('BEGIN');
+    await ensureProfileDetailRow(client, request.auth.sub, 'CANDIDATO_EXTERNO');
 
     const result = await client.query(
       `UPDATE perfiles_candidato pc

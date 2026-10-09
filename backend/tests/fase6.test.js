@@ -250,3 +250,35 @@ describe('ofertas de formación', () => {
     assert.ok(stats.body.offers.some((offer) => offer.tipo === 'FORMACION'));
   });
 });
+
+describe('Perfil sin fila de detalle', () => {
+  it('el candidato externo guarda su nombre aunque falte la fila en perfiles_candidato', async () => {
+    const { token, user } = await registerUser('CANDIDATO_EXTERNO');
+    await pool.query(
+      `DELETE FROM perfiles_candidato pc USING perfiles p
+       WHERE pc.perfil_id = p.id AND p.usuario_id = $1`,
+      [user.id]
+    );
+
+    const response = await api()
+      .put('/api/profile/external')
+      .set(auth(token))
+      .send({ nombreCompleto: 'Nombre Corregido', resumen: 'Analista' });
+
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.body.user.nombreCompleto ?? response.body.user.nombre_completo, 'Nombre Corregido');
+  });
+
+  it('el estudiante guarda su perfil aunque falte la fila en perfiles_estudiante', async () => {
+    const { token, user } = await registerUser('ESTUDIANTE');
+    await pool.query(
+      `DELETE FROM perfiles_estudiante pe USING perfiles p
+       WHERE pe.perfil_id = p.id AND p.usuario_id = $1`,
+      [user.id]
+    );
+
+    const response = await api().put('/api/profile/student').set(auth(token)).send({ semestre: 5 });
+
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+  });
+});
