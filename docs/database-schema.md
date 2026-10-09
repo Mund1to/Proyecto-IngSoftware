@@ -108,6 +108,7 @@ Toda migración nueva debe ser idempotente (`IF NOT EXISTS`, `UPDATE` con condic
 | `20261009_normalize_offer_modality.sql` | Normaliza la modalidad a `Presencial`, `Remota` o `Híbrida` y repara ciudades con codificación dañada. |
 | `20261010_offer_type_formacion.sql` | Añade `FORMACION` al tipo de oferta (sin transacción explícita). |
 | `20261010_profile_details_files_resets.sql` | Tablas `perfil_educacion`, `perfil_experiencia`, `perfil_habilidades`, `archivos` y `password_resets`, y la columna `usuarios.token_version`. |
+| `20261011_backfill_profile_rows.sql` | Crea la fila de detalle (`perfiles_estudiante`, `perfiles_candidato`, `organizaciones`) que faltaba en perfiles antiguos. |
 
 ## Tablas de la Fase 6
 

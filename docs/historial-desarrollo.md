@@ -376,6 +376,8 @@ El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-
 
 - `feat(frontend)`: los filtros del catálogo del estudiante pasan de `<select>` nativos a menús desplegables accesibles (`components/FilterDropdown.tsx`). Cada opción muestra cuántas ofertas quedarían, "Solo guardadas" es un botón y una fila de "Filtros activos" permite quitar cada filtro. "Limpiar filtros" también restablece el orden. Dos pruebas nuevas en `screens.test.tsx`.
 - `docs`: [`diseno/brief-claude-design.md`](diseno/brief-claude-design.md), un brief de todas las pantallas para rediseñar SIPU con Claude Design.
+- `fix(backend)`: guardar el perfil respondía 404 ("No existe un perfil de candidato externo para este usuario.") en cuentas cuyo perfil no tenía la fila de detalle (`perfiles_candidato`, `perfiles_estudiante` u `organizaciones`). Los controladores de actualización crean esa fila si falta y la migración `20261011_backfill_profile_rows.sql` la rellena en las cuentas existentes. Dos pruebas nuevas en `fase6.test.js`.
+- `feat(frontend)`: la bolsa de empleo del candidato externo cambia sus `<select>` por pestañas de tipo con contador, menús en forma de pastilla (Área, Modalidad, Ciudad y Ordenar), chips de filtros activos y animaciones de resultados. `FilterDropdown` gana la variante `pill`. Las etiquetas del formulario de perfil externo quedan asociadas a sus campos.
 
 ## 18. Regla para mantener la documentación
 
