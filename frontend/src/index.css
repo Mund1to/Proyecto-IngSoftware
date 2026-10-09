@@ -173,10 +173,47 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 @keyframes filter-chip-in { from { transform: scale(.9); } to { transform: scale(1); } }
 @keyframes offer-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .offer-grid .offer-card { animation: offer-card-in .25s ease backwards; }
+/* Filtros de la bolsa de empleo externa (variante pastilla, azul marino) */
+.ext-filters { display: grid; gap: 14px; padding: 20px 0 18px; border-bottom: 1px solid #e2e8f0; }
+.type-tabs { display: flex; gap: 8px; overflow-x: auto; margin: -4px -6px -10px; padding: 4px 6px 14px; scrollbar-width: thin; }
+.type-tab { flex: none; min-height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 8px 6px 16px; border: 1px solid #e2e8f0; border-radius: 99px; color: #475569; background: #ffffff; font-size: 14px; font-weight: 600; transition: background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.type-tab:hover { border-color: #94a3b8; color: #0d2240; transform: translateY(-1px); }
+.type-tab.is-active { border-color: #0d2240; color: #ffffff; background: linear-gradient(135deg, #0d2240, #163456); box-shadow: 0 8px 18px rgba(13, 34, 64, .22); }
+.type-tab-count { min-width: 24px; padding: 1px 8px; border-radius: 99px; color: #64748b; background: #f1f5f9; font-size: 12px; font-weight: 700; text-align: center; transition: background-color .2s ease, color .2s ease; }
+.type-tab.is-active .type-tab-count { color: #0d2240; background: #ffffff; }
+.ext-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.ext-filter-label { margin-right: 2px; color: #94a3b8; font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.ext-filter-sort { margin-left: auto; }
+.ext-filter-sort .filter-panel { left: auto; right: 0; transform-origin: top right; }
+.filter-dropdown-pill { position: relative; }
+.filter-pill { min-height: 38px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px 7px 16px; border: 1px solid #e2e8f0; border-radius: 99px; color: #475569; background: #ffffff; font-size: 14px; font-weight: 600; white-space: nowrap; transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.filter-pill:hover { border-color: #94a3b8; color: #0d2240; transform: translateY(-1px); }
+.filter-pill .filter-chevron { width: 16px; height: 16px; stroke: #94a3b8; }
+.filter-pill.is-active { border-color: #0d2240; color: #ffffff; background: #0d2240; }
+.filter-pill.is-active .filter-chevron { stroke: #ffffff; }
+.filter-pill.is-open { border-color: #0d2240; box-shadow: 0 0 0 4px rgba(13, 34, 64, .10); }
+.filter-pill.is-open .filter-chevron { transform: rotate(180deg); }
+.filter-dropdown-pill .filter-panel { min-width: 220px; }
+.filter-dropdown-pill .filter-option:hover { color: #0d2240; background: #f0f4f8; }
+.filter-dropdown-pill .filter-option.is-selected { color: #0d2240; background: #f0f4f8; }
+.filter-dropdown-pill .filter-option.is-selected .filter-count { background: #0d2240; }
+.ext-active-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ext-chip { min-height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 12px; border: 1px solid #c5d4e8; border-radius: 99px; color: #0d2240; background: linear-gradient(135deg, #ffffff, #eef3f9); font-size: 13px; font-weight: 700; animation: filter-chip-in .18s ease; transition: border-color .18s ease, box-shadow .18s ease; }
+.ext-chip:hover { border-color: #0d2240; box-shadow: 0 6px 14px rgba(13, 34, 64, .12); }
+.ext-chip svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.ext-clear { min-height: 32px; padding: 4px 12px; border: 1px dashed #cbd5e1; border-radius: 99px; color: #64748b; background: transparent; font-size: 13px; font-weight: 600; transition: color .18s ease, border-color .18s ease; }
+.ext-clear:hover { border-color: #0d2240; color: #0d2240; }
+.ext-result-count { margin: 0 0 16px; color: #64748b; font-size: 14px; }
+.ext-result-count strong { display: inline-block; color: #0d2240; font-size: 16px; animation: count-pop .3s ease; }
+.job-card { animation: offer-card-in .3s ease backwards; }
+@keyframes count-pop { 0% { transform: scale(.7); opacity: .3; } 60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+@media (max-width: 767px) {
+  .ext-filter-sort { margin-left: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .filter-trigger, .filter-chevron, .filter-option, .saved-toggle, .filter-chip { transition: none; }
-  .filter-trigger:hover { transform: none; }
-  .filter-panel, .filter-chip, .offer-grid .offer-card { animation: none; }
+  .filter-trigger, .filter-chevron, .filter-option, .saved-toggle, .filter-chip, .type-tab, .type-tab-count, .filter-pill, .ext-chip, .ext-clear { transition: none; }
+  .filter-trigger:hover, .type-tab:hover, .filter-pill:hover { transform: none; }
+  .filter-panel, .filter-chip, .offer-grid .offer-card, .ext-chip, .ext-result-count strong, .job-card { animation: none; }
 }
 .catalog-heading { display: flex; align-items: end; justify-content: space-between; margin: 32px 0 20px; }
 .catalog-heading h2 { font-size: 24px; }

@@ -47,6 +47,31 @@ describe("ExternalDashboard", () => {
     expect(await screen.findByText("Práctica de prueba")).toBeTruthy();
     expect(screen.getAllByText("Híbrida").length).toBeGreaterThan(0);
   });
+
+  it("filtra por tipo con las pestañas y por ciudad con el menú, con contadores", async () => {
+    const course = { ...brokenOffer, id: "2", titulo: "Curso de datos", tipo: "FORMACION", ubicacion: "Ibagué", empresa: "Academia" };
+    const job = { ...brokenOffer, id: "3", titulo: "Analista", tipo: "EMPLEO", ubicacion: "Ibagué", empresa: "Datos SAS" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { ok: true, offers: [brokenOffer, course, job] })));
+
+    render(<ExternalDashboard state={baseState} navigate={vi.fn()} />);
+    await screen.findByText("Curso de datos");
+    expect(screen.getByText("vacantes encontradas")).toBeTruthy();
+
+    const formacion = within(screen.getByRole("group", { name: "Tipo de vacante" })).getByRole("button", { name: /Formación/ });
+    expect(formacion.textContent).toContain("1");
+    fireEvent.click(formacion);
+    expect(formacion.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("Analista")).toBeNull();
+    expect(screen.getByText("vacante encontrada")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Quitar filtro Tipo: Formación" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar todo" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Ciudad/ }));
+    fireEvent.click(within(screen.getByRole("listbox", { name: "Ciudad" })).getByRole("option", { name: /Ibagué/ }));
+    expect(screen.getByRole("button", { name: /^Ciudad/ }).textContent).toContain("Ciudad: Ibagué");
+    expect(screen.queryByText("Práctica de prueba")).toBeNull();
+    expect(screen.getByText("Analista")).toBeTruthy();
+  });
 });
 
 describe("StudentDashboard: filtros desplegables", () => {

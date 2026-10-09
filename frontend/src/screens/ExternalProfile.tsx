@@ -216,8 +216,8 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
         <div>
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Nombre completo</label>
-          <input
+          <label htmlFor="ext-nombre" className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Nombre completo</label>
+          <input id="ext-nombre"
             type="text"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
@@ -226,8 +226,8 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
           />
         </div>
         <div>
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Correo electrónico</label>
-          <input
+          <label htmlFor="ext-email" className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Correo electrónico</label>
+          <input id="ext-email"
             type="text"
             value={state.currentUser?.email ?? ""}
             disabled
@@ -236,8 +236,8 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
           />
         </div>
         <div>
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Teléfono de contacto</label>
-          <input
+          <label htmlFor="ext-telefono" className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Teléfono de contacto</label>
+          <input id="ext-telefono"
             type="text"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
@@ -247,8 +247,8 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
           />
         </div>
         <div>
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Ciudad de residencia / Ubicación</label>
-          <input
+          <label htmlFor="ext-ubicacion" className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Ciudad de residencia / Ubicación</label>
+          <input id="ext-ubicacion"
             type="text"
             value={ubicacion}
             onChange={(e) => setUbicacion(e.target.value)}
@@ -257,8 +257,8 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Disponibilidad</label>
-          <input
+          <label htmlFor="ext-disponibilidad" className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Disponibilidad</label>
+          <input id="ext-disponibilidad"
             type="text"
             value={disponibilidad}
             onChange={(e) => setDisponibilidad(e.target.value)}
@@ -268,8 +268,8 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Enlace a tu hoja de vida (Drive, OneDrive, LinkedIn)</label>
-          <input
+          <label htmlFor="ext-cv-url" className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Enlace a tu hoja de vida (Drive, OneDrive, LinkedIn)</label>
+          <input id="ext-cv-url"
             type="url"
             value={cvUrl}
             onChange={(e) => setCvUrl(e.target.value)}
@@ -279,8 +279,8 @@ function ExternalInfoTab({ state, onSave }: { state: AppState; onSave?: (p: Reco
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Resumen / Perfil laboral (incluye tus habilidades separadas por comas)</label>
-          <textarea
+          <label htmlFor="ext-resumen" className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Resumen / Perfil laboral (incluye tus habilidades separadas por comas)</label>
+          <textarea id="ext-resumen"
             rows={3}
             value={resumen}
             onChange={(e) => setResumen(e.target.value)}

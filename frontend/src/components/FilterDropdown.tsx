@@ -10,11 +10,14 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChange: (value: string) => void;
+  // "field": etiqueta encima y botón ancho (catálogo del estudiante).
+  // "pill": pastilla compacta con la etiqueta dentro (bolsa de empleo externa).
+  variant?: "field" | "pill";
 };
 
 // Menú desplegable de un filtro: reemplaza al <select> nativo con un listbox
 // accesible (flechas, Enter/Espacio, Escape y clic fuera).
-export default function FilterDropdown({ label, value, options, defaultValue, open, onOpenChange, onChange }: Props) {
+export default function FilterDropdown({ label, value, options, defaultValue, open, onOpenChange, onChange, variant = "field" }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -57,15 +60,18 @@ export default function FilterDropdown({ label, value, options, defaultValue, op
     items[next]?.focus();
   };
 
-  const className = ["filter-trigger", value !== defaultValue && "is-active", open && "is-open"].filter(Boolean).join(" ");
+  const active = value !== defaultValue;
+  const pill = variant === "pill";
+  const className = [pill ? "filter-pill" : "filter-trigger", active && "is-active", open && "is-open"].filter(Boolean).join(" ");
+  const shownValue = pill ? (active ? `${label}: ${current?.label}` : label) : current?.label;
 
   return (
     <div
-      className="filter filter-dropdown"
+      className={pill ? "filter-dropdown filter-dropdown-pill" : "filter filter-dropdown"}
       ref={rootRef}
       onBlur={(event) => { if (open && !rootRef.current?.contains(event.relatedTarget as Node | null) && event.relatedTarget) onOpenChange(false); }}
     >
-      <span id={labelId}>{label}</span>
+      <span id={labelId} className={pill ? "sr-only" : undefined}>{label}</span>
       <button
         ref={triggerRef}
         type="button"
@@ -80,7 +86,7 @@ export default function FilterDropdown({ label, value, options, defaultValue, op
           if (event.key === "Escape" && open) { event.preventDefault(); onOpenChange(false); }
         }}
       >
-        <span id={`${listId}-value`} className="filter-trigger-value">{current?.label}</span>
+        <span id={`${listId}-value`} className="filter-trigger-value">{shownValue}</span>
         <svg className="filter-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
       </button>
       {open && (

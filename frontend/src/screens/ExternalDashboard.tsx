@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AppState, Job, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
+import FilterDropdown, { FilterOption } from "../components/FilterDropdown";
 import { api } from "../lib/api";
 import { companyInitials, daysUntil, normalizeModality, toNumberOrZero } from "../lib/offers";
 
@@ -13,6 +14,17 @@ type Props = {
 const AREAS = ["Todas", "Tecnología", "Marketing", "Contabilidad", "Recursos Humanos", "Producción", "Jurídica", "Diseño"];
 const MODALITIES = ["Todas", "Presencial", "Remota", "Híbrida"];
 const TYPES = ["Todos", "Práctica", "Tiempo completo", "Medio tiempo", "Contrato", "Freelance", "Formación"];
+const CITIES = ["Todas", "Bogotá", "Medellín", "Cali", "Ibagué"];
+
+type JobFilterKey = "area" | "modality" | "city" | "type";
+const JOB_FILTER_KEYS: JobFilterKey[] = ["area", "modality", "city", "type"];
+const DEFAULTS: Record<JobFilterKey, string> = { area: "Todas", modality: "Todas", city: "Todas", type: "Todos" };
+const LABELS: Record<JobFilterKey, string> = { area: "Área", modality: "Modalidad", city: "Ciudad", type: "Tipo" };
+const SORT_OPTIONS: FilterOption[] = [
+  { value: "recent", label: "Más recientes" },
+  { value: "closing", label: "Cierran pronto" },
+  { value: "salary", label: "Mayor salario" },
+];
 
 const modalityStyle: Record<string, { bg: string; text: string; dot: string }> = {
   Presencial: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-400" },
@@ -68,7 +80,10 @@ export default function ExternalDashboard({ state, navigate }: Props) {
   const [area, setArea] = useState("Todas");
   const [modality, setModality] = useState("Todas");
   const [type, setType] = useState("Todos");
+  const [city, setCity] = useState("Todas");
+  const [sort, setSort] = useState("recent");
   const [search, setSearch] = useState("");
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -97,15 +112,41 @@ export default function ExternalDashboard({ state, navigate }: Props) {
 
   const applied = state.jobApplications.map((a) => a.jobId);
 
-  const filtered = jobs.filter((j) => {
-    if (area !== "Todas" && j.area !== area) return false;
-    if (modality !== "Todas" && j.modality !== modality) return false;
-    if (type !== "Todos" && j.type !== type) return false;
-    if (search && !j.title.toLowerCase().includes(search.toLowerCase()) && !j.company.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const values: Record<JobFilterKey, string> = { area, modality, city, type };
+  // Cumple los filtros activos salvo `except`; el contador de cada opción no
+  // cuenta el filtro propio.
+  const matches = (job: Job, except?: JobFilterKey) =>
+    JOB_FILTER_KEYS.every((key) => key === except || values[key] === DEFAULTS[key] || job[key] === values[key]) &&
+    (!search || `${job.title} ${job.company} ${job.area}`.toLowerCase().includes(search.toLowerCase()));
 
-  const hasFilters = area !== "Todas" || modality !== "Todas" || type !== "Todos" || search;
+  const filtered = jobs.filter((job) => matches(job)).sort((a, b) => sort === "closing"
+    ? daysUntil(a.closeDate) - daysUntil(b.closeDate)
+    : sort === "salary"
+      ? Math.max(b.salaryMin, b.salaryMax) - Math.max(a.salaryMin, a.salaryMax)
+      : b.id - a.id);
+
+  // Opciones con contador; se ocultan las que no tienen vacantes salvo la elegida.
+  const withCounts = (key: JobFilterKey, base: string[]): FilterOption[] => {
+    const pool = jobs.filter((job) => matches(job, key));
+    return [...new Set([...base, ...jobs.map((job) => job[key])])]
+      .map((option) => ({ value: option, label: option, count: option === DEFAULTS[key] ? pool.length : pool.filter((job) => job[key] === option).length }))
+      .filter((option) => option.value === DEFAULTS[key] || option.value === values[key] || option.count > 0);
+  };
+
+  const setters: Record<JobFilterKey, (value: string) => void> = { area: setArea, modality: setModality, city: setCity, type: setType };
+  const typeChips = withCounts("type", TYPES);
+  const activeChips = [
+    ...JOB_FILTER_KEYS.filter((key) => values[key] !== DEFAULTS[key]).map((key) => ({ key, text: `${LABELS[key]}: ${values[key]}`, remove: () => setters[key](DEFAULTS[key]) })),
+    ...(sort !== "recent" ? [{ key: "sort", text: `Orden: ${SORT_OPTIONS.find((option) => option.value === sort)?.label}`, remove: () => setSort("recent") }] : []),
+    ...(search ? [{ key: "search", text: `“${search}”`, remove: () => setSearch("") }] : []),
+  ];
+  const clear = () => { setArea("Todas"); setModality("Todas"); setCity("Todas"); setType("Todos"); setSort("recent"); setSearch(""); };
+  const resultKey = [area, modality, city, type, sort, search].join("|");
+  const dropdown = (key: JobFilterKey | "sort") => ({
+    open: openFilter === key,
+    onOpenChange: (open: boolean) => setOpenFilter((current) => open ? key : current === key ? null : current),
+    variant: "pill" as const,
+  });
 
   return (
     <div className="min-h-screen bg-[#f0f4f8]">
@@ -128,7 +169,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-[#60a5fa]" />
             <span className="text-[#60a5fa] text-xs font-semibold tracking-wide uppercase">
-              Bolsa de empleo general · {filtered.length} vacantes
+              Bolsa de empleo general · {filtered.length} {filtered.length === 1 ? "vacante" : "vacantes"}
             </span>
           </div>
           <h1 className="text-white text-3xl font-bold mb-1 tracking-tight">
@@ -170,33 +211,55 @@ export default function ExternalDashboard({ state, navigate }: Props) {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2.5 py-5 border-b border-[#e2e8f0]">
-          <span className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wide mr-1">Filtrar:</span>
-          <Chip label="Área" value={area} options={[...new Set([...AREAS, ...jobs.map((job) => job.area)])]} onChange={setArea} />
-          <Chip label="Modalidad" value={modality} options={MODALITIES} onChange={setModality} />
-          <Chip label="Tipo" value={type} options={TYPES} onChange={setType} />
-          {hasFilters && (
-            <button
-              onClick={() => { setArea("Todas"); setModality("Todas"); setType("Todos"); setSearch(""); }}
-              className="text-xs text-[#64748b] hover:text-[#0d2240] px-3 py-1.5 rounded-full border border-dashed border-[#cbd5e1] hover:border-[#0d2240]/30 flex items-center gap-1.5"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Limpiar
-            </button>
+        <div className="ext-filters">
+          <div className="type-tabs" role="group" aria-label="Tipo de vacante">
+            {typeChips.map((option) => {
+              const selected = type === option.value;
+              return (
+                <button key={option.value} type="button" aria-pressed={selected} className={selected ? "type-tab is-active" : "type-tab"} onClick={() => setType(option.value)}>
+                  {option.label}
+                  <span className="type-tab-count">{option.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="ext-filter-row">
+            <span className="ext-filter-label">Filtrar:</span>
+            <FilterDropdown label="Área" value={area} defaultValue="Todas" options={withCounts("area", AREAS)} onChange={setArea} {...dropdown("area")} />
+            <FilterDropdown label="Modalidad" value={modality} defaultValue="Todas" options={withCounts("modality", MODALITIES)} onChange={setModality} {...dropdown("modality")} />
+            <FilterDropdown label="Ciudad" value={city} defaultValue="Todas" options={withCounts("city", CITIES)} onChange={setCity} {...dropdown("city")} />
+            <div className="ext-filter-sort">
+              <FilterDropdown label="Ordenar" value={sort} defaultValue="recent" options={SORT_OPTIONS} onChange={setSort} {...dropdown("sort")} />
+            </div>
+          </div>
+
+          {activeChips.length > 0 && (
+            <div className="ext-active-row">
+              {activeChips.map((chip) => (
+                <button key={chip.key} type="button" className="ext-chip" aria-label={`Quitar filtro ${chip.text}`} onClick={chip.remove}>
+                  {chip.text}
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              ))}
+              <button type="button" className="ext-clear" onClick={clear}>Limpiar todo</button>
+            </div>
           )}
         </div>
 
         {/* Grid */}
         {loadError && <div className="form-error mt-5" role="alert">{loadError}</div>}
         <div className="py-8">
+          <p className="ext-result-count" aria-live="polite">
+            <strong key={filtered.length}>{filtered.length}</strong> {filtered.length === 1 ? "vacante encontrada" : "vacantes encontradas"}
+          </p>
           {filtered.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {filtered.map((job) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" key={resultKey}>
+              {filtered.map((job, index) => (
                 <JobCard
                   key={job.id}
                   job={job}
+                  delay={Math.min(index, 8) * 45}
                   isApplied={applied.includes(job.id)}
                   onClick={() => navigate("external-job-detail", { selectedJob: job })}
                 />
@@ -206,7 +269,8 @@ export default function ExternalDashboard({ state, navigate }: Props) {
             <div className="text-center py-20">
               <ArdyMark className="empty-squirrel mx-auto mb-4" />
               <h3 className="text-lg font-bold text-[#0d2240] mb-2">Sin resultados</h3>
-              <p className="text-[#64748b] text-sm">Ajusta los filtros para ver más vacantes.</p>
+              <p className="text-[#64748b] text-sm mb-4">Ajusta los filtros para ver más vacantes.</p>
+              <button type="button" className="ext-clear" onClick={clear}>Limpiar filtros</button>
             </div>
           )}
         </div>
@@ -215,32 +279,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
   );
 }
 
-function Chip({ label, value, options, onChange }: {
-  label: string; value: string; options: string[]; onChange: (v: string) => void;
-}) {
-  const active = value !== "Todas" && value !== "Todos";
-  return (
-    <div className="relative">
-      <select
-        value={value} onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none cursor-pointer text-xs font-semibold pl-3.5 pr-7 py-2 rounded-full border focus:outline-none transition-all ${
-          active ? "bg-[#0d2240] text-white border-[#0d2240]" : "bg-white text-[#475569] border-[#e2e8f0] hover:border-[#94a3b8]"
-        }`}
-      >
-        {options.map((o) => (
-          <option key={o} value={o} className="text-[#1e293b] bg-white font-normal">{o === "Todas" || o === "Todos" ? label : o}</option>
-        ))}
-      </select>
-      <svg
-        className={`absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none ${active ? "text-white" : "text-[#94a3b8]"}`}
-        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  );
-}
-
-function JobCard({ job, isApplied, onClick }: { job: Job; isApplied: boolean; onClick: () => void }) {
+function JobCard({ job, isApplied, delay = 0, onClick }: { job: Job; isApplied: boolean; delay?: number; onClick: () => void }) {
   const bg = logoStyle[job.logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
   const mod = modalityStyle[job.modality] ?? modalityStyle.Híbrida;
   const daysLeft = daysUntil(job.closeDate);
@@ -248,8 +287,8 @@ function JobCard({ job, isApplied, onClick }: { job: Job; isApplied: boolean; on
   return (
     <button
       onClick={onClick}
-      className="text-left bg-white rounded-2xl border border-[#e8eef4] p-6 hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-0.5 hover:border-[#c5d4e8] group"
-      style={{ transition: "box-shadow 0.2s, transform 0.2s, border-color 0.15s" }}
+      className="job-card text-left bg-white rounded-2xl border border-[#e8eef4] p-6 hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-0.5 hover:border-[#c5d4e8] group"
+      style={{ transition: "box-shadow 0.2s, transform 0.2s, border-color 0.15s", animationDelay: `${delay}ms` }}
     >
       <div className="flex items-start gap-3.5 mb-4">
         <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm" style={{ background: bg }}>
