@@ -70,7 +70,7 @@ npm run preview
 
 ```text
 src/
-├── components/  # Componentes reutilizables (NavBar, ChangePasswordCard, UniversityLogo, ArdyMark)
+├── components/  # Componentes reutilizables (NavBar, ChangePasswordCard, ProfileSections, ProfileFiles, UniversityLogo, ArdyMark)
 ├── screens/     # Pantallas por rol (auth, estudiante, empresa, externo)
 ├── lib/         # Cliente de API (api.ts), sesión (session.tsx) y helpers (offers.ts, useStoredList.ts)
 ├── imports/     # Recursos gráficos

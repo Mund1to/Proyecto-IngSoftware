@@ -360,6 +360,18 @@ Causa del fallo en Vercel: una oferta con la modalidad `"H�brida"` (texto envi
 
 Desde esta fase, todo cambio debe mantener en verde `npm test` en `backend` y `frontend`.
 
-## 17. Regla para mantener la documentación
+## 17. Fase 6 — Hoja de vida, archivos y recuperación de contraseña
+
+Rama `feature/fase-6-perfil-archivos`. Commits:
+
+1. `feat(backend)`: tablas de hoja de vida, archivos y tokens de recuperación; endpoints de detalle, archivos, `forgot-password` y `reset-password`; `token_version` para cerrar sesiones; tipo `FORMACION`.
+2. `feat(frontend)`: editor de hoja de vida, subida de CV y foto, vista del postulante para la empresa, recuperación de contraseña y selector de tipo de oferta.
+3. `docs`: informe de la fase y guías actualizadas.
+
+Decisiones: los archivos se guardan en PostgreSQL (`BYTEA`) porque el disco de Render se borra en cada despliegue; el correo usa la API HTTP de Resend sin dependencias nuevas; las sesiones se invalidan con un contador de versión en lugar de una marca de tiempo, para no depender de los relojes.
+
+El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-archivos.md).
+
+## 18. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.

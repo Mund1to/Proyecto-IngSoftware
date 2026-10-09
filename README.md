@@ -4,7 +4,7 @@ SIPU (Sistema de Intermediación de Prácticas Universitarias) es una plataforma
 
 ## Estado del proyecto
 
-La **Fase 0 — Base técnica** está preparada: el monorepo incluye un frontend React/Vite, una API Express, documentación de ejecución local y un esquema inicial de PostgreSQL. La **Fase 1** queda cerrada y verificada con autenticación real, gestión de ofertas y flujo de postulaciones para estudiantes y empresas. La **Fase 2** se inicia con la preparación del perfil de candidato externo y la conexión de sus datos al backend. La **Fase 3** queda completa con la bolsa de empleo general: ofertas de empleo, verificación de organizaciones y recomendación de ofertas según perfil. La **Fase 4** añade convocatorias públicas y estadísticas de empleo. La **Fase 5 — Calidad** corrige el fallo de carga tras iniciar sesión en Vercel, da función a los botones pendientes, endurece la seguridad de la API y añade pruebas automatizadas (80 en el backend y 21 en el frontend).
+La **Fase 0 — Base técnica** está preparada: el monorepo incluye un frontend React/Vite, una API Express, documentación de ejecución local y un esquema inicial de PostgreSQL. La **Fase 1** queda cerrada y verificada con autenticación real, gestión de ofertas y flujo de postulaciones para estudiantes y empresas. La **Fase 2** se inicia con la preparación del perfil de candidato externo y la conexión de sus datos al backend. La **Fase 3** queda completa con la bolsa de empleo general: ofertas de empleo, verificación de organizaciones y recomendación de ofertas según perfil. La **Fase 4** añade convocatorias públicas y estadísticas de empleo. La **Fase 5 — Calidad** corrige el fallo de carga tras iniciar sesión en Vercel, da función a los botones pendientes, endurece la seguridad de la API y añade pruebas automatizadas. La **Fase 6** guarda la hoja de vida en la base de datos, permite subir CV y foto, recuperar la contraseña por correo y publicar ofertas de formación (94 pruebas en el backend y 26 en el frontend).
 
 ## Verificación de cierre de la Fase 1
 
@@ -103,6 +103,7 @@ Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y l
 - [`docs/informe-cierre-fase-3.md`](docs/informe-cierre-fase-3.md): cierre de la Fase 3 con verificación de organizaciones y recomendación de ofertas.
 - [`docs/informe-cierre-fase-4.md`](docs/informe-cierre-fase-4.md): cierre de la Fase 4 con convocatorias públicas y estadísticas de empleo.
 - [`docs/informe-fase-5-calidad.md`](docs/informe-fase-5-calidad.md): auditoría de calidad, corrección del login en Vercel y pruebas automatizadas.
+- [`docs/informe-fase-6-perfil-archivos.md`](docs/informe-fase-6-perfil-archivos.md): hoja de vida, archivos, recuperación de contraseña y formación.
 - [`docs/despliegue-render-vercel.md`](docs/despliegue-render-vercel.md): despliegue de PostgreSQL y API en Render, y frontend en Vercel.
 - [`docs/backlog-fases.md`](docs/backlog-fases.md): fases, historias de usuario y prioridades.
 - [`docs/database-schema.md`](docs/database-schema.md): modelo PostgreSQL inicial.
@@ -115,6 +116,7 @@ Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y l
 - **Fase 3:** bolsa de empleo general y verificación de empleadores.
 - **Fase 4:** convocatorias y estadísticas de empleo público.
 - **Fase 5:** calidad, seguridad y pruebas automatizadas.
+- **Fase 6:** hoja de vida en base de datos, archivos, recuperación de contraseña y formación.
 
 ## Modelo de usuarios
 

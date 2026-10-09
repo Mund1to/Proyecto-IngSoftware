@@ -33,6 +33,9 @@ Variables disponibles:
 | `JWT_SECRET` | Secreto para firmar tokens. **Obligatorio en producción**: con el valor por defecto la API no arranca. | valor aleatorio |
 | `JWT_EXPIRES_IN` | Vigencia de los tokens | `7d` |
 | `CORS_ORIGIN` | Orígenes permitidos, separados por comas. Vacío permite cualquiera. | `https://sipu.vercel.app` |
+| `APP_URL` | URL pública del frontend, usada en el enlace de recuperación de contraseña. | `https://sipu.vercel.app` |
+| `RESEND_API_KEY` | Clave de Resend para enviar correos. Sin ella, en desarrollo el enlace se muestra en la consola. | `re_...` |
+| `MAIL_FROM` | Remitente de los correos. | `SIPU <no-responder@dominio>` |
 | `TEST_DATABASE_URL` | Base para `npm test`. Por defecto, la de `DATABASE_URL` con el sufijo `_test`. | `postgresql://.../sipu_test` |
 
 El archivo `.env` no se versiona.
@@ -74,7 +77,7 @@ La respuesta esperada es:
 | --- | --- |
 | `npm run dev` | Inicia Express con reinicio automático mediante `node --watch`. |
 | `npm start` | Inicia Express sin modo de vigilancia. |
-| `npm test` | Ejecuta las 80 pruebas de la API (`node:test` + `supertest`) sobre una base `<base>_test` que se recrea en cada ejecución. |
+| `npm test` | Ejecuta las 94 pruebas de la API (`node:test` + `supertest`) sobre una base `<base>_test` que se recrea en cada ejecución. |
 | `npm run grant-role -- correo ROL` | Asigna `ADMINISTRADOR` o `FUNCIONARIO_PUBLICO` a una cuenta existente. Sirve para crear el primer administrador. |
 
 ## Seguridad
@@ -95,6 +98,19 @@ La respuesta esperada es:
 | `PUT` | `/api/admin/users/:userId/roles` | Administrador | Reemplaza los roles (siempre conserva `USUARIO`; no deja el sistema sin administradores). |
 | `PATCH` | `/api/admin/users/:userId/active` | Administrador | Activa o desactiva una cuenta. |
 | `POST` | `/api/init-db` | Administrador | Reaplica las migraciones pendientes (antes era `GET` público). |
+
+## Endpoints añadidos en la Fase 6
+
+| Método | Ruta | Acceso | Descripción |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/forgot-password` | Público | Envía el enlace de recuperación (respuesta genérica). |
+| `POST` | `/api/auth/reset-password` | Público | Cambia la contraseña con el token del enlace. |
+| `GET` | `/api/profile/details` | Candidato | Educación, experiencia y habilidades. |
+| `PUT` | `/api/profile/education`, `/experience`, `/skills` | Candidato | Reemplaza la lista completa. |
+| `GET` / `PUT` / `DELETE` | `/api/profile/files/:tipo` (`cv`, `foto`) | Autenticado | Archivo del perfil; `PUT` recibe el binario y la cabecera `X-File-Name`. |
+| `GET` | `/api/applications/:id/cv` | Organización dueña | Hoja de vida del postulante. |
+
+El detalle está en [`docs/informe-fase-6-perfil-archivos.md`](../docs/informe-fase-6-perfil-archivos.md).
 
 ## Estructura relevante
 

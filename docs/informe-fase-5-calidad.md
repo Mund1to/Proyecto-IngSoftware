@@ -108,6 +108,8 @@ Auditar el sistema completo tras cerrar el backlog (#1 a #21), corregir el fallo
 
 ## 6. Pendientes conocidos
 
+> Actualización: la subida de archivos, la hoja de vida en base de datos y la recuperación de contraseña se resolvieron en la Fase 6 ([`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-archivos.md)).
+
 - La subida real de archivos (CV y foto) sigue pendiente; el candidato externo comparte un enlace.
 - Educación, experiencia y habilidades del perfil se guardan solo en el navegador.
 - La recuperación de contraseña por correo requiere un servicio de envío de correos.

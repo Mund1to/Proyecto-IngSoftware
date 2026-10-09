@@ -20,6 +20,9 @@ El repositorio contiene el frontend, la API y el esquema PostgreSQL, pero GitHub
 | `JWT_SECRET` | Secreto aleatorio y privado, generado para producción. **Obligatorio**: sin él la API no arranca. |
 | `JWT_EXPIRES_IN` | `7d` |
 | `CORS_ORIGIN` | Opcional. URL de Vercel (varias separadas por comas) para restringir CORS. |
+| `APP_URL` | URL de producción de Vercel; se usa en el enlace de recuperación de contraseña. |
+| `RESEND_API_KEY` | Clave de Resend para enviar correos. Sin ella no se envían enlaces de recuperación. |
+| `MAIL_FROM` | Remitente, por ejemplo `SIPU <no-responder@tu-dominio>`. Requiere un dominio verificado en Resend para escribir a cualquier destinatario. |
 
 Render proporciona `PORT` automáticamente. Al iniciar, la API crea el esquema si la base está vacía y agrega las columnas faltantes de ofertas si ya existe.
 

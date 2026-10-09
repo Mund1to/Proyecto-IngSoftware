@@ -91,6 +91,19 @@ El detalle de cierre está en [`informe-cierre-fase-4.md`](informe-cierre-fase-4
 
 El detalle está en [`informe-fase-5-calidad.md`](informe-fase-5-calidad.md).
 
+## Fase 6 — Hoja de vida, archivos y recuperación de acceso
+
+**Objetivo:** cerrar los pendientes funcionales de la Fase 5.
+
+- Guardar educación, experiencia y habilidades en la base de datos. ✅ Completada
+- Subir hoja de vida (PDF) y foto o logo. ✅ Completada
+- Recuperar la contraseña por correo. ✅ Completada
+- Tipo de oferta `FORMACION` y selector de tipo en el formulario (corrige HU-12). ✅ Completada
+
+**Criterio de salida:** un candidato completa su hoja de vida y adjunta su CV, la empresa lo consulta al revisar postulantes y cualquier usuario recupera su acceso sin intervención de un administrador.
+
+El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-archivos.md).
+
 ## Orden recomendado
 
 ```text

@@ -106,5 +106,19 @@ Toda migración nueva debe ser idempotente (`IF NOT EXISTS`, `UPDATE` con condic
 | `20261008_offer_details.sql` | Área, requisitos, duración, horario y correo de contacto en ofertas. |
 | `20261008_organization_verification.sql` | Tabla `verificaciones` y columna `organizaciones.verificada`. |
 | `20261009_normalize_offer_modality.sql` | Normaliza la modalidad a `Presencial`, `Remota` o `Híbrida` y repara ciudades con codificación dañada. |
+| `20261010_offer_type_formacion.sql` | Añade `FORMACION` al tipo de oferta (sin transacción explícita). |
+| `20261010_profile_details_files_resets.sql` | Tablas `perfil_educacion`, `perfil_experiencia`, `perfil_habilidades`, `archivos` y `password_resets`, y la columna `usuarios.token_version`. |
+
+## Tablas de la Fase 6
+
+| Tabla | Responsabilidad |
+| --- | --- |
+| `perfil_educacion` | Formación del candidato, ordenada por `orden`. |
+| `perfil_experiencia` | Experiencia laboral del candidato. |
+| `perfil_habilidades` | Habilidades por categoría; única por perfil, categoría y nombre sin distinguir mayúsculas. |
+| `archivos` | CV (PDF) o foto (PNG/JPG/WEBP) en `BYTEA`; uno por tipo y perfil. |
+| `password_resets` | Hash SHA-256 del token de recuperación, vencimiento y uso. |
+
+`usuarios.token_version` se incluye en cada JWT; al cambiar o restablecer la contraseña se incrementa y las sesiones anteriores dejan de ser válidas.
 
 La modalidad de una oferta se valida en la API contra esos tres valores; las variantes (`remoto`, `hibrido`) se convierten al valor canónico.
