@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { KeyboardEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { AppState, Role, Screen } from "../App";
 import { api } from "../lib/api";
 import ArdyMark from "../components/ArdyMark";
 import UniversityLogo from "../components/UniversityLogo";
+import { IconArrowRight, IconBriefcase, IconBuilding, IconCheck, IconEye, IconEyeOff, IconGraduation, IconLock, IconMail, IconUser } from "../components/icons";
 
 type Props = {
   state?: AppState;
@@ -15,10 +16,10 @@ type View = "login" | "register" | "forgot" | "reset";
 
 type AccountType = Exclude<Role, "admin">;
 
-const roles: { id: AccountType; title: string; description: string }[] = [
-  { id: "student", title: "Estudiante", description: "Encuentra y gestiona tus prácticas universitarias." },
-  { id: "company", title: "Empresa", description: "Publica ofertas y acompaña tu proceso de selección." },
-  { id: "external", title: "Profesional", description: "Consulta las vacantes disponibles de la bolsa general." },
+const roles: { id: AccountType; title: string; description: string; icon: typeof IconGraduation }[] = [
+  { id: "student", title: "Estudiante", description: "Encuentra y gestiona tus prácticas universitarias.", icon: IconGraduation },
+  { id: "external", title: "Profesional", description: "Consulta las vacantes disponibles de la bolsa general.", icon: IconBriefcase },
+  { id: "company", title: "Empresa", description: "Publica ofertas y acompaña tu proceso de selección.", icon: IconBuilding },
 ];
 
 const copy: Record<View, { eyebrow: string; title: string; intro: string }> = {
@@ -130,54 +131,122 @@ export default function AuthScreen({ state, login, register, clearResetToken }: 
 
   const needsPassword = view !== "forgot";
   const needsConfirm = view === "register" || view === "reset";
+  const tabbed = view === "login" || view === "register";
+  const passwordType = showPassword ? "text" : "password";
+  const eye = <EyeToggle shown={showPassword} onToggle={() => setShowPassword(!showPassword)} />;
+
+  // Control segmentado: las flechas mueven entre "Iniciar sesión" y "Crear cuenta".
+  const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const next = view === "login" ? "register" : "login";
+    changeView(next);
+    document.getElementById(`auth-tab-${next}`)?.focus();
+  };
 
   return (
     <main className="auth-shell">
       <section className="auth-brand" aria-label="Presentación de SIPU">
+        <div className="dots auth-brand-dots" aria-hidden="true" />
+        <div className="auth-brand-top">
+          <UniversityLogo className="auth-brand-logo" />
+          <span className="auth-brand-tag">Universidad de Ibagué</span>
+        </div>
         <div>
-          <Logo inverse />
-          <ArdyMark className="auth-squirrel" />
-          <p className="eyebrow inverse">Universidad de Ibagué</p>
-          <h1>Tu talento encuentra oportunidades reales.</h1>
-          <p className="auth-intro">
-            Prácticas universitarias y oportunidades laborales en una plataforma segura, clara y cercana.
-          </p>
+          <h1 className="display">Tu talento encuentra <span className="highlight">oportunidades reales.</span></h1>
+          <p className="auth-intro">Prácticas, empleo y formación en un solo lugar, con empresas verificadas por la universidad.</p>
         </div>
-        <div className="trust-note">
-          <span aria-hidden="true">✓</span>
-          Empresas y perfiles verificados por la Universidad de Ibagué
+        <div className="auth-orbit">
+          <span className="auth-orbit-ring" aria-hidden="true" />
+          <span className="auth-orbit-glow" aria-hidden="true" />
+          <ArdyMark className="auth-orbit-ardy" />
+          <div className="auth-float auth-float-a" aria-hidden="true">
+            <span className="auth-float-logo">TS</span>
+            <span><strong>Practicante web</strong><small>Ibagué · Híbrida</small></span>
+          </div>
+          <div className="auth-float auth-float-b" aria-hidden="true"><IconCheck size={18} />Empresa verificada</div>
+          <div className="auth-float auth-float-c" aria-hidden="true">
+            <span className="auth-float-dot" />
+            <span><strong>Tu postulación</strong> pasó a entrevista</span>
+          </div>
         </div>
+        <ul className="auth-audiences" aria-label="Para quién es SIPU">
+          <li>Estudiantes</li>
+          <li>Profesionales</li>
+          <li>Empresas</li>
+        </ul>
       </section>
 
       <section className="auth-panel">
-        <div className="auth-mobile-logo"><Logo /></div>
+        <div className="auth-mobile-logo"><UniversityLogo /></div>
         <div className="auth-card">
           <p className="eyebrow">{copy[view].eyebrow}</p>
           <h2>{copy[view].title}</h2>
-          <p className="muted">{copy[view].intro}</p>
+          <p className="auth-lead">{copy[view].intro}</p>
+
+          {tabbed && (
+            <div className="auth-tabs" role="tablist" aria-label="Acceso" onKeyDown={onTabKey}>
+              {(["login", "register"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  id={`auth-tab-${tab}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === tab}
+                  aria-controls="auth-form"
+                  tabIndex={view === tab ? 0 : -1}
+                  className={view === tab ? "auth-tab is-active" : "auth-tab"}
+                  onClick={() => { if (view !== tab) changeView(tab); }}
+                >
+                  {tab === "login" ? "Iniciar sesión" : "Crear cuenta"}
+                </button>
+              ))}
+            </div>
+          )}
 
           {state?.notice && view === "login" && !info && <div className="form-error" role="status">{state.notice}</div>}
           {info && <div className="success-panel" role="status"><p>{info}</p></div>}
 
           {!(view === "forgot" && info) && (
-            <form onSubmit={submit} noValidate aria-busy={submitting}>
+            <form
+              key={view}
+              id="auth-form"
+              className="auth-form"
+              onSubmit={submit}
+              noValidate
+              aria-busy={submitting}
+              role={tabbed ? "tabpanel" : undefined}
+              aria-labelledby={tabbed ? `auth-tab-${view}` : undefined}
+            >
               {view === "register" && (
                 <>
                   <fieldset className="role-picker">
                     <legend>Tipo de cuenta</legend>
-                    {roles.map((item) => (
-                      <label key={item.id} className={role === item.id ? "selected" : ""}>
-                        <input type="radio" name="role" value={item.id} checked={role === item.id} onChange={() => setRole(item.id)} />
-                        <span><strong>{item.title}</strong><small>{item.description}</small></span>
-                      </label>
-                    ))}
+                    {roles.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <label key={item.id} className={role === item.id ? "role-card is-selected" : "role-card"}>
+                          <input type="radio" name="role" value={item.id} checked={role === item.id} onChange={() => setRole(item.id)} />
+                          <span className={`role-card-icon role-card-icon-${item.id}`} aria-hidden="true"><Icon size={22} /></span>
+                          <span className="role-card-text"><strong>{item.title}</strong><small>{item.description}</small></span>
+                          <span className="role-card-radio" aria-hidden="true" />
+                        </label>
+                      );
+                    })}
                   </fieldset>
-                  <Field label={role === "company" ? "Nombre de la organización" : "Nombre completo"} value={name} onChange={setName} autoComplete={role === "company" ? "organization" : "name"} />
+                  <Field
+                    label={role === "company" ? "Nombre de la organización" : "Nombre completo"}
+                    icon={role === "company" ? <IconBuilding /> : <IconUser />}
+                    value={name}
+                    onChange={setName}
+                    autoComplete={role === "company" ? "organization" : "name"}
+                  />
                 </>
               )}
               {view !== "reset" && (
                 <Field
                   label={view === "register" && role === "student" ? "Correo institucional" : view === "register" && role === "company" ? "Correo corporativo" : "Correo"}
+                  icon={<IconMail />}
                   value={email}
                   onChange={setEmail}
                   type="email"
@@ -186,14 +255,20 @@ export default function AuthScreen({ state, login, register, clearResetToken }: 
                 />
               )}
               {needsPassword && (
-                <>
-                  <Field label={view === "reset" ? "Nueva contraseña" : "Contraseña"} value={password} onChange={setPassword} type={showPassword ? "text" : "password"} autoComplete={view === "login" ? "current-password" : "new-password"} />
-                  <label className="check-row"><input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} /> Mostrar contraseña</label>
-                </>
+                <Field
+                  label={view === "reset" ? "Nueva contraseña" : "Contraseña"}
+                  icon={<IconLock />}
+                  value={password}
+                  onChange={setPassword}
+                  type={passwordType}
+                  autoComplete={view === "login" ? "current-password" : "new-password"}
+                  trailing={eye}
+                  aside={view === "login" && <button type="button" className="text-button auth-forgot" onClick={() => changeView("forgot")}>¿Olvidaste tu contraseña?</button>}
+                />
               )}
               {needsConfirm && (
                 <>
-                  <Field label="Confirmar contraseña" value={confirm} onChange={setConfirm} type={showPassword ? "text" : "password"} autoComplete="new-password" />
+                  <Field label="Confirmar contraseña" icon={<IconLock />} value={confirm} onChange={setConfirm} type={passwordType} autoComplete="new-password" />
                   <ul className="password-rules" aria-label="Requisitos de contraseña">
                     <li className={password.length >= 8 ? "valid" : ""}>Mínimo 8 caracteres</li>
                     <li className={/[A-Z]/.test(password) ? "valid" : ""}>Una mayúscula</li>
@@ -203,25 +278,37 @@ export default function AuthScreen({ state, login, register, clearResetToken }: 
               )}
               {error && <div className="form-error" role="alert">{error}</div>}
               {slowServer && <p className="muted" role="status">El servidor se está activando. Esto puede tardar hasta un minuto la primera vez.</p>}
-              <button className="button primary full" type="submit" disabled={submitting}>{submitLabel}</button>
+              <button className="button primary full auth-cta" type="submit" disabled={submitting}>
+                {submitLabel}
+                {!submitting && <IconArrowRight className="auth-cta-arrow" />}
+              </button>
+
+              {view === "login" && (
+                <>
+                  <p className="auth-divider"><span>¿Eres nuevo? Elige tu perfil</span></p>
+                  <div className="role-tiles">
+                    {roles.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button key={item.id} type="button" className="role-tile" aria-label={`Crear cuenta de ${item.title.toLowerCase()}`} onClick={() => { setRole(item.id); changeView("register"); }}>
+                          <span className={`role-card-icon role-card-icon-${item.id}`} aria-hidden="true"><Icon size={22} /></span>
+                          {item.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </form>
           )}
 
-          <div className="auth-actions">
-            {view === "login" ? (
-              <>
-                <button className="text-button" onClick={() => changeView("forgot")}>¿Olvidaste tu contraseña?</button>
-                <p>¿Aún no tienes cuenta? <button className="text-button" onClick={() => changeView("register")}>Crear cuenta</button></p>
-              </>
-            ) : (
-              <p>
-                {view === "register" ? "¿Ya tienes una cuenta? " : ""}
-                <button className="text-button" onClick={() => { if (view === "reset") clearResetToken?.(); changeView("login"); }}>
-                  {view === "register" ? "Iniciar sesión" : "Volver a iniciar sesión"}
-                </button>
-              </p>
-            )}
-          </div>
+          {!tabbed && (
+            <div className="auth-actions">
+              <button className="text-button" onClick={() => { if (view === "reset") clearResetToken?.(); changeView("login"); }}>
+                Volver a iniciar sesión
+              </button>
+            </div>
+          )}
           <p className="legal">Al continuar confirmas que tus datos se usarán para gestionar tu cuenta y tus postulaciones.</p>
         </div>
       </section>
@@ -229,17 +316,40 @@ export default function AuthScreen({ state, login, register, clearResetToken }: 
   );
 }
 
-function Field({ label, value, onChange, type = "text", hint, autoComplete }: { label: string; value: string; onChange: (value: string) => void; type?: string; hint?: string; autoComplete?: string }) {
+type FieldProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  hint?: string;
+  autoComplete?: string;
+  icon?: ReactNode;
+  trailing?: ReactNode;
+  aside?: ReactNode;
+};
+
+function Field({ label, value, onChange, type = "text", hint, autoComplete, icon, trailing, aside }: FieldProps) {
   const id = label.toLowerCase().replace(/\s/g, "-");
   return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete} />
-      {hint && <small>{hint}</small>}
+    <div className="field auth-field">
+      <div className="auth-field-head">
+        <label htmlFor={id}>{label}</label>
+        {aside}
+      </div>
+      <div className={trailing ? "auth-input has-trailing" : "auth-input"}>
+        {icon && <span className="auth-input-icon" aria-hidden="true">{icon}</span>}
+        <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete} aria-describedby={hint ? `${id}-hint` : undefined} />
+        {trailing}
+      </div>
+      {hint && <small id={`${id}-hint`}>{hint}</small>}
     </div>
   );
 }
 
-function Logo({ inverse = false }: { inverse?: boolean }) {
-  return <div className={`brand-logo ${inverse ? "inverse" : ""}`}><UniversityLogo /><small>Prácticas y empleo</small></div>;
+function EyeToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className="auth-eye" aria-label="Mostrar contraseña" aria-pressed={shown} title={shown ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={onToggle}>
+      {shown ? <IconEyeOff /> : <IconEye />}
+    </button>
+  );
 }

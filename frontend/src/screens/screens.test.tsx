@@ -1,7 +1,10 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App, { type AppState } from "../App";
+import AuthScreen from "./AuthScreen";
+import CompanyDashboard from "./CompanyDashboard";
 import ExternalDashboard from "./ExternalDashboard";
+import OfferDetail from "./OfferDetail";
 import StudentDashboard from "./StudentDashboard";
 
 const jsonResponse = (status: number, body: unknown) =>
@@ -115,6 +118,29 @@ describe("StudentDashboard: filtros desplegables", () => {
     expect(screen.getByText("Práctica en Cali")).toBeTruthy();
   });
 
+  it("filtra con las fichas de tipo y muestra la afinidad solo si la API la envía", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => jsonResponse(200, {
+      ok: true,
+      offers: [
+        { ...offer(1, "Práctica en Ibagué", "Ibagué"), tipo: "PRACTICA", affinity: 80 },
+        { ...offer(2, "Curso de SQL", "Cali"), tipo: "FORMACION" },
+      ],
+    })));
+    render(<StudentDashboard state={studentState} navigate={vi.fn()} />);
+    await screen.findByText("Curso de SQL");
+
+    expect(screen.getByText("¡Encontré 2 ofertas para ti!")).toBeTruthy();
+    const bars = screen.getAllByRole("progressbar", { name: "Afinidad con tu perfil" });
+    expect(bars).toHaveLength(1);
+    expect(bars[0].getAttribute("aria-valuenow")).toBe("80");
+
+    const formacion = screen.getByRole("button", { name: /Formación\s*1 oferta/ });
+    fireEvent.click(formacion);
+    expect(formacion.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("Práctica en Ibagué")).toBeNull();
+    expect(screen.getByRole("button", { name: "Quitar filtro Tipo: Formación" })).toBeTruthy();
+  });
+
   it("cierra el menú con Escape", async () => {
     await renderDashboard();
 
@@ -125,6 +151,64 @@ describe("StudentDashboard: filtros desplegables", () => {
 
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(screen.getByRole("button", { name: /Ciudad/ }).getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("OfferDetail", () => {
+  const detailOffer = {
+    id: 9, title: "Curso de datos", company: "Academia", logo: "AC", city: "Ibagué", area: "Tecnología", modality: "Remota" as const,
+    closeDate: new Date(Date.now() + 5 * 86400000).toISOString(), salary: "A convenir", description: "Aprende SQL.",
+    requirements: ["SQL, Power BI"], offerType: "FORMACION" as const, verified: true, affinity: 73,
+  };
+
+  it("muestra afinidad, compara habilidades con el perfil y calcula el avance", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, {
+      ok: true,
+      details: { education: [{ titulo: "Ingeniería", institucion: "Unibagué", periodo: "2022" }], experience: [], skills: [{ categoria: "Datos", nombre: "sql" }] },
+    })));
+    render(<OfferDetail state={{ ...baseState, role: "student", screen: "offer-detail", selectedOffer: detailOffer }} navigate={vi.fn()} applyToOffer={vi.fn()} />);
+
+    expect(screen.getByRole("img", { name: "Afinidad con tu perfil: 73%" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Inscribirme/ })).toBeTruthy();
+    expect(await screen.findByText("Tienes 1 de 2 en tu perfil")).toBeTruthy();
+    expect(screen.getByText("(ya está en tu perfil)", { exact: false })).toBeTruthy();
+    expect(screen.getByText("(no está en tu perfil)", { exact: false })).toBeTruthy();
+    // Solo educación y habilidades de 5 secciones: 40 %.
+    expect(screen.getByRole("progressbar", { name: "Perfil completado" }).getAttribute("aria-valuenow")).toBe("40");
+  });
+
+  it("oculta la afinidad y el consejo de Ardy si no hay datos", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(500, { message: "error" })));
+    const { affinity: _omit, ...withoutAffinity } = detailOffer;
+    render(<OfferDetail state={{ ...baseState, role: "student", screen: "offer-detail", selectedOffer: { ...withoutAffinity, offerType: "PRACTICA" } }} navigate={vi.fn()} applyToOffer={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: /Postularme/ })).toBeTruthy();
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalled());
+    expect(screen.queryByRole("img", { name: /Afinidad/ })).toBeNull();
+    expect(screen.queryByText("Consejo de Ardy")).toBeNull();
+  });
+});
+
+describe("CompanyDashboard", () => {
+  const companyState: AppState = {
+    ...baseState,
+    screen: "company-dashboard",
+    role: "company",
+    currentUser: { id: 5, email: "rrhh@ts.co", nombreCompleto: "TecnoSur", organizacionNombre: "TecnoSur", organizacionVerificada: true, profileTypes: ["ORGANIZACION"], roles: ["USUARIO"] },
+  };
+
+  it("muestra el saludo, los nuevos de la semana y la barra por etapa", async () => {
+    const companyOffer = { ...brokenOffer, id: "4", titulo: "Practicante web", estado: "PUBLICADA", conteo_estados: { ENVIADA: 2, PRESELECCIONADA: 1 }, nuevos_semana: 3 };
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.includes("/offers/mine")
+      ? jsonResponse(200, { ok: true, offers: [companyOffer] })
+      : jsonResponse(200, { ok: true, applications: [{ id: 1, estado: "ENVIADA" }, { id: 2, estado: "ENVIADA" }, { id: 3, estado: "PRESELECCIONADA" }] }))));
+    render(<CompanyDashboard state={companyState} navigate={vi.fn()} />);
+
+    expect(screen.getByRole("heading", { name: "Hola, TecnoSur." })).toBeTruthy();
+    expect(screen.getByText("Organización verificada")).toBeTruthy();
+    expect(await screen.findByText("3 postulantes nuevos")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Postulaciones por etapa: 2 enviadas, 0 en revisión, 1 entrevista, 0 aceptadas" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Publicar una nueva oferta/ })).toBeTruthy();
   });
 });
 
@@ -157,6 +241,28 @@ describe("App: inicio de sesión", () => {
 
     expect(await screen.findByText("Práctica de prueba")).toBeTruthy();
     expect(localStorage.getItem("sipu-token")).toBe("nuevo-token");
+  });
+
+  it("cambia de vista con las pestañas y abre el registro con el perfil elegido", () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { status: "ok" })));
+    render(<AuthScreen navigate={vi.fn()} />);
+
+    const loginTab = screen.getByRole("tab", { name: "Iniciar sesión" });
+    expect(loginTab.getAttribute("aria-selected")).toBe("true");
+
+    const password = screen.getByLabelText("Contraseña") as HTMLInputElement;
+    expect(password.type).toBe("password");
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar contraseña" }));
+    expect(password.type).toBe("text");
+    expect(screen.getByRole("button", { name: "Mostrar contraseña" }).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Crear cuenta de empresa" }));
+    expect(screen.getByRole("tab", { name: "Crear cuenta" }).getAttribute("aria-selected")).toBe("true");
+    expect((screen.getByRole("radio", { name: /Empresa/ }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByLabelText("Nombre de la organización")).toBeTruthy();
+
+    fireEvent.keyDown(screen.getByRole("tablist", { name: "Acceso" }), { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: "Iniciar sesión" }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("muestra el error de credenciales sin cerrar el formulario", async () => {

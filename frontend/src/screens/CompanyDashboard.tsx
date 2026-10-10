@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
+import ArdyMark from "../components/ArdyMark";
+import TypeBadge from "../components/TypeBadge";
+import { IconBriefcase, IconCheck, IconClock, IconPlus, IconSearch, IconUser } from "../components/icons";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/offers";
 import { companyInitials, daysUntil, formatSalary, normalizeModality, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero, type OfferType } from "../lib/offers";
@@ -20,7 +23,18 @@ const initial: Draft = {
   offerType: "PRACTICA",
 };
 
-const toUiOffer = (offer: any, fallbackCompany = "Empresa", fallbackVerified = false): Offer => ({
+// Etapas de la barra de cada oferta, en orden, con el estado de la API que cuentan.
+const STAGES = [
+  { status: "ENVIADA", label: "enviadas", legend: "Enviada", tone: "sent" },
+  { status: "EN_REVISION", label: "en revisión", legend: "En revisión", tone: "review" },
+  { status: "PRESELECCIONADA", label: "entrevista", legend: "Entrevista", tone: "interview" },
+  { status: "ACEPTADA", label: "aceptadas", legend: "Aceptada", tone: "accepted" },
+] as const;
+
+// conteo_estados y nuevos_semana llegan de GET /offers/mine; si faltan, se muestra solo el total.
+type CompanyOffer = Offer & { stageCounts?: Record<string, number>; newThisWeek?: number };
+
+const toUiOffer = (offer: any, fallbackCompany = "Empresa", fallbackVerified = false): CompanyOffer => ({
   id: Number(offer.id),
   title: offer.titulo ?? offer.title ?? "Oferta",
   company: offer.empresa ?? offer.company ?? fallbackCompany,
@@ -41,10 +55,14 @@ const toUiOffer = (offer: any, fallbackCompany = "Empresa", fallbackVerified = f
   contactEmail: offer.contacto_email ?? offer.contactEmail,
   salaryMin: offer.remuneracion == null ? null : toNumberOrZero(offer.remuneracion),
   salaryMax: offer.remuneracion_maxima == null ? null : toNumberOrZero(offer.remuneracion_maxima),
+  ...(offer.conteo_estados && typeof offer.conteo_estados === "object" ? { stageCounts: offer.conteo_estados as Record<string, number> } : {}),
+  ...(offer.nuevos_semana != null && Number.isFinite(Number(offer.nuevos_semana)) ? { newThisWeek: Number(offer.nuevos_semana) } : {}),
 });
 
+const STATUS_LABELS: Record<string, string> = { PUBLICADA: "Publicada", BORRADOR: "Borrador", CANCELADA: "Cancelada", CERRADA: "Cerrada" };
+
 export default function CompanyDashboard({ state, navigate }: Props) {
-  const [offers, setOffers] = useState<Offer[]>([]);
+  const [offers, setOffers] = useState<CompanyOffer[]>([]);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -191,7 +209,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
       if (editingId) {
         const response = await api.updateOffer(editingId, payload, state.token);
         const updated = toUiOffer(response.offer, state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto, state.currentUser?.organizacionVerificada);
-        setOffers((current) => current.map((o) => (o.id === editingId ? { ...updated, applicants: o.applicants } : o)));
+        setOffers((current) => current.map((o) => (o.id === editingId ? { ...updated, applicants: o.applicants, stageCounts: o.stageCounts, newThisWeek: o.newThisWeek } : o)));
       } else {
         const response = await api.createOffer(payload, state.token);
         const created = toUiOffer(response.offer, state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto, state.currentUser?.organizacionVerificada);
@@ -271,49 +289,95 @@ export default function CompanyDashboard({ state, navigate }: Props) {
     </div>
   );
 
+  const organization = state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "tu organización";
+  const verified = Boolean(state.currentUser?.organizacionVerificada);
+  const activeOffers = offers.filter((offer) => offer.status === "PUBLICADA" && daysUntil(offer.closeDate) >= 0).length;
+  const totalApplicants = offers.reduce((total, offer) => total + (offer.applicants ?? 0), 0);
+  const hasWeekData = offers.some((offer) => offer.newThisWeek !== undefined);
+  const newThisWeek = offers.reduce((total, offer) => total + (offer.newThisWeek ?? 0), 0);
+  const startCreate = () => { setEditingId(null); setDraft(initial); setCreating(true); };
+  const reviewApplicants = (filter: NonNullable<AppState["applicantFilter"]>) => navigate("company-applicants", { selectedCompanyOffer: offers[0], applicantFilter: filter });
+
+  const metrics = [
+    { label: "Ofertas activas", value: activeOffers, icon: IconBriefcase, tone: "primary", onClick: () => offersListRef.current?.scrollIntoView({ behavior: "smooth" }), disabled: false },
+    { label: "Postulantes", value: totalApplicants, icon: IconUser, tone: "navy", onClick: () => reviewApplicants("Todos"), disabled: !offers[0] },
+    { label: "En revisión", value: pendingApplicants, icon: IconSearch, tone: "sky", onClick: () => reviewApplicants("En revisión"), disabled: !offers[0] },
+    { label: "Nuevos esta semana", value: hasWeekData ? newThisWeek : "—", icon: IconClock, tone: "amber", onClick: () => reviewApplicants("Todos"), disabled: !offers[0] },
+  ];
+
   return (
     <div className="app-shell">
       <NavBar role="company" navigate={navigate} activeScreen="company-dashboard" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
-      <main>
-        <section className="company-hero"><div className="container"><div><p className="eyebrow inverse">Panel empresarial</p><h1>{state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Panel empresarial"}</h1><p>Gestiona tus ofertas y procesos de selección.</p></div><button className="button primary light" onClick={() => { setEditingId(null); setDraft(initial); setCreating(true); }}>Crear oferta</button></div></section>
-        <section className="container company-content">
-          {offersError && <div className="form-error mb-5" role="alert">{offersError}</div>}
-          <div className="metric-grid">
-            <button onClick={() => offersListRef.current?.scrollIntoView({ behavior: "smooth" })}><span>Ofertas activas</span><strong>{offers.filter((offer) => offer.status === "PUBLICADA" && daysUntil(offer.closeDate) >= 0).length}</strong><small>Ver publicaciones</small></button>
-            <button disabled={!offers[0]} onClick={() => navigate("company-applicants", { selectedCompanyOffer: offers[0], applicantFilter: "Todos" })}><span>Postulantes</span><strong>{offers.reduce((total, offer) => total + (offer.applicants ?? 0), 0)}</strong><small>Ver todos</small></button>
-            <button disabled={!offers[0]} onClick={() => navigate("company-applicants", { selectedCompanyOffer: offers[0], applicantFilter: "En revisión" })}><span>En revisión</span><strong>{pendingApplicants}</strong><small>Revisar candidatos</small></button>
+      <main className="container company-vivo">
+        <section className="hero-card company-hero-vivo">
+          <div className="dots company-hero-dots" aria-hidden="true" />
+          <div>
+            <p className="eyebrow inverse">Panel empresarial</p>
+            <h1 className="display">Hola, {organization}.</h1>
+            {hasWeekData && (
+              <p className="company-hero-lead">
+                {newThisWeek > 0
+                  ? <>Tienes <strong>{newThisWeek === 1 ? "1 postulante nuevo" : `${newThisWeek} postulantes nuevos`}</strong> esta semana esperando tu revisión.</>
+                  : "No tienes postulantes nuevos esta semana."}
+              </p>
+            )}
+            <span className={verified ? "verify-badge is-verified" : "verify-badge is-pending"}>
+              {verified ? <IconCheck size={16} /> : <IconClock size={16} />}
+              {verified ? "Organización verificada" : "Verificación pendiente"}
+            </span>
           </div>
-          <div className="catalog-heading" ref={offersListRef}><div><p className="eyebrow">Tus publicaciones</p><h2>Ofertas publicadas</h2></div></div>
-          {offers.length === 0 ? (
-            <div className="empty-state">
-              <h2>No tienes ofertas publicadas</h2>
-              <p>Publica tu primera vacante o práctica universitaria para comenzar a recibir candidatos.</p>
-              <button className="button primary" onClick={() => { setEditingId(null); setDraft(initial); setCreating(true); }}>Publicar primera oferta</button>
-            </div>
-          ) : (
-            offers.map((offer) => (
-              <article className="company-offer" key={offer.id}>
-                <div>
-                  <span className={`status ${offer.status === "PUBLICADA" ? "status-abierta" : "status-cerrada"}`}>{offer.status === "PUBLICADA" ? "Publicada" : offer.status === "BORRADOR" ? "Borrador" : offer.status === "CANCELADA" ? "Cancelada" : "Cerrada"}</span>
-                  <h3>{offer.title}</h3>
-                  <p>{offerTypeLabel(offer.offerType)} · {offer.city} · {offer.modality} · Cierra {formatDate(offer.closeDate, "sin fecha")}</p>
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-                  <strong>{offer.applicants ?? 0} postulantes</strong>
-                  <button className="button secondary" onClick={() => navigate("company-applicants", { selectedCompanyOffer: offer, applicantFilter: "Todos" })}>
-                    Gestionar postulantes
-                  </button>
-                  {offer.status !== "CANCELADA" && <button className="button secondary" onClick={() => startEdit(offer)}>
-                    Editar
-                  </button>}
-                  {offer.status === "PUBLICADA" && <button className="button secondary" style={{ color: "#dc2626", borderColor: "#fca5a5" }} onClick={() => setDeletingId(offer.id)}>
-                    Cancelar oferta
-                  </button>}
-                </div>
-              </article>
-            ))
-          )}
+          <div className="company-hero-actions">
+            <button className="hero-button-light" onClick={startCreate}><IconPlus />Crear oferta</button>
+            <button className="hero-button-ghost" disabled={!offers[0]} onClick={() => reviewApplicants("Todos")}>Revisar postulantes</button>
+          </div>
         </section>
+
+        {offersError && <div className="form-error" role="alert">{offersError}</div>}
+        <div className="company-metrics">
+          {metrics.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <button key={metric.label} className="panel-card interactive company-metric" disabled={metric.disabled} onClick={metric.onClick}>
+                <span className={`company-metric-icon tone-${metric.tone}`} aria-hidden="true"><Icon size={24} /></span>
+                <span className="company-metric-text"><strong>{metric.value}</strong><span>{metric.label}</span></span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="company-list-head" ref={offersListRef}>
+          <div><p className="eyebrow">Tus publicaciones</p><h2>Ofertas publicadas</h2></div>
+          <ul className="stage-legend" aria-hidden="true">
+            {STAGES.map((stage) => <li key={stage.status}><span className={`stage-dot tone-${stage.tone}`} />{stage.legend}</li>)}
+          </ul>
+        </div>
+
+        {offers.length === 0 && (
+          <div className="empty-vivo company-empty">
+            <ArdyMark className="empty-vivo-ardy" />
+            <h2>No tienes ofertas publicadas</h2>
+            <p>Publica tu primera vacante o práctica universitaria para comenzar a recibir candidatos.</p>
+            <button className="button primary" onClick={startCreate}>Publicar primera oferta</button>
+          </div>
+        )}
+        {offers.length > 0 && (
+          <div className="company-offer-grid">
+            {offers.map((offer) => (
+              <CompanyOfferCard
+                key={offer.id}
+                offer={offer}
+                onManage={() => navigate("company-applicants", { selectedCompanyOffer: offer, applicantFilter: "Todos" })}
+                onEdit={() => startEdit(offer)}
+                onCancel={() => setDeletingId(offer.id)}
+              />
+            ))}
+            <button className="new-offer-card" onClick={startCreate}>
+              <span className="new-offer-plus" aria-hidden="true"><IconPlus size={26} /></span>
+              Publicar una nueva oferta
+              <small>Práctica, empleo o formación</small>
+            </button>
+          </div>
+        )}
       </main>
 
       {deletingId && (
@@ -330,6 +394,42 @@ export default function CompanyDashboard({ state, navigate }: Props) {
         </div>
       )}
     </div>
+  );
+}
+
+function CompanyOfferCard({ offer, onManage, onEdit, onCancel }: { offer: CompanyOffer; onManage: () => void; onEdit: () => void; onCancel: () => void }) {
+  const status = offer.status ?? "PUBLICADA";
+  const counts = STAGES.map((stage) => ({ ...stage, n: Number(offer.stageCounts?.[stage.status] ?? 0) }));
+  const inPipeline = counts.reduce((total, stage) => total + stage.n, 0);
+  return (
+    <article className="panel-card company-offer-card">
+      <div className="company-offer-top">
+        <div className="company-offer-info">
+          <div className="company-offer-badges">
+            <TypeBadge type={offer.offerType} />
+            <span className={`offer-status offer-status-${status.toLowerCase()}`}>{STATUS_LABELS[status] ?? "Cerrada"}</span>
+          </div>
+          <h3>{offer.title}</h3>
+          <p>{offer.city} · {offer.modality} · Cierra {formatDate(offer.closeDate, "sin fecha")}</p>
+        </div>
+        <div className="company-offer-total"><strong>{offer.applicants ?? 0}</strong><small>{offer.applicants === 1 ? "postulante" : "postulantes"}</small></div>
+      </div>
+      {offer.stageCounts && (
+        <div>
+          <div className="stage-bar" role="img" aria-label={`Postulaciones por etapa: ${counts.map((stage) => `${stage.n} ${stage.label}`).join(", ")}`}>
+            {inPipeline > 0 && counts.filter((stage) => stage.n > 0).map((stage) => <span key={stage.status} className={`tone-${stage.tone}`} style={{ flexGrow: stage.n }} />)}
+          </div>
+          <ul className="stage-counts" aria-hidden="true">
+            {counts.map((stage) => <li key={stage.status}><span className={`stage-dot tone-${stage.tone}`} /><strong>{stage.n}</strong> {stage.label}</li>)}
+          </ul>
+        </div>
+      )}
+      <div className="company-offer-actions">
+        <button className="button primary" onClick={onManage}>Gestionar postulantes</button>
+        {status !== "CANCELADA" && <button className="button secondary" onClick={onEdit}>Editar</button>}
+        {status === "PUBLICADA" && <button className="danger-link" onClick={onCancel}>Cancelar oferta</button>}
+      </div>
+    </article>
   );
 }
 
