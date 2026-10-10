@@ -157,6 +157,32 @@ export function scoreOffer(offer, profile) {
   return score;
 }
 
+// Máximo que scoreOffer puede dar a esta oferta para este tipo de perfil.
+// Solo cuenta los criterios que la oferta y el tipo de perfil permiten cumplir:
+// el estudiante no registra ciudad, y el bono de tipo depende del perfil.
+export function maxScoreOffer(offer, profile) {
+  const normalize = (value) => String(value ?? '').trim().toLowerCase();
+  const offerType = normalize(offer.tipo);
+  const isStudent = profile.tipo === 'ESTUDIANTE';
+  let max = 0;
+
+  if (normalize(offer.area)) max += 40;
+  if (!isStudent && normalize(offer.ubicacion)) max += 25;
+  max += (Array.isArray(offer.requisitos) ? offer.requisitos.filter((req) => normalize(req)).length : 0) * 15;
+  if (isStudent && offerType === 'practica') max += 20;
+  if (!isStudent && (offerType === 'empleo' || offerType === 'empleo_publico')) max += 20;
+  if (offerType === 'formacion') max += 10;
+
+  return max;
+}
+
+// Afinidad de 0 a 100: el puntaje de scoreOffer frente a su máximo posible.
+export function offerAffinity(offer, profile) {
+  const max = maxScoreOffer(offer, profile);
+  if (max <= 0) return 0;
+  return Math.min(100, Math.round((scoreOffer(offer, profile) / max) * 100));
+}
+
 export async function listRecommendedOffersController(request, response) {
   try {
     const profileResult = await pool.query(
@@ -193,6 +219,7 @@ export async function listRecommendedOffersController(request, response) {
       .map((offer) => ({
         ...offer,
         recommendationScore: scoreOffer(offer, profile) + (offer.verificada ? 5 : 0),
+        affinity: offerAffinity(offer, profile),
       }))
       .sort((a, b) => b.recommendationScore - a.recommendationScore);
 
@@ -228,10 +255,25 @@ export async function listMyOffersController(request, response) {
   }
 
   try {
+    // conteo_estados: postulaciones por estado ({ "ENVIADA": 3, ... }) para la barra
+    // por etapa del panel; nuevos_semana: postulaciones de los últimos 7 días.
     const result = await pool.query(
-      `SELECT o.*, org.razon_social AS empresa, org.verificada
+      `SELECT o.*, org.razon_social AS empresa, org.verificada,
+              COALESCE(c.conteo, '{}'::jsonb) AS conteo_estados,
+              COALESCE(c.nuevos, 0)::int AS nuevos_semana
        FROM ofertas o
        INNER JOIN organizaciones org ON org.perfil_id = o.organizacion_id
+       LEFT JOIN LATERAL (
+         SELECT jsonb_object_agg(s.estado, s.n) AS conteo, SUM(s.nuevos) AS nuevos
+         FROM (
+           SELECT p.estado::text AS estado,
+                  COUNT(*)::int AS n,
+                  COUNT(*) FILTER (WHERE p.created_at >= NOW() - INTERVAL '7 days')::int AS nuevos
+           FROM postulaciones p
+           WHERE p.oferta_id = o.id
+           GROUP BY p.estado
+         ) s
+       ) c ON TRUE
        WHERE o.organizacion_id = $1
        ORDER BY o.created_at DESC`,
       [organizationId]

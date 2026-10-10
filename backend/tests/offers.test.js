@@ -95,6 +95,28 @@ describe('consulta de ofertas', () => {
     assert.equal((await api().get('/api/offers/mine').set(auth(student.token))).status, 403);
   });
 
+  it('mis ofertas incluyen el conteo de postulaciones por estado y los nuevos de la semana', async () => {
+    const company = await registerUser('ORGANIZACION', { razonSocial: 'Conteo SAS' });
+    const offer = await createOffer(company.token, { titulo: 'Oferta con postulantes' });
+    const empty = await createOffer(company.token, { titulo: 'Oferta sin postulantes' });
+
+    const first = await registerUser('ESTUDIANTE');
+    const second = await registerUser('ESTUDIANTE');
+    const applied = await api().post(`/api/applications/offers/${offer.id}`).set(auth(first.token));
+    await api().post(`/api/applications/offers/${offer.id}`).set(auth(second.token));
+    await api().patch(`/api/applications/${applied.body.application.id}/status`).set(auth(company.token)).send({ estado: 'PRESELECCIONADA' });
+
+    const response = await api().get('/api/offers/mine').set(auth(company.token));
+    assert.equal(response.status, 200);
+    const withApplicants = response.body.offers.find((item) => String(item.id) === String(offer.id));
+    assert.deepEqual(withApplicants.conteo_estados, { ENVIADA: 1, PRESELECCIONADA: 1 });
+    assert.equal(withApplicants.nuevos_semana, 2);
+
+    const withoutApplicants = response.body.offers.find((item) => String(item.id) === String(empty.id));
+    assert.deepEqual(withoutApplicants.conteo_estados, {});
+    assert.equal(withoutApplicants.nuevos_semana, 0);
+  });
+
   it('las recomendaciones priorizan la afinidad con el perfil', async () => {
     const company = await registerUser('ORGANIZACION', { razonSocial: 'Reco SAS' });
     const practice = await createOffer(company.token, { titulo: 'Práctica afín', area: 'Ingeniería', tipo: 'PRACTICA' });
@@ -105,6 +127,10 @@ describe('consulta de ofertas', () => {
     assert.equal(response.status, 200);
     assert.equal(response.body.offers[0].id, practice.id);
     assert.ok(response.body.offers[0].recommendationScore > response.body.offers.at(-1).recommendationScore);
+    for (const offer of response.body.offers) {
+      assert.ok(Number.isInteger(offer.affinity) && offer.affinity >= 0 && offer.affinity <= 100, `affinity fuera de rango: ${offer.affinity}`);
+    }
+    assert.ok(response.body.offers[0].affinity > response.body.offers.at(-1).affinity);
 
     assert.equal((await api().get('/api/offers/recommended').set(auth(company.token))).status, 403);
   });
