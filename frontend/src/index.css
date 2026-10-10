@@ -94,13 +94,15 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .role-picker input { position: absolute; opacity: 0; }
 .role-picker strong, .role-picker small, .role-option strong, .role-option small { display: block; }
 .role-picker small, .role-option small { margin-top: 4px; color: var(--muted); font-weight: 400; line-height: 1.25; }
-.password-rules { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; color: var(--muted); font-size: 14px; list-style: none; }
+.password-rules { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; color: var(--muted); font-size: 14px; list-style: none; }
 .password-rules li::before { content: "○"; margin-right: 5px; }
 .password-rules li.valid { color: var(--success); }
 .password-rules li.valid::before { content: "✓"; }
 .form-error { margin: 16px 0; padding: 12px; border-left: 3px solid var(--danger); border-radius: 4px; color: var(--danger); background: #fef3f2; }
-.auth-actions { margin-top: 20px; text-align: center; }
-.auth-actions p { color: var(--muted); }
+.auth-actions { display: grid; justify-items: center; gap: 6px; margin-top: 20px; text-align: center; }
+.auth-actions p { margin: 0; color: var(--muted); }
+.auth-card form > .button.full { margin-top: 24px; }
+.auth-card .check-row { min-height: 32px; margin-top: -8px; }
 .legal { margin-top: 32px; color: var(--muted); font-size: 14px; text-align: center; }
 .success-panel { margin-top: 24px; padding: 20px; border: 1px solid #acd4c4; border-radius: 8px; background: #effaf5; }
 .success-panel p { color: var(--muted); }
@@ -186,7 +188,7 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .ext-filter-sort { margin-left: auto; }
 .ext-filter-sort .filter-panel { left: auto; right: 0; transform-origin: top right; }
 .filter-dropdown-pill { position: relative; }
-.filter-pill { min-height: 38px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px 7px 16px; border: 1px solid #e2e8f0; border-radius: 99px; color: #475569; background: #ffffff; font-size: 14px; font-weight: 600; white-space: nowrap; transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.filter-pill { min-height: 38px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid #e2e8f0; border-radius: 99px; color: #475569; background: #ffffff; font-size: 14px; font-weight: 600; white-space: nowrap; transition: border-color .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease; }
 .filter-pill:hover { border-color: #94a3b8; color: #0d2240; transform: translateY(-1px); }
 .filter-pill .filter-chevron { width: 16px; height: 16px; stroke: #94a3b8; }
 .filter-pill.is-active { border-color: #0d2240; color: #ffffff; background: #0d2240; }

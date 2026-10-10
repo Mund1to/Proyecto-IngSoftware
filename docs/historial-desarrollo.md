@@ -378,6 +378,7 @@ El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-
 - `docs`: [`diseno/brief-claude-design.md`](diseno/brief-claude-design.md), un brief de todas las pantallas para rediseñar SIPU con Claude Design.
 - `fix(backend)`: guardar el perfil respondía 404 ("No existe un perfil de candidato externo para este usuario.") en cuentas cuyo perfil no tenía la fila de detalle (`perfiles_candidato`, `perfiles_estudiante` u `organizaciones`). Los controladores de actualización crean esa fila si falta y la migración `20261011_backfill_profile_rows.sql` la rellena en las cuentas existentes. Dos pruebas nuevas en `fase6.test.js`.
 - `feat(frontend)`: la bolsa de empleo del candidato externo cambia sus `<select>` por pestañas de tipo con contador, menús en forma de pastilla (Área, Modalidad, Ciudad y Ordenar), chips de filtros activos y animaciones de resultados. `FilterDropdown` gana la variante `pill`. Las etiquetas del formulario de perfil externo quedan asociadas a sus campos.
+- `fix(frontend)`: revisión del centrado de botones en todas las pantallas (medición automática de 347 botones). El texto ya estaba centrado; se corrigió el espaciado del botón principal en inicio de sesión y registro, los enlaces bajo el formulario, el padding de las pastillas de filtro y el encabezado de los perfiles, que montaba el nombre y la tarjeta de hoja de vida sobre el banner.
 
 ## 18. Regla para mantener la documentación
 

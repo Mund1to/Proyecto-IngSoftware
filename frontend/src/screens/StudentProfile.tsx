@@ -67,11 +67,11 @@ export default function StudentProfile({ state, navigate, updateStudentProfile, 
           </div>
 
           <div className="px-6 pb-6">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-10 mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-5">
               {/* Avatar */}
-              <ProfileAvatar token={state.token} photo={findFile(user?.archivos, "FOTO")} initials={initials} onChanged={refreshCurrentUser} gradient="linear-gradient(135deg, #0d2240 0%, #163456 100%)" />
+              <div className="-mt-10 shrink-0"><ProfileAvatar token={state.token} photo={findFile(user?.archivos, "FOTO")} initials={initials} onChanged={refreshCurrentUser} gradient="linear-gradient(135deg, #0d2240 0%, #163456 100%)" /></div>
 
-              <div className="flex-1 min-w-0 sm:pb-1">
+              <div className="flex-1 min-w-0 sm:pt-3">
                 <h2 className="text-xl font-bold text-[#0d2240]">{user?.nombreCompleto ?? "Estudiante"}</h2>
                 <p className="text-[#64748b] text-sm font-medium">{user?.programaAcademico ?? "Completa tu programa académico"}{user?.semestre ? ` · ${user.semestre}° Semestre` : ""}</p>
                 <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-[#94a3b8]">
@@ -92,7 +92,7 @@ export default function StudentProfile({ state, navigate, updateStudentProfile, 
               </div>
 
               {/* Hoja de vida */}
-              <div className="sm:ml-auto">
+              <div className="sm:ml-auto sm:pt-4">
                 <FileCard token={state.token} kind="cv" current={findFile(user?.archivos, "CV")} onChanged={refreshCurrentUser} />
               </div>
             </div>

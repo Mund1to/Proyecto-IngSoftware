@@ -78,10 +78,10 @@ export default function ExternalProfile({ state, navigate, updateExternalProfile
           </div>
 
           <div className="px-6 pb-6">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-10 mb-5">
-              <ProfileAvatar token={state.token} photo={findFile(user?.archivos, "FOTO")} initials={initials || "CE"} onChanged={refreshCurrentUser} gradient="linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)" />
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-5">
+              <div className="-mt-10 shrink-0"><ProfileAvatar token={state.token} photo={findFile(user?.archivos, "FOTO")} initials={initials || "CE"} onChanged={refreshCurrentUser} gradient="linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)" /></div>
 
-              <div className="flex-1 min-w-0 sm:pb-1">
+              <div className="flex-1 min-w-0 sm:pt-3">
                 <h2 className="text-xl font-bold text-[#0d2240]">{user?.nombreCompleto ?? "Candidato Externo"}</h2>
                 <p className="text-[#64748b] text-sm font-medium">Bolsa de Empleo General</p>
                 <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-[#94a3b8]">
@@ -108,7 +108,7 @@ export default function ExternalProfile({ state, navigate, updateExternalProfile
               </div>
 
               {/* Hoja de vida */}
-              <div className="sm:ml-auto">
+              <div className="sm:ml-auto sm:pt-4">
                 <FileCard token={state.token} kind="cv" current={findFile(user?.archivos, "CV")} onChanged={refreshCurrentUser} />
                 {user?.cvUrl && <a className="mt-2 block text-[11px] font-semibold text-blue-700 underline" href={user.cvUrl} target="_blank" rel="noreferrer">Ver hoja de vida enlazada</a>}
               </div>
