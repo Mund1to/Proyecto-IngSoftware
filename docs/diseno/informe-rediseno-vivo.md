@@ -22,7 +22,7 @@ Reglas que aplican a todas las fases:
 | 3 | Ofertas del estudiante | Terminada |
 | 4 | Detalle de oferta | Terminada |
 | 5 | Panel de empresa | Terminada |
-| 6 | Estadísticas | Pendiente |
+| 6 | Estadísticas | Terminada |
 | 7 | Resto de pantallas y limpieza de la capa de compatibilidad | Pendiente |
 
 ## Fase 1: base visual y componentes compartidos
@@ -102,12 +102,30 @@ Reglas que aplican a todas las fases:
 - **Nueva oferta:** una tarjeta punteada "Publicar una nueva oferta" al final de la grilla.
 - **Sin cambios:** el formulario de crear y editar, la vista previa y el modal de cancelar. Solo cambian sus radios y botones.
 
+## Fase 6: estadísticas (`EmploymentStats.tsx`)
+
+- **Título:** "Estadísticas de empleo", con "empleo" resaltado, y la nota de que no incluye datos personales.
+- **Indicadores grandes:** cuatro, con el primero oscuro.
+  - Ofertas publicadas, con el total de ofertas debajo.
+  - Postulaciones, con las aceptadas debajo.
+  - Organizaciones, con las verificadas debajo.
+  - Tasa de colocación: aceptadas ÷ postulaciones.
+- **Mini indicadores:** debajo de los grandes, una fila con el resto de `stats.totals`.
+- **Gráficos hechos con CSS, sin librerías:**
+  - Dona por tipo con `conic-gradient`; la leyenda muestra valor y porcentaje.
+  - Columnas de los últimos 6 meses, con el mes más alto resaltado.
+  - Barras horizontales por ciudad y por área.
+  - Ranking numerado de organizaciones.
+- **Accesibilidad:** cada gráfico tiene `role="img"` y un `aria-label` con los datos; el ranking es una lista ordenada con su nombre.
+- **Meses sin postulaciones:** la API solo devuelve los meses que tienen datos, así que el frontend completa con 0 los meses vacíos.
+- **Periodo:** no se agregó el selector de la maqueta, porque la API no filtra por fechas.
+
 ## Verificación
 
 | Prueba | Resultado |
 | --- | --- |
 | Backend (`npm test`) | 100 de 100 |
-| Frontend (`npm test`) | 40 de 40 (14 nuevas en el rediseño) |
+| Frontend (`npm test`) | 41 de 41 (15 nuevas en el rediseño) |
 | `npm run build` y comprobación de tipos | Correctos |
 
 Cada fase se revisó en Microsoft Edge a 1440 y 390 px, sin desplazamiento horizontal y con flujos reales contra la API:

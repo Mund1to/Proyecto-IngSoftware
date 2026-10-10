@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App, { type AppState } from "../App";
 import AuthScreen from "./AuthScreen";
 import CompanyDashboard from "./CompanyDashboard";
+import EmploymentStats from "./EmploymentStats";
 import ExternalDashboard from "./ExternalDashboard";
 import OfferDetail from "./OfferDetail";
 import StudentDashboard from "./StudentDashboard";
@@ -189,6 +190,33 @@ describe("OfferDetail", () => {
   });
 });
 
+describe("EmploymentStats", () => {
+  it("muestra indicadores, tasa de colocación y gráficos con descripción accesible", async () => {
+    const thisMonth = new Date();
+    const mes = `${thisMonth.getFullYear()}-${String(thisMonth.getMonth() + 1).padStart(2, "0")}`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, {
+      ok: true,
+      stats: {
+        totals: { total_ofertas: 10, ofertas_publicadas: 8, total_postulaciones: 20, postulaciones_aceptadas: 5, total_organizaciones: 4, organizaciones_verificadas: 3, total_estudiantes: 30 },
+        offersByType: [{ tipo: "PRACTICA", total: 6 }, { tipo: "FORMACION", total: 2 }],
+        offersByArea: [{ area: "Tecnología", total: 5 }],
+        offersByCity: [{ ubicacion: "Ibagué", total: 7 }],
+        topOrganizations: [{ razon_social: "TecnoSur", total: 4 }],
+        applicationsByMonth: [{ mes, total: 12 }],
+      },
+    })));
+    render(<EmploymentStats state={{ ...baseState, role: "admin", screen: "employment-stats" }} navigate={vi.fn()} />);
+
+    expect(await screen.findByText("25 %")).toBeTruthy();
+    expect(screen.getByText("de 10 ofertas totales")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Ofertas por tipo: Prácticas 6 (75 %), Formación 2 (25 %)" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /^Postulaciones por mes: .* 12$/ })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Ofertas por ciudad: Ibagué 7" })).toBeTruthy();
+    expect(screen.getByText("Estudiantes")).toBeTruthy();
+    expect(within(screen.getByRole("list", { name: "Organizaciones con más ofertas" })).getByText("TecnoSur")).toBeTruthy();
+  });
+});
+
 describe("CompanyDashboard", () => {
   const companyState: AppState = {
     ...baseState,
@@ -308,7 +336,7 @@ describe("App: inicio de sesión", () => {
     }));
 
     render(<App />);
-    expect(await screen.findByText("Estadísticas de empleo")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Estadísticas de empleo" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Usuarios" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Mis postulaciones" })).toBeNull();
   });
