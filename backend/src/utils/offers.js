@@ -1,4 +1,6 @@
 export const OFFER_TYPES = ['PRACTICA', 'EMPLEO', 'EMPLEO_PUBLICO', 'FORMACION'];
+// Tipos que ve el candidato externo: las prácticas son solo para estudiantes de la universidad.
+export const EXTERNAL_OFFER_TYPES = ['EMPLEO', 'EMPLEO_PUBLICO', 'FORMACION'];
 export const OFFER_STATUSES = ['BORRADOR', 'PUBLICADA', 'CERRADA', 'CANCELADA'];
 export const MODALITIES = ['Presencial', 'Remota', 'Híbrida'];
 

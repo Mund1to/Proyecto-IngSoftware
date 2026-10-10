@@ -1,6 +1,7 @@
 import { pool } from '../config/database.js';
 import { getOrganizationProfileId } from '../utils/profiles.js';
 import { sendStoredFile } from './profileDetails.controller.js';
+import { EXTERNAL_OFFER_TYPES } from '../utils/offers.js';
 
 // Estados que puede asignar la organización. RETIRADA solo la aplica el candidato.
 const COMPANY_STATUSES = ['ENVIADA', 'EN_REVISION', 'PRESELECCIONADA', 'RECHAZADA', 'ACEPTADA'];
@@ -101,8 +102,10 @@ export async function applyToOfferController(request, response) {
 
   try {
     const offerResult = await pool.query(
-      `SELECT id, estado, fecha_cierre FROM ofertas WHERE id = $1`,
-      [offerId]
+      `SELECT o.id, o.estado, o.fecha_cierre, o.tipo::text AS tipo,
+              (SELECT p.tipo::text FROM perfiles p WHERE p.id = $2) AS perfil_tipo
+       FROM ofertas o WHERE o.id = $1`,
+      [offerId, candidateProfileId]
     );
 
     if (offerResult.rowCount === 0) {
@@ -111,6 +114,11 @@ export async function applyToOfferController(request, response) {
 
     if (offerResult.rows[0].estado !== 'PUBLICADA') {
       return response.status(400).json({ ok: false, message: 'La oferta no está publicada para recibir postulaciones.' });
+    }
+
+    // Las prácticas son solo para estudiantes de la universidad.
+    if (offerResult.rows[0].perfil_tipo === 'CANDIDATO_EXTERNO' && !EXTERNAL_OFFER_TYPES.includes(offerResult.rows[0].tipo)) {
+      return response.status(403).json({ ok: false, message: 'Las prácticas son solo para estudiantes de la universidad.' });
     }
 
     if (offerResult.rows[0].fecha_cierre && new Date(offerResult.rows[0].fecha_cierre) < new Date()) {

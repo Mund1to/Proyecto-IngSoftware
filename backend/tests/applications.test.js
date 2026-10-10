@@ -25,8 +25,10 @@ describe('postulaciones del candidato', () => {
     assert.equal(mine.body.applications[0].oferta_titulo, offer.titulo);
   });
 
-  it('un candidato externo también puede postularse', async () => {
-    const { offer } = await setup();
+  it('un candidato externo también puede postularse a un empleo', async () => {
+    const { company } = await setup();
+    // Las prácticas son solo para estudiantes; el externo se postula a empleos y formación.
+    const offer = await createOffer(company.token, { tipo: 'EMPLEO', remuneracion: 2000000, remuneracionMaxima: 2500000 });
     const external = await registerUser('CANDIDATO_EXTERNO');
     const apply = await api().post(`/api/applications/offers/${offer.id}`).set(auth(external.token));
     assert.equal(apply.status, 201);

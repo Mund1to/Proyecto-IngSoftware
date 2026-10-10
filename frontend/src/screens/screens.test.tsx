@@ -28,7 +28,7 @@ const baseState: AppState = {
 
 // Oferta tal como existe en producción: modalidad y ciudad con codificación dañada.
 const brokenOffer = {
-  id: "1", titulo: "Práctica de prueba", descripcion: "Desarrollo", tipo: "PRACTICA", estado: "PUBLICADA",
+  id: "1", titulo: "Oferta de prueba", descripcion: "Desarrollo", tipo: "EMPLEO", estado: "PUBLICADA",
   modalidad: "H�brida", ubicacion: "Bogot�", area: "General", requisitos: [], fecha_cierre: "2026-12-31T00:00:00.000Z",
   remuneracion: null, remuneracion_maxima: null, empresa: "Empresa Fase 1", verificada: false,
 };
@@ -48,8 +48,19 @@ describe("ExternalDashboard", () => {
 
     render(<ExternalDashboard state={baseState} navigate={vi.fn()} />);
 
-    expect(await screen.findByText("Práctica de prueba")).toBeTruthy();
+    expect(await screen.findByText("Oferta de prueba")).toBeTruthy();
     expect(screen.getAllByText("Híbrida").length).toBeGreaterThan(0);
+  });
+
+  it("no muestra prácticas: son solo para estudiantes", async () => {
+    const practice = { ...brokenOffer, id: "9", titulo: "Práctica solo estudiantes", tipo: "PRACTICA" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { ok: true, offers: [brokenOffer, practice] })));
+
+    render(<ExternalDashboard state={baseState} navigate={vi.fn()} />);
+
+    expect(await screen.findByText("Oferta de prueba")).toBeTruthy();
+    expect(screen.queryByText("Práctica solo estudiantes")).toBeNull();
+    expect(within(screen.getByRole("group", { name: "Tipo de vacante" })).queryByRole("button", { name: /Práctica/ })).toBeNull();
   });
 
   it("filtra por tipo con las pestañas y por ciudad con el menú, con contadores", async () => {
@@ -73,7 +84,7 @@ describe("ExternalDashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Ciudad/ }));
     fireEvent.click(within(screen.getByRole("listbox", { name: "Ciudad" })).getByRole("option", { name: /Ibagué/ }));
     expect(screen.getByRole("button", { name: /^Ciudad/ }).textContent).toContain("Ciudad: Ibagué");
-    expect(screen.queryByText("Práctica de prueba")).toBeNull();
+    expect(screen.queryByText("Oferta de prueba")).toBeNull();
     expect(screen.getByText("Analista")).toBeTruthy();
   });
 });
@@ -267,7 +278,7 @@ describe("App: inicio de sesión", () => {
       }));
     });
 
-    expect(await screen.findByText("Práctica de prueba")).toBeTruthy();
+    expect(await screen.findByText("Oferta de prueba")).toBeTruthy();
     expect(localStorage.getItem("sipu-token")).toBe("nuevo-token");
   });
 

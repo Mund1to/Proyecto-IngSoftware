@@ -394,6 +394,19 @@ Se implementa por fases el rediseño visual definido en [`diseno/prompt-implemen
 | 6 | Estadísticas con indicadores, dona por tipo, columnas por mes, barras por ciudad y área y ranking de organizaciones, todo en CSS. |
 | 7 | Las 11 pantallas restantes usan la paleta en lugar de colores fijos; emojis por íconos SVG; la capa de compatibilidad queda solo para `App.tsx` y se eliminan 107 reglas sin uso. |
 
+### Ofertas según el tipo de perfil
+
+Las prácticas son solo para estudiantes de la universidad. El candidato externo ve empleos, empleos públicos y formación; el estudiante ve todos los tipos.
+
+- **Backend:**
+  - `GET /api/offers/recommended` no devuelve prácticas al candidato externo.
+  - `POST /api/applications/offers/:offerId` responde `403` si un externo intenta postularse a una práctica.
+  - Los tipos permitidos están en `EXTERNAL_OFFER_TYPES` (`backend/src/utils/offers.js`).
+- **Frontend:**
+  - La bolsa externa filtra con `isExternalOfferType` (`frontend/src/lib/offers.ts`).
+  - El formulario de la empresa muestra, bajo "Tipo de oferta", para quién es visible cada tipo.
+- **Pruebas:** dos nuevas, una de backend y otra de frontend. La prueba "un candidato externo también puede postularse" ahora usa un empleo.
+
 El avance, las decisiones y la verificación están en [`diseno/informe-rediseno-vivo.md`](diseno/informe-rediseno-vivo.md).
 
 ## 19. Regla para mantener la documentación

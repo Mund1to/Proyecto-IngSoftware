@@ -95,6 +95,26 @@ describe('consulta de ofertas', () => {
     assert.equal((await api().get('/api/offers/mine').set(auth(student.token))).status, 403);
   });
 
+  it('las prácticas son solo para estudiantes: el externo no las recibe ni puede postularse', async () => {
+    const company = await registerUser('ORGANIZACION', { razonSocial: 'Audiencia SAS' });
+    const practice = await createOffer(company.token, { titulo: 'Práctica solo estudiantes', tipo: 'PRACTICA' });
+    const job = await createOffer(company.token, { titulo: 'Empleo para todos', tipo: 'EMPLEO', remuneracion: 2000000, remuneracionMaxima: 2500000 });
+
+    const external = await registerUser('CANDIDATO_EXTERNO');
+    const recommended = await api().get('/api/offers/recommended').set(auth(external.token));
+    const ids = recommended.body.offers.map((offer) => String(offer.id));
+    assert.ok(!ids.includes(String(practice.id)));
+    assert.ok(ids.includes(String(job.id)));
+    assert.ok(recommended.body.offers.every((offer) => offer.tipo !== 'PRACTICA'));
+
+    const blocked = await api().post(`/api/applications/offers/${practice.id}`).set(auth(external.token));
+    assert.equal(blocked.status, 403);
+    assert.equal((await api().post(`/api/applications/offers/${job.id}`).set(auth(external.token))).status, 201);
+
+    const student = await registerUser('ESTUDIANTE');
+    assert.equal((await api().post(`/api/applications/offers/${practice.id}`).set(auth(student.token))).status, 201);
+  });
+
   it('mis ofertas incluyen el conteo de postulaciones por estado y los nuevos de la semana', async () => {
     const company = await registerUser('ORGANIZACION', { razonSocial: 'Conteo SAS' });
     const offer = await createOffer(company.token, { titulo: 'Oferta con postulantes' });

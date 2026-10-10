@@ -1,6 +1,6 @@
 import { pool } from '../config/database.js';
 import { getOrganizationProfileId } from '../utils/profiles.js';
-import { MODALITIES, OFFER_STATUSES, OFFER_TYPES, normalizeModality } from '../utils/offers.js';
+import { EXTERNAL_OFFER_TYPES, MODALITIES, OFFER_STATUSES, OFFER_TYPES, normalizeModality } from '../utils/offers.js';
 import {
   getBodyValue,
   hasBodyValue,
@@ -215,7 +215,11 @@ export async function listRecommendedOffersController(request, response) {
     );
 
     // Las organizaciones verificadas reciben un pequeño empujón de confianza.
-    const ranked = result.rows
+    // El candidato externo no recibe prácticas: son solo para estudiantes.
+    const visible = profile.tipo === 'CANDIDATO_EXTERNO'
+      ? result.rows.filter((offer) => EXTERNAL_OFFER_TYPES.includes(String(offer.tipo)))
+      : result.rows;
+    const ranked = visible
       .map((offer) => ({
         ...offer,
         recommendationScore: scoreOffer(offer, profile) + (offer.verificada ? 5 : 0),

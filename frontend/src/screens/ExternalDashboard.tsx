@@ -6,7 +6,7 @@ import TypeBadge from "../components/TypeBadge";
 import { IconMonitor } from "../components/icons";
 import FilterDropdown, { FilterOption } from "../components/FilterDropdown";
 import { api } from "../lib/api";
-import { companyInitials, daysUntil, normalizeModality, toNumberOrZero } from "../lib/offers";
+import { companyInitials, daysUntil, isExternalOfferType, normalizeModality, toNumberOrZero } from "../lib/offers";
 
 type Props = {
   state: AppState;
@@ -67,7 +67,8 @@ export default function ExternalDashboard({ state, navigate }: Props) {
       api.getOffers()
         .then((response) => {
           if (!active) return;
-          const offers = (response.offers ?? []).filter((offer) => offer.estado === "PUBLICADA");
+          // Las prácticas son solo para estudiantes: la bolsa externa muestra empleos y formación.
+          const offers = (response.offers ?? []).filter((offer) => offer.estado === "PUBLICADA" && isExternalOfferType(offer.tipo));
           setJobs(offers.map(mapOfferToJob));
           setLoadError("");
         })

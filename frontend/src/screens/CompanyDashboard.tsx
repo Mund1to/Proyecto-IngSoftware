@@ -6,7 +6,7 @@ import TypeBadge from "../components/TypeBadge";
 import { IconBriefcase, IconCheck, IconClock, IconPlus, IconSearch, IconUser } from "../components/icons";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/offers";
-import { companyInitials, daysUntil, formatSalary, normalizeModality, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero, type OfferType } from "../lib/offers";
+import { companyInitials, daysUntil, formatSalary, normalizeModality, OFFER_AUDIENCE, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero, type OfferType } from "../lib/offers";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Draft = {
@@ -249,7 +249,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
             <div className="page-title"><p className="eyebrow">{editingId ? "Edición de oferta" : "Paso 1 de 2"}</p><h1>{editingId ? "Modificar oferta" : `Crear oferta ${draft.offerType === "PRACTICA" ? "de práctica" : draft.offerType === "EMPLEO" ? "laboral" : draft.offerType === "FORMACION" ? "de formación" : "pública"}`}</h1><p>Los campos marcados con * son obligatorios.</p></div>
             <form className="publish-form" onSubmit={(event) => { event.preventDefault(); validate(); }}>
               <FormSection title="Información del cargo" description="Describe la oportunidad con claridad.">
-                <Select label="Tipo de oferta *" value={draft.offerType} options={Object.keys(OFFER_TYPE_LABELS)} labels={Object.values(OFFER_TYPE_LABELS)} onChange={(value) => update("offerType", value)} />
+                <Select label="Tipo de oferta *" value={draft.offerType} options={Object.keys(OFFER_TYPE_LABELS)} labels={Object.values(OFFER_TYPE_LABELS)} hint={`Visible para: ${OFFER_AUDIENCE[draft.offerType].toLowerCase()}`} onChange={(value) => update("offerType", value)} />
                 <Input label={draft.offerType === "FORMACION" ? "Nombre del curso o programa *" : "Título del cargo *"} value={draft.title} onChange={(value) => update("title", value)} />
                 <Input label="Área *" value={draft.area} onChange={(value) => update("area", value)} />
                 <TextArea label="Descripción *" value={draft.description} onChange={(value) => update("description", value)} />
@@ -439,8 +439,9 @@ function FormSection({ title, description, children }: { title: string; descript
 function Input({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
   return <label className="field"><span>{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} /></label>;
 }
-function Select({ label, value, options, labels, onChange }: { label: string; value: string; options: string[]; labels?: string[]; onChange: (value: string) => void }) {
-  return <label className="field"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option, index) => <option key={option} value={option}>{labels?.[index] ?? option}</option>)}</select></label>;
+function Select({ label, value, options, labels, hint, onChange }: { label: string; value: string; options: string[]; labels?: string[]; hint?: string; onChange: (value: string) => void }) {
+  const hintId = hint ? `${label.replace(/\W+/g, "-").toLowerCase()}-hint` : undefined;
+  return <label className="field"><span>{label}</span><select value={value} aria-describedby={hintId} onChange={(event) => onChange(event.target.value)}>{options.map((option, index) => <option key={option} value={option}>{labels?.[index] ?? option}</option>)}</select>{hint && <small id={hintId} className="field-hint">{hint}</small>}</label>;
 }
 function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="field full-span"><span>{label}</span><textarea rows={5} value={value} onChange={(event) => onChange(event.target.value)} /></label>;

@@ -112,7 +112,7 @@ Las respuestas reales del backend devolvieron `ok: true` en todos los endpoints 
 | `PUT` | `/api/profile/external` | Bearer JWT + candidato externo | Actualiza el perfil laboral del candidato externo. |
 | `GET` | `/api/applications/me` | Bearer JWT + candidato | Lista las postulaciones del candidato autenticado. |
 | `GET` | `/api/applications/offers/:offerId` | Bearer JWT + organización | Lista postulaciones recibidas para una oferta propia. |
-| `POST` | `/api/applications/offers/:offerId` | Bearer JWT + candidato | Registra una postulación para una oferta pública. |
+| `POST` | `/api/applications/offers/:offerId` | Bearer JWT + candidato | Registra una postulación para una oferta pública. Un candidato externo no puede postularse a una práctica (`403`): las prácticas son solo para estudiantes. |
 | `PATCH` | `/api/applications/:id/status` | Bearer JWT + organización | Cambia el estado de una postulación. |
 | `GET` | `/api/verifications/organizations` | Bearer JWT + revisor | Lista organizaciones y su estado de verificación (Fase 3, #17 HU-13). |
 | `PATCH` | `/api/verifications/organizations/:organizationId` | Bearer JWT + revisor | Aprueba o rechaza la verificación de una organización. |

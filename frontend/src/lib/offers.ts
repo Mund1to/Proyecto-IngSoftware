@@ -74,3 +74,14 @@ export const OFFER_TYPE_LABELS: Record<OfferType, string> = {
 };
 
 export const offerTypeLabel = (value: unknown) => OFFER_TYPE_LABELS[value as OfferType] ?? "Oferta";
+
+// Quién ve cada tipo de oferta. Las prácticas son solo para estudiantes de la
+// universidad; el resto también llega a la bolsa de profesionales externos.
+export const EXTERNAL_OFFER_TYPES: OfferType[] = ["EMPLEO", "EMPLEO_PUBLICO", "FORMACION"];
+export const isExternalOfferType = (value: unknown) => EXTERNAL_OFFER_TYPES.includes(value as OfferType);
+export const OFFER_AUDIENCE: Record<OfferType, string> = {
+  PRACTICA: "Solo estudiantes de la universidad.",
+  EMPLEO: "Estudiantes, egresados y profesionales externos.",
+  EMPLEO_PUBLICO: "Estudiantes, egresados y profesionales externos.",
+  FORMACION: "Estudiantes, egresados y profesionales externos.",
+};
