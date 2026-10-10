@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { HOME_SCREEN, Role, Screen } from "../App";
 import { useSession } from "../lib/session";
 import UniversityLogo from "./UniversityLogo";
+import { IconBell, IconExit, IconMenu } from "./icons";
 
 type Props = { role: Role; navigate: (screen: Screen) => void; activeScreen: Screen; userName?: string; onLogout?: () => void };
 
@@ -29,6 +30,16 @@ const links: Record<Role, { label: string; screen: Screen }[]> = {
   ],
 };
 
+// Pantalla de perfil de cada rol; el administrador no tiene perfil propio.
+const profileScreen: Partial<Record<Role, Screen>> = {
+  student: "student-profile",
+  company: "company-profile",
+  external: "external-profile",
+};
+
+const initialsOf = (value: string) =>
+  value.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase() || "U";
+
 type NotificationItem = { id: string; title: string; detail: string; screen: Screen };
 
 const statusText: Record<string, string> = {
@@ -44,6 +55,8 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
   const [open, setOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const name = userName ?? session.currentUser?.nombreCompleto ?? "Usuario";
+  const firstName = name.split(/\s+/).filter(Boolean)[0] ?? name;
+  const ownProfile = profileScreen[role];
   const notificationKey = `sipu-read-notifications-${session.currentUser?.id ?? "anon"}`;
   const [readNotifications, setReadNotifications] = useState<string[]>(() => {
     try {
@@ -95,11 +108,15 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
               {link.label}
             </button>
           ))}
+          {/* En el celular el botón circular de salida se oculta; aquí queda accesible. */}
+          <button className="nav-menu-logout" onClick={() => { setOpen(false); logout(); }}>
+            <IconExit size={18} /> Cerrar sesión
+          </button>
         </nav>
         <div className="nav-actions">
           <div className="notification-wrap">
-            <button className="icon-button" aria-label={`Notificaciones, ${unreadCount} sin leer`} aria-expanded={showNotifications} onClick={() => setShowNotifications(!showNotifications)}>
-              <BellIcon />{unreadCount > 0 && <span className="badge">{unreadCount}</span>}
+            <button className="icon-button nav-circle" aria-label={`Notificaciones, ${unreadCount} sin leer`} aria-expanded={showNotifications} onClick={() => setShowNotifications(!showNotifications)}>
+              <IconBell />{unreadCount > 0 && <span className="badge" aria-hidden="true">{unreadCount}</span>}
             </button>
             {showNotifications && (
               <div className="notification-panel" role="dialog" aria-label="Notificaciones">
@@ -121,9 +138,19 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
               </div>
             )}
           </div>
-          <span className="user-chip">{name}</span>
-          <button className="icon-button" aria-label="Cerrar sesión" title="Cerrar sesión" onClick={logout}><ExitIcon /></button>
-          <button className="menu-button" aria-label="Abrir menú" aria-expanded={open} onClick={() => setOpen(!open)}>Menú</button>
+          {ownProfile ? (
+            <button className="user-chip" aria-label={`Mi perfil: ${name}`} onClick={() => { navigate(ownProfile); setOpen(false); }}>
+              <span className="user-avatar" aria-hidden="true">{initialsOf(name)}</span>
+              <span className="user-name">{firstName}</span>
+            </button>
+          ) : (
+            <span className="user-chip" title={name}>
+              <span className="user-avatar" aria-hidden="true">{initialsOf(name)}</span>
+              <span className="user-name">{firstName}</span>
+            </span>
+          )}
+          <button className="icon-button nav-circle nav-logout" aria-label="Cerrar sesión" title="Cerrar sesión" onClick={logout}><IconExit /></button>
+          <button className="menu-button nav-circle" aria-label="Abrir menú" aria-expanded={open} onClick={() => setOpen(!open)}><IconMenu /></button>
         </div>
       </div>
     </header>
@@ -132,12 +159,4 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
 
 function Notification({ read, title, detail, onClick }: { read: boolean; title: string; detail: string; onClick: () => void }) {
   return <button className="notification" onClick={onClick} aria-label={`${title}. ${read ? "Leída" : "No leída"}`}><span className="notification-dot" style={{ opacity: read ? 0.25 : 1 }} /><span><strong>{title}</strong><small>{detail}</small></span></button>;
-}
-
-function BellIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>;
-}
-
-function ExitIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8l4 4-4 4M18 12H6M10 4H5a2 2 0 00-2 2v12a2 2 0 002 2h5" /></svg>;
 }
