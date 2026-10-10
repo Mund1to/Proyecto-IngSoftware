@@ -93,9 +93,15 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .auth-tab.is-active { color: var(--navy); background: #ffffff; box-shadow: 0 4px 12px rgba(18, 59, 112, .12); font-weight: 700; }
 .auth-form { display: grid; gap: 16px; margin-top: 22px; animation: auth-view-in .28s ease; }
 .auth-form > .form-error, .auth-form > .muted { margin: 0; }
-.field.auth-field { margin: 0; }
-.auth-field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.auth-field-head label { margin-bottom: 6px; }
+.field.auth-field { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label aside" "input input" "hint hint"; align-items: baseline; column-gap: 12px; margin: 0; }
+.auth-field-label { grid-area: label; margin-bottom: 6px; }
+.auth-field .auth-input { grid-area: input; }
+.auth-field-aside { grid-area: aside; }
+.auth-field-hint { grid-area: hint; }
+/* El anillo de foco lo dibuja la caja redondeada; el campo interno no lleva contorno propio. */
+.auth-input input:focus-visible, .catalog-search input:focus-visible { outline: none !important; }
+/* Edge agrega su propio botón para ver la contraseña; ya existe el botón de ojo. */
+.auth-input input::-ms-reveal, .auth-input input::-ms-clear { display: none; }
 .auth-forgot { min-height: 32px; font-size: 14px; }
 .auth-input { display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1px solid var(--border); border-radius: 12px; background: #ffffff; transition: border-color .18s ease, box-shadow .18s ease; }
 .auth-input.has-trailing { padding-right: 4px; }

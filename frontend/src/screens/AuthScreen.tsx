@@ -331,17 +331,17 @@ type FieldProps = {
 function Field({ label, value, onChange, type = "text", hint, autoComplete, icon, trailing, aside }: FieldProps) {
   const id = label.toLowerCase().replace(/\s/g, "-");
   return (
+    // El enlace lateral va después del campo en el DOM para que el Tab pase del
+    // campo al siguiente campo; la grilla lo muestra junto a la etiqueta.
     <div className="field auth-field">
-      <div className="auth-field-head">
-        <label htmlFor={id}>{label}</label>
-        {aside}
-      </div>
+      <label htmlFor={id} className="auth-field-label">{label}</label>
       <div className={trailing ? "auth-input has-trailing" : "auth-input"}>
         {icon && <span className="auth-input-icon" aria-hidden="true">{icon}</span>}
         <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete} aria-describedby={hint ? `${id}-hint` : undefined} />
         {trailing}
       </div>
-      {hint && <small id={`${id}-hint`}>{hint}</small>}
+      {aside && <div className="auth-field-aside">{aside}</div>}
+      {hint && <small id={`${id}-hint`} className="auth-field-hint">{hint}</small>}
     </div>
   );
 }
