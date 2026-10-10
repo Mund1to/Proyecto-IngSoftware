@@ -6,8 +6,8 @@ import { api, type EducationItem, type ExperienceItem, type ProfileDetails, type
 
 type Section = "education" | "experience" | "skills";
 
-const inputClass = "w-full px-3 py-2.5 rounded-xl border border-[#e2e8f0] bg-white text-sm text-[#1e293b] focus:border-[#0d2240]";
-const labelClass = "block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1";
+const inputClass = "w-full px-3 py-2.5 rounded-xl border border-[#d3e0f5] bg-white text-sm text-[var(--text)] focus:border-[var(--primary)]";
+const labelClass = "block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1";
 
 // Claves usadas por la versión anterior, para ofrecer importar esos datos.
 const legacyKeys = (prefix: "student" | "external", profileId: number | string) => ({
@@ -94,13 +94,13 @@ export default function ProfileSections({ token, section, skillCategories, legac
   };
 
   if (!details) {
-    return error ? <div className="form-error" role="alert">{error}</div> : <p className="text-sm text-[#64748b]">Cargando...</p>;
+    return error ? <div className="form-error" role="alert">{error}</div> : <p className="text-sm text-[var(--muted)]">Cargando...</p>;
   }
 
   return (
     <div>
       {legacy && (
-        <div className="mb-5 p-4 rounded-2xl border border-amber-200 bg-amber-50 text-sm text-amber-800 flex flex-wrap items-center justify-between gap-3" role="status">
+        <div className="mb-5 p-4 rounded-[20px] border border-[#f5d9a8] bg-[#fff4df] text-sm text-[var(--warning)] flex flex-wrap items-center justify-between gap-3" role="status">
           <span>Encontramos datos de tu hoja de vida guardados solo en este navegador.</span>
           <button className="button primary" disabled={saving} onClick={() => void importLegacy()}>Guardarlos en mi cuenta</button>
         </div>
@@ -117,7 +117,7 @@ export default function ProfileSections({ token, section, skillCategories, legac
             { key: "institucion", label: "Institución" },
             { key: "periodo", label: "Periodo", placeholder: "2022 - actual" },
           ]}
-          render={(item) => <><h4 className="font-bold text-[#0d2240] text-sm">{item.titulo}</h4><p className="text-[#64748b] text-sm">{item.institucion}</p><p className="text-[#94a3b8] text-xs mt-1">{item.periodo}</p></>}
+          render={(item) => <><h4 className="font-bold text-[var(--navy)] text-sm">{item.titulo}</h4><p className="text-[var(--muted)] text-sm">{item.institucion}</p><p className="text-[var(--muted)] text-xs mt-1">{item.periodo}</p></>}
           onSave={(items) => save(api.saveEducation, items)}
         />
       )}
@@ -133,7 +133,7 @@ export default function ProfileSections({ token, section, skillCategories, legac
             { key: "periodo", label: "Periodo", placeholder: "Ene 2024 - Jun 2024" },
             { key: "descripcion", label: "Descripción", multiline: true, optional: true },
           ]}
-          render={(item) => <><h4 className="font-bold text-[#0d2240] text-sm">{item.cargo}</h4><p className="text-[#64748b] text-sm font-medium">{item.empresa}</p><p className="text-[#94a3b8] text-xs mt-0.5">{item.periodo}</p>{item.descripcion && <p className="text-[#475569] text-sm mt-2 leading-relaxed">{item.descripcion}</p>}</>}
+          render={(item) => <><h4 className="font-bold text-[var(--navy)] text-sm">{item.cargo}</h4><p className="text-[var(--muted)] text-sm font-medium">{item.empresa}</p><p className="text-[var(--muted)] text-xs mt-0.5">{item.periodo}</p>{item.descripcion && <p className="text-[#475467] text-sm mt-2 leading-relaxed">{item.descripcion}</p>}</>}
           onSave={(items) => save(api.saveExperience, items)}
         />
       )}
@@ -198,15 +198,15 @@ function EditableList<T extends Record<string, any>>({ items, fields, render, on
 
   return (
     <div className="space-y-4">
-      {items.length === 0 && editing === null && <p className="text-sm text-[#64748b]">{emptyText}</p>}
+      {items.length === 0 && editing === null && <p className="text-sm text-[var(--muted)]">{emptyText}</p>}
       {items.map((item, index) => (
         editing === index ? null : (
-          <div key={item.id ?? index} className="flex items-start gap-4 p-5 rounded-2xl bg-[#f8fafc] border border-[#e8eef4]">
+          <div key={item.id ?? index} className="flex items-start gap-4 p-5 rounded-[20px] bg-[#f8faff] border border-[#d3e0f5]">
             <div className="flex-1 min-w-0">{render(item)}</div>
             <div className="flex flex-col items-end gap-1 text-xs font-medium flex-shrink-0">
-              <button disabled={saving} onClick={() => open(index)} className="text-[#0d2240] hover:underline">Editar</button>
-              <button disabled={saving} onClick={() => void remove(index)} className="text-red-600 hover:underline">Eliminar</button>
-              <span className="flex gap-2 text-[#94a3b8]">
+              <button disabled={saving} onClick={() => open(index)} className="text-[var(--navy)] hover:underline">Editar</button>
+              <button disabled={saving} onClick={() => void remove(index)} className="text-[var(--danger)] hover:underline">Eliminar</button>
+              <span className="flex gap-2 text-[var(--muted)]">
                 <button disabled={saving || index === 0} aria-label="Subir" onClick={() => void move(index, -1)} className="disabled:opacity-30">↑</button>
                 <button disabled={saving || index === items.length - 1} aria-label="Bajar" onClick={() => void move(index, 1)} className="disabled:opacity-30">↓</button>
               </span>
@@ -216,7 +216,7 @@ function EditableList<T extends Record<string, any>>({ items, fields, render, on
       ))}
 
       {editing !== null ? (
-        <form onSubmit={submit} className="p-5 rounded-2xl border border-[#0d2240]/20 bg-white space-y-3" noValidate>
+        <form onSubmit={submit} className="p-5 rounded-[20px] border border-[var(--primary)]/20 bg-white space-y-3" noValidate>
           {fields.map((field) => (
             <div key={field.key}>
               <label className={labelClass} htmlFor={`field-${field.key}`}>{field.label}{field.optional ? " (opcional)" : ""}</label>
@@ -234,7 +234,7 @@ function EditableList<T extends Record<string, any>>({ items, fields, render, on
           </div>
         </form>
       ) : (
-        <button onClick={() => open(-1)} disabled={saving} className="w-full py-3.5 border-2 border-dashed border-[#e2e8f0] rounded-2xl text-sm font-semibold text-[#94a3b8] hover:border-[#0d2240]/30 hover:text-[#0d2240]">
+        <button onClick={() => open(-1)} disabled={saving} className="w-full py-3.5 border-2 border-dashed border-[#d3e0f5] rounded-[20px] text-sm font-semibold text-[var(--muted)] hover:border-[var(--primary)]/30 hover:text-[var(--navy)]">
           + {addLabel}
         </button>
       )}
@@ -242,7 +242,7 @@ function EditableList<T extends Record<string, any>>({ items, fields, render, on
   );
 }
 
-const skillStyles = ["bg-blue-50 text-blue-700", "bg-violet-50 text-violet-700", "bg-amber-50 text-amber-700", "bg-emerald-50 text-emerald-700", "bg-sky-50 text-sky-700"];
+const skillStyles = ["bg-[var(--selection)] text-[var(--primary)]", "bg-[var(--selection)] text-[var(--primary)]", "bg-[#fff4df] text-[var(--warning)]", "bg-[#eaf7f0] text-[var(--success)]", "bg-[var(--sky)] text-[var(--primary-dark)]"];
 
 function SkillsEditor({ skills, categories, saving, onSave }: {
   skills: SkillItem[];
@@ -270,8 +270,8 @@ function SkillsEditor({ skills, categories, saving, onSave }: {
         return (
           <div key={categoria}>
             <div className="flex items-center gap-2 mb-3">
-              <h4 className="text-sm font-bold text-[#0d2240]">{categoria}</h4>
-              <div className="flex-1 h-px bg-[#f1f5f9]" />
+              <h4 className="text-sm font-bold text-[var(--navy)]">{categoria}</h4>
+              <div className="flex-1 h-px bg-[#f8faff]" />
             </div>
             <div className="flex flex-wrap gap-2 items-center">
               {skills.filter((skill) => skill.categoria === categoria).map((skill) => (
@@ -286,9 +286,9 @@ function SkillsEditor({ skills, categories, saving, onSave }: {
                   placeholder="Agregar..."
                   value={drafts[categoria] ?? ""}
                   onChange={(e) => setDrafts({ ...drafts, [categoria]: e.target.value })}
-                  className="text-sm px-3 py-1.5 rounded-full border border-dashed border-[#cbd5e1] bg-white w-36"
+                  className="text-sm px-3 py-1.5 rounded-full border border-dashed border-[var(--border)] bg-white w-36"
                 />
-                <button type="submit" disabled={saving} className="text-sm px-3 py-1.5 rounded-full font-semibold text-[#0d2240] border border-[#e2e8f0] hover:bg-[#f8fafc]">+</button>
+                <button type="submit" disabled={saving} className="text-sm px-3 py-1.5 rounded-full font-semibold text-[var(--navy)] border border-[#d3e0f5] hover:bg-[var(--selection)]">+</button>
               </form>
             </div>
           </div>

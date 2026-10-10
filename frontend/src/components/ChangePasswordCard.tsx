@@ -2,8 +2,8 @@ import { useState } from "react";
 
 type Props = { onChange: (currentPassword: string, newPassword: string) => Promise<void> };
 
-const inputClass = "w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white";
-const labelClass = "block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5";
+const inputClass = "w-full px-4 py-3 rounded-xl border border-[#d3e0f5] bg-[#f8faff] text-sm text-[var(--text)] focus:border-[var(--primary)] focus:bg-white";
+const labelClass = "block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5";
 
 export default function ChangePasswordCard({ onChange }: Props) {
   const [current, setCurrent] = useState("");
@@ -36,9 +36,9 @@ export default function ChangePasswordCard({ onChange }: Props) {
   };
 
   return (
-    <form onSubmit={submit} className="bg-white rounded-3xl border border-[#e8eef4] shadow-sm p-7 mt-6" noValidate>
-      <h2 className="font-bold text-[#0d2240] mb-1">Cambiar contraseña</h2>
-      <p className="text-sm text-[#64748b] mb-5">Por seguridad, confirma tu contraseña actual.</p>
+    <form onSubmit={submit} className="bg-white rounded-[24px] border border-[#d3e0f5] shadow-sm p-7 mt-6" noValidate>
+      <h2 className="font-bold text-[var(--navy)] mb-1">Cambiar contraseña</h2>
+      <p className="text-sm text-[var(--muted)] mb-5">Por seguridad, confirma tu contraseña actual.</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <div>
           <label className={labelClass} htmlFor="password-current">Contraseña actual</label>
@@ -54,8 +54,8 @@ export default function ChangePasswordCard({ onChange }: Props) {
         </div>
       </div>
       <div className="flex items-center justify-end gap-3">
-        {message && <span role={message.ok ? "status" : "alert"} className={`text-sm ${message.ok ? "text-[#16a34a]" : "text-red-600"}`}>{message.text}</span>}
-        <button type="submit" disabled={saving} className="px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-50" style={{ background: "linear-gradient(135deg, #0d2240 0%, #163456 100%)" }}>
+        {message && <span role={message.ok ? "status" : "alert"} className={`text-sm ${message.ok ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>{message.text}</span>}
+        <button type="submit" disabled={saving} className="px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-50" style={{ background: "linear-gradient(145deg, #123b70, #4d87ff)" }}>
           {saving ? "Guardando..." : "Actualizar contraseña"}
         </button>
       </div>

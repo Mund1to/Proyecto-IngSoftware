@@ -79,15 +79,15 @@ export default function AdminUsers({ state, navigate }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <NavBar role="admin" navigate={navigate} activeScreen="admin-users" userName={state.currentUser?.nombreCompleto ?? "Administrador"} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <h1 className="text-2xl font-bold text-[#0d2240] mb-1">Usuarios</h1>
-        <p className="text-[#64748b] text-sm mb-6">Asigna roles institucionales y gestiona el acceso de las cuentas.</p>
+        <h1 className="display text-3xl text-[var(--navy)] mb-1">Usuarios</h1>
+        <p className="text-[var(--muted)] text-sm mb-6">Asigna roles institucionales y gestiona el acceso de las cuentas.</p>
 
         {!isAdmin ? (
-          <div className="bg-white rounded-2xl border border-[#e8eef4] text-center py-16 text-sm text-[#64748b]">
+          <div className="bg-white rounded-[20px] border border-[#d3e0f5] text-center py-16 text-sm text-[var(--muted)]">
             Solo un administrador puede gestionar usuarios.
           </div>
         ) : (
@@ -101,7 +101,7 @@ export default function AdminUsers({ state, navigate }: Props) {
                 placeholder="Buscar por nombre o correo"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-[#e2e8f0] bg-white text-sm"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#d3e0f5] bg-white text-sm"
               />
               <button type="submit" className="button primary">Buscar</button>
             </form>
@@ -109,21 +109,21 @@ export default function AdminUsers({ state, navigate }: Props) {
             {error && <div className="form-error mb-5" role="alert">{error}</div>}
 
             {loading ? (
-              <div className="bg-white rounded-2xl border border-[#e8eef4] text-center py-16 text-[#64748b] text-sm">Cargando usuarios...</div>
+              <div className="bg-white rounded-[20px] border border-[#d3e0f5] text-center py-16 text-[var(--muted)] text-sm">Cargando usuarios...</div>
             ) : users.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-[#e8eef4] text-center py-16 text-[#64748b] text-sm">No hay usuarios que coincidan.</div>
+              <div className="bg-white rounded-[20px] border border-[#d3e0f5] text-center py-16 text-[var(--muted)] text-sm">No hay usuarios que coincidan.</div>
             ) : (
               <div className="space-y-3">
                 {users.map((user) => {
                   const busy = busyId === String(user.id);
                   const isSelf = String(user.id) === String(state.currentUser?.id);
                   return (
-                    <div key={user.id} className={`bg-white rounded-2xl border border-[#e8eef4] shadow-sm p-5 ${user.activo ? "" : "opacity-70"}`}>
+                    <div key={user.id} className={`bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm p-5 ${user.activo ? "" : "opacity-70"}`}>
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="font-bold text-[#0d2240]">{user.nombre_completo}{isSelf && <span className="text-xs text-[#64748b] font-normal"> (tú)</span>}</h3>
-                          <p className="text-sm text-[#64748b] break-all">{user.email}</p>
-                          <p className="text-xs text-[#94a3b8] mt-1">
+                          <h3 className="font-bold text-[var(--navy)]">{user.nombre_completo}{isSelf && <span className="text-xs text-[var(--muted)] font-normal"> (tú)</span>}</h3>
+                          <p className="text-sm text-[var(--muted)] break-all">{user.email}</p>
+                          <p className="text-xs text-[var(--muted)] mt-1">
                             {(user.profile_types ?? []).map((type) => profileLabels[type] ?? type).join(", ") || "Sin perfil"}
                             {!user.activo && " · Cuenta desactivada"}
                           </p>
@@ -137,7 +137,7 @@ export default function AdminUsers({ state, navigate }: Props) {
                                 disabled={busy}
                                 aria-pressed={active}
                                 onClick={() => void toggleRole(user, role)}
-                                className={`text-xs font-semibold rounded-lg px-3 py-1.5 border disabled:opacity-50 ${active ? "bg-[#0d2240] text-white border-[#0d2240]" : "text-[#0d2240] border-[#e2e8f0] hover:bg-[#f8fafc]"}`}
+                                className={`text-xs font-semibold rounded-lg px-3 py-1.5 border disabled:opacity-50 ${active ? "bg-[var(--primary)] text-white border-[var(--primary)]" : "text-[var(--navy)] border-[#d3e0f5] hover:bg-[var(--selection)]"}`}
                               >
                                 {active ? `✓ ${label}` : label}
                               </button>
@@ -146,7 +146,7 @@ export default function AdminUsers({ state, navigate }: Props) {
                           <button
                             disabled={busy || isSelf}
                             onClick={() => void toggleActive(user)}
-                            className={`text-xs font-semibold rounded-lg px-3 py-1.5 border disabled:opacity-40 ${user.activo ? "text-red-600 border-red-200 hover:bg-red-50" : "text-[#16a34a] border-[#bbf7d0] hover:bg-[#f0fdf4]"}`}
+                            className={`text-xs font-semibold rounded-lg px-3 py-1.5 border disabled:opacity-40 ${user.activo ? "text-[var(--danger)] border-[#fecdca] hover:bg-[#fef3f2]" : "text-[var(--success)] border-[#b7e4c7] hover:bg-[#dff1e7]"}`}
                           >
                             {user.activo ? "Desactivar" : "Activar"}
                           </button>

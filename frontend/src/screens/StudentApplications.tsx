@@ -14,7 +14,7 @@ type Props = {
 
 const statusConfig = {
   Enviada: {
-    bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500",
+    bg: "bg-[var(--selection)]", text: "text-[var(--primary)]", dot: "bg-[var(--primary)]",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -22,7 +22,7 @@ const statusConfig = {
     ),
   },
   "En revisión": {
-    bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400",
+    bg: "bg-[#fff4df]", text: "text-[var(--warning)]", dot: "bg-[var(--warning)]",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -31,7 +31,7 @@ const statusConfig = {
     ),
   },
   Aceptada: {
-    bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500",
+    bg: "bg-[#eaf7f0]", text: "text-[var(--success)]", dot: "bg-[var(--success)]",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -39,7 +39,7 @@ const statusConfig = {
     ),
   },
   Retirada: {
-    bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400",
+    bg: "bg-[#f2f6fc]", text: "text-[#475467]", dot: "bg-[#97b4ea]",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" />
@@ -47,7 +47,7 @@ const statusConfig = {
     ),
   },
   Rechazada: {
-    bg: "bg-red-50", text: "text-red-600", dot: "bg-red-400",
+    bg: "bg-[#fef3f2]", text: "text-[var(--danger)]", dot: "bg-[var(--danger)]",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -57,12 +57,12 @@ const statusConfig = {
 };
 
 const logoStyle: Record<string, string> = {
-  B: "linear-gradient(135deg, #0d2240 0%, #163456 100%)",
-  E: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-  D: "linear-gradient(135deg, #15803d 0%, #166534 100%)",
-  A: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-  R: "linear-gradient(135deg, #ea580c 0%, #c2410c 100%)",
-  AL: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+  B: "linear-gradient(145deg, #123b70, #4d87ff)",
+  E: "linear-gradient(145deg, #123b70, #4d87ff)",
+  D: "linear-gradient(145deg, #123b70, #4d87ff)",
+  A: "linear-gradient(145deg, #123b70, #4d87ff)",
+  R: "linear-gradient(145deg, #123b70, #4d87ff)",
+  AL: "linear-gradient(145deg, #123b70, #4d87ff)",
 };
 
 const steps = ["Enviada", "En revisión", "Aceptada"] as const;
@@ -107,13 +107,13 @@ export default function StudentApplications({ state, navigate, reloadApplication
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <NavBar role="student" navigate={navigate} activeScreen="student-applications" userName={state.currentUser?.nombreCompleto ?? "Estudiante"} />
 
       {/* Header */}
       <div
         className="relative overflow-hidden"
-        style={{ background: "linear-gradient(145deg, #081626 0%, #0d2240 55%, #122f5c 100%)" }}
+        style={{ background: "radial-gradient(circle at 78% 30%, rgba(103,176,255,.45), transparent 30%), linear-gradient(130deg, #0d2240, #123b70 40%, #155eef 85%, #3978f4)" }}
       >
         <div className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -121,7 +121,7 @@ export default function StudentApplications({ state, navigate, reloadApplication
             backgroundSize: "32px 32px",
           }} />
         <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-10">
-          <h1 className="text-white text-3xl font-bold tracking-tight mb-1">Mis Postulaciones</h1>
+          <h1 className="display text-white text-4xl mb-1">Mis Postulaciones</h1>
           <p className="text-white/50 text-sm mb-7">Seguimiento en tiempo real del estado de cada candidatura.</p>
 
           {/* Stat pills */}
@@ -144,14 +144,14 @@ export default function StudentApplications({ state, navigate, reloadApplication
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {loadError && <div className="form-error mb-5" role="alert">{loadError}</div>}
         {apps.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-[#e8eef4] text-center py-20 shadow-sm">
+          <div className="bg-white rounded-[24px] border border-[#d3e0f5] text-center py-20 shadow-sm">
             <ArdyMark className="empty-squirrel mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-[#0d2240] mb-2">Sin postulaciones aún</h3>
-            <p className="text-[#64748b] text-sm mb-6 max-w-xs mx-auto">Explora las ofertas disponibles y postúlate a las que más te interesen.</p>
+            <h3 className="text-lg font-bold text-[var(--navy)] mb-2">Sin postulaciones aún</h3>
+            <p className="text-[var(--muted)] text-sm mb-6 max-w-xs mx-auto">Explora las ofertas disponibles y postúlate a las que más te interesen.</p>
             <button
               onClick={() => navigate("student-dashboard")}
               className="px-6 py-3 rounded-xl text-white text-sm font-bold hover:opacity-90"
-              style={{ background: "linear-gradient(135deg, #0d2240 0%, #163456 100%)" }}
+              style={{ background: "linear-gradient(145deg, #123b70, #4d87ff)" }}
             >
               Explorar ofertas
             </button>
@@ -160,14 +160,14 @@ export default function StudentApplications({ state, navigate, reloadApplication
           <div className="space-y-4">
             {apps.map((app) => {
               const logo = app.company.slice(0, 2).toUpperCase();
-              const bg = logoStyle[logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
+              const bg = logoStyle[logo] ?? "linear-gradient(145deg, #123b70, #4d87ff)";
               const cfg = statusConfig[app.status];
               const stepIndex = app.status === "Rechazada" || app.status === "Retirada" ? 0 : steps.indexOf(app.status as (typeof steps)[number]);
 
               return (
-                <div key={app.id} className="bg-white rounded-2xl border border-[#e8eef4] shadow-sm overflow-hidden">
+                <div key={app.id} className="bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm overflow-hidden">
                   {/* Top strip by status */}
-                  <div className={`h-1 w-full ${app.status === "Aceptada" ? "bg-[#16a34a]" : app.status === "Rechazada" ? "bg-red-400" : app.status === "Retirada" ? "bg-slate-300" : app.status === "En revisión" ? "bg-amber-400" : "bg-blue-400"}`} />
+                  <div className={`h-1 w-full ${app.status === "Aceptada" ? "bg-[var(--success)]" : app.status === "Rechazada" ? "bg-[var(--danger)]" : app.status === "Retirada" ? "bg-[#e3eaf5]" : app.status === "En revisión" ? "bg-[var(--warning)]" : "bg-[var(--primary)]"}`} />
 
                   <div className="p-6">
                     <div className="flex items-start gap-4 mb-5">
@@ -175,9 +175,9 @@ export default function StudentApplications({ state, navigate, reloadApplication
                         <span className="text-white font-bold text-sm">{logo}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-[#0d2240] text-sm leading-snug">{app.offerTitle}</h3>
-                        <p className="text-[#64748b] text-sm font-medium">{app.company}</p>
-                        <p className="text-[#94a3b8] text-xs mt-1">
+                        <h3 className="font-bold text-[var(--navy)] text-sm leading-snug">{app.offerTitle}</h3>
+                        <p className="text-[var(--muted)] text-sm font-medium">{app.company}</p>
+                        <p className="text-[var(--muted)] text-xs mt-1">
                           Postulado el {new Date(app.appliedDate).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
                         </p>
                       </div>
@@ -189,7 +189,7 @@ export default function StudentApplications({ state, navigate, reloadApplication
 
                     {/* Progress tracker */}
                     {app.status === "Retirada" ? (
-                      <p className="text-xs text-[#64748b] p-3.5 bg-slate-50 border border-slate-100 rounded-xl">Retiraste esta postulación.</p>
+                      <p className="text-xs text-[var(--muted)] p-3.5 bg-[#f2f6fc] border border-[#e3eaf5] rounded-xl">Retiraste esta postulación.</p>
                     ) : app.status !== "Rechazada" ? (
                       <div className="relative flex items-center">
                         {steps.map((step, i) => {
@@ -199,9 +199,9 @@ export default function StudentApplications({ state, navigate, reloadApplication
                             <div key={step} className={`flex items-center ${i < steps.length - 1 ? "flex-1" : ""}`}>
                               <div className="flex flex-col items-center">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
-                                  done ? "bg-[#0d2240] border-[#0d2240] text-white" :
-                                  current ? "bg-white border-[#0d2240] text-[#0d2240]" :
-                                  "bg-white border-[#e2e8f0] text-[#cbd5e1]"
+                                  done ? "bg-[var(--primary)] border-[var(--primary)] text-white" :
+                                  current ? "bg-white border-[var(--primary)] text-[var(--navy)]" :
+                                  "bg-white border-[#d3e0f5] text-[#98a2b3]"
                                 }`}>
                                   {done ? (
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,43 +209,43 @@ export default function StudentApplications({ state, navigate, reloadApplication
                                     </svg>
                                   ) : i + 1}
                                 </div>
-                                <span className={`text-[11px] mt-1.5 font-semibold whitespace-nowrap ${current ? "text-[#0d2240]" : done ? "text-[#64748b]" : "text-[#cbd5e1]"}`}>
+                                <span className={`text-[11px] mt-1.5 font-semibold whitespace-nowrap ${current ? "text-[var(--navy)]" : done ? "text-[var(--muted)]" : "text-[#98a2b3]"}`}>
                                   {step}
                                 </span>
                               </div>
                               {i < steps.length - 1 && (
-                                <div className={`flex-1 h-0.5 mx-2 mb-5 rounded-full ${i < stepIndex ? "bg-[#0d2240]" : "bg-[#e2e8f0]"}`} />
+                                <div className={`flex-1 h-0.5 mx-2 mb-5 rounded-full ${i < stepIndex ? "bg-[var(--primary)]" : "bg-[#e6eefc]"}`} />
                               )}
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3 p-3.5 bg-red-50 border border-red-100 rounded-xl">
-                        <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="flex items-center gap-3 p-3.5 bg-[#fef3f2] border border-[#fecdca] rounded-xl">
+                        <div className="w-7 h-7 rounded-full bg-[#fef3f2] flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </div>
-                        <p className="text-xs text-red-600 font-medium leading-snug">
+                        <p className="text-xs text-[var(--danger)] font-medium leading-snug">
                           No fuiste seleccionado esta vez. ¡No te desanimes, sigue aplicando a otras ofertas!
                         </p>
                       </div>
                     )}
 
-                    <div className="mt-5 pt-4 border-t border-[#f8fafc] flex justify-end gap-4">
+                    <div className="mt-5 pt-4 border-t border-[#e3eaf5] flex justify-end gap-4">
                       {(app.status === "Enviada" || app.status === "En revisión") && (
                         <button
                           onClick={() => void withdraw(app.id)}
                           disabled={busyId === app.id}
-                          className="text-xs font-semibold text-red-500 hover:text-red-700 disabled:opacity-50"
+                          className="text-xs font-semibold text-[var(--danger)] hover:text-[var(--danger)] disabled:opacity-50"
                         >
                           {busyId === app.id ? "Retirando..." : "Retirar postulación"}
                         </button>
                       )}
                       <button
                         onClick={() => void openOffer(app.offerId)}
-                        className="text-xs font-semibold text-[#0d2240]/60 hover:text-[#0d2240] flex items-center gap-1"
+                        className="text-xs font-semibold text-[var(--navy)]/60 hover:text-[var(--navy)] flex items-center gap-1"
                       >
                         Ver oferta
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

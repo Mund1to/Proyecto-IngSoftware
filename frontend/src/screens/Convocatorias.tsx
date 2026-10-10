@@ -131,47 +131,47 @@ export default function Convocatorias({ state, navigate }: Props) {
     }
   };
 
-  const inputClass = "w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white";
+  const inputClass = "w-full px-4 py-3 rounded-xl border border-[#d3e0f5] bg-[#f8faff] text-sm text-[var(--text)] focus:border-[var(--primary)] focus:bg-white";
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <NavBar role="admin" navigate={navigate} activeScreen="convocatorias" userName={state.currentUser?.nombreCompleto ?? "Funcionario"} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <h1 className="text-2xl font-bold text-[#0d2240] mb-1">Convocatorias públicas</h1>
-        <p className="text-[#64748b] text-sm mb-6">Agrupa ofertas bajo convocatorias institucionales.</p>
+        <h1 className="display text-3xl text-[var(--navy)] mb-1">Convocatorias públicas</h1>
+        <p className="text-[var(--muted)] text-sm mb-6">Agrupa ofertas bajo convocatorias institucionales.</p>
 
         {error && <div className="form-error mb-5" role="alert">{error}</div>}
 
-        <div className="bg-white rounded-2xl border border-[#e8eef4] shadow-sm p-6 mb-8">
-          <h2 className="font-bold text-[#0d2240] mb-4">{editingId === null ? "Nueva convocatoria" : `Editando convocatoria #${editingId}`}</h2>
+        <div className="bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm p-6 mb-8">
+          <h2 className="font-bold text-[var(--navy)] mb-4">{editingId === null ? "Nueva convocatoria" : `Editando convocatoria #${editingId}`}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div className="sm:col-span-2">
-              <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Título</label>
+              <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Título</label>
               <input className={inputClass} value={draft.titulo} onChange={(e) => setDraft({ ...draft, titulo: e.target.value })} />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Fecha de inicio</label>
+              <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Fecha de inicio</label>
               <input type="date" className={inputClass} value={draft.fechaInicio} onChange={(e) => setDraft({ ...draft, fechaInicio: e.target.value })} />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Fecha de fin</label>
+              <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Fecha de fin</label>
               <input type="date" className={inputClass} value={draft.fechaFin} onChange={(e) => setDraft({ ...draft, fechaFin: e.target.value })} />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5">Descripción</label>
+              <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Descripción</label>
               <textarea rows={3} className={inputClass} value={draft.descripcion} onChange={(e) => setDraft({ ...draft, descripcion: e.target.value })} />
             </div>
           </div>
           <div className="flex justify-end gap-3">
             {editingId !== null && (
-              <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-[#64748b] border border-[#e2e8f0] hover:bg-[#f8fafc]">Cancelar</button>
+              <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-[var(--muted)] border border-[#d3e0f5] hover:bg-[var(--selection)]">Cancelar</button>
             )}
             <button
               onClick={() => void save()}
               disabled={saving}
               className="px-6 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-90 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg, #0d2240 0%, #163456 100%)" }}
+              style={{ background: "linear-gradient(145deg, #123b70, #4d87ff)" }}
             >
               {saving ? "Guardando..." : editingId === null ? "Crear convocatoria" : "Guardar cambios"}
             </button>
@@ -180,44 +180,44 @@ export default function Convocatorias({ state, navigate }: Props) {
 
         <div className="space-y-4">
           {convocatorias.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[#e8eef4] text-center py-16">
-              <p className="text-[#64748b] text-sm">Aún no hay convocatorias registradas.</p>
+            <div className="bg-white rounded-[20px] border border-[#d3e0f5] text-center py-16">
+              <p className="text-[var(--muted)] text-sm">Aún no hay convocatorias registradas.</p>
             </div>
           ) : (
             convocatorias.map((convocatoria) => (
-              <div key={convocatoria.id} className="bg-white rounded-2xl border border-[#e8eef4] shadow-sm p-6">
+              <div key={convocatoria.id} className="bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="font-bold text-[#0d2240]">{convocatoria.titulo}</h3>
-                    {convocatoria.descripcion && <p className="text-sm text-[#475569] mt-1.5">{convocatoria.descripcion}</p>}
-                    <div className="flex flex-wrap gap-3 mt-2 text-xs text-[#94a3b8]">
+                    <h3 className="font-bold text-[var(--navy)]">{convocatoria.titulo}</h3>
+                    {convocatoria.descripcion && <p className="text-sm text-[#475467] mt-1.5">{convocatoria.descripcion}</p>}
+                    <div className="flex flex-wrap gap-3 mt-2 text-xs text-[var(--muted)]">
                       <span>{convocatoria.total_ofertas} ofertas asociadas</span>
                       {convocatoria.fecha_inicio && <span>Inicio: {convocatoria.fecha_inicio.slice(0, 10)}</span>}
                       {convocatoria.fecha_fin && <span>Fin: {convocatoria.fecha_fin.slice(0, 10)}</span>}
                     </div>
                   </div>
                   <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-                    <button onClick={() => void toggleOffers(convocatoria.id)} aria-expanded={openId === convocatoria.id} className="text-xs font-semibold text-[#0d2240] border border-[#e2e8f0] rounded-lg px-3 py-1.5 hover:bg-[#f8fafc]">{openId === convocatoria.id ? "Ocultar ofertas" : "Ofertas"}</button>
-                    <button onClick={() => startEdit(convocatoria)} className="text-xs font-semibold text-[#0d2240] border border-[#e2e8f0] rounded-lg px-3 py-1.5 hover:bg-[#f8fafc]">Editar</button>
-                    <button onClick={() => void remove(convocatoria.id)} className="text-xs font-semibold text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50">Eliminar</button>
+                    <button onClick={() => void toggleOffers(convocatoria.id)} aria-expanded={openId === convocatoria.id} className="text-xs font-semibold text-[var(--navy)] border border-[#d3e0f5] rounded-lg px-3 py-1.5 hover:bg-[var(--selection)]">{openId === convocatoria.id ? "Ocultar ofertas" : "Ofertas"}</button>
+                    <button onClick={() => startEdit(convocatoria)} className="text-xs font-semibold text-[var(--navy)] border border-[#d3e0f5] rounded-lg px-3 py-1.5 hover:bg-[var(--selection)]">Editar</button>
+                    <button onClick={() => void remove(convocatoria.id)} className="text-xs font-semibold text-[var(--danger)] border border-[#fecdca] rounded-lg px-3 py-1.5 hover:bg-[#fef3f2]">Eliminar</button>
                   </div>
                 </div>
                 {openId === convocatoria.id && (
-                  <div className="mt-5 pt-4 border-t border-[#f1f5f9]">
+                  <div className="mt-5 pt-4 border-t border-[#e3eaf5]">
                     {linked.length === 0 ? (
-                      <p className="text-sm text-[#64748b] mb-3">No hay ofertas publicadas asociadas.</p>
+                      <p className="text-sm text-[var(--muted)] mb-3">No hay ofertas publicadas asociadas.</p>
                     ) : (
                       <ul className="space-y-2 mb-4">
                         {linked.map((offer) => (
                           <li key={offer.id} className="flex items-center justify-between gap-3 text-sm">
-                            <span><strong className="text-[#0d2240]">{offer.titulo}</strong> <span className="text-[#64748b]">· {offer.empresa}</span></span>
-                            <button onClick={() => void changeOffer(convocatoria.id, offer.id, "remove")} className="text-xs font-semibold text-red-600 hover:underline">Quitar</button>
+                            <span><strong className="text-[var(--navy)]">{offer.titulo}</strong> <span className="text-[var(--muted)]">· {offer.empresa}</span></span>
+                            <button onClick={() => void changeOffer(convocatoria.id, offer.id, "remove")} className="text-xs font-semibold text-[var(--danger)] hover:underline">Quitar</button>
                           </li>
                         ))}
                       </ul>
                     )}
                     <div className="flex gap-2">
-                      <select aria-label="Oferta para asociar" value={selectedOffer} onChange={(e) => setSelectedOffer(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm">
+                      <select aria-label="Oferta para asociar" value={selectedOffer} onChange={(e) => setSelectedOffer(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-[#d3e0f5] bg-[#f8faff] text-sm">
                         <option value="">Selecciona una oferta publicada</option>
                         {catalog.filter((offer) => !linked.some((item) => String(item.id) === String(offer.id))).map((offer) => (
                           <option key={offer.id} value={offer.id}>{offer.titulo} · {offer.empresa}{offer.convocatoria_id ? " (en otra convocatoria)" : ""}</option>

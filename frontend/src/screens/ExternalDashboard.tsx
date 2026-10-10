@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { AppState, Job, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
+import TypeBadge from "../components/TypeBadge";
+import { IconMonitor } from "../components/icons";
 import FilterDropdown, { FilterOption } from "../components/FilterDropdown";
 import { api } from "../lib/api";
 import { companyInitials, daysUntil, normalizeModality, toNumberOrZero } from "../lib/offers";
@@ -25,32 +27,6 @@ const SORT_OPTIONS: FilterOption[] = [
   { value: "closing", label: "Cierran pronto" },
   { value: "salary", label: "Mayor salario" },
 ];
-
-const modalityStyle: Record<string, { bg: string; text: string; dot: string }> = {
-  Presencial: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-400" },
-  Remota: { bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-400" },
-  Híbrida: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
-};
-
-const typeStyle: Record<string, string> = {
-  "Práctica": "bg-cyan-50 text-cyan-700",
-  "Tiempo completo": "bg-emerald-50 text-emerald-700",
-  "Medio tiempo": "bg-sky-50 text-sky-700",
-  Contrato: "bg-orange-50 text-orange-700",
-  Freelance: "bg-pink-50 text-pink-700",
-  "Formación": "bg-indigo-50 text-indigo-700",
-};
-
-const logoStyle: Record<string, string> = {
-  B: "linear-gradient(135deg, #0d2240 0%, #163456 100%)",
-  E: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-  D: "linear-gradient(135deg, #15803d 0%, #166534 100%)",
-  A: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-  R: "linear-gradient(135deg, #ea580c 0%, #c2410c 100%)",
-  AL: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-  CL: "linear-gradient(135deg, #0891b2 0%, #0e7490 100%)",
-  AN: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
-};
 
 const fmt = (n: number) =>
   "$" + (n >= 1000000 ? (n / 1000000).toFixed(1).replace(".0", "") + "M" : (n / 1000) + "K");
@@ -149,13 +125,13 @@ export default function ExternalDashboard({ state, navigate }: Props) {
   });
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <NavBar role="external" navigate={navigate} activeScreen="external-dashboard" userName={state.currentUser?.nombreCompleto ?? "Candidato"} />
 
       {/* Hero */}
       <div
         className="relative overflow-hidden"
-        style={{ background: "linear-gradient(145deg, #081626 0%, #0d2240 55%, #122f5c 100%)" }}
+        style={{ background: "radial-gradient(circle at 78% 30%, rgba(103,176,255,.45), transparent 30%), linear-gradient(130deg, #0d2240, #123b70 40%, #155eef 85%, #3978f4)" }}
       >
         <div className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -163,17 +139,17 @@ export default function ExternalDashboard({ state, navigate }: Props) {
             backgroundSize: "32px 32px",
           }} />
         <div className="absolute right-0 bottom-0 w-80 h-56 opacity-10"
-          style={{ background: "radial-gradient(circle at 80% 120%, #3b82f6 0%, transparent 60%)" }} />
+          style={{ background: "radial-gradient(circle at 80% 120%, rgba(103,176,255,.6) 0%, transparent 60%)" }} />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-10 pb-12">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-[#60a5fa]" />
-            <span className="text-[#60a5fa] text-xs font-semibold tracking-wide uppercase">
+            <div className="w-2 h-2 rounded-full bg-[var(--sky)]" />
+            <span className="text-[var(--sky)] text-xs font-semibold tracking-wide uppercase">
               Bolsa de empleo general · {filtered.length} {filtered.length === 1 ? "vacante" : "vacantes"}
             </span>
           </div>
-          <h1 className="text-white text-3xl font-bold mb-1 tracking-tight">
-            Hola, {state.currentUser?.nombreCompleto?.split(" ")[0] ?? "Candidato"} 👋
+          <h1 className="display text-white text-4xl mb-1">
+            Hola, {state.currentUser?.nombreCompleto?.split(" ")[0] ?? "Candidato"}.
           </h1>
           <p className="text-white/50 text-sm mb-7">
             Encuentra empleos en las mejores empresas del país. Abierto a todos los profesionales.
@@ -202,7 +178,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
             <input
               type="text" placeholder="Buscar por cargo, empresa o área..."
               value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 rounded-2xl text-sm bg-white/10 border border-white/15 text-white placeholder-white/35 focus:bg-white/15 focus:border-white/30"
+              className="w-full pl-12 pr-4 py-3.5 rounded-[20px] text-sm bg-white/10 border border-white/15 text-white placeholder-white/35 focus:bg-white/15 focus:border-white/30"
               style={{ outline: "none", backdropFilter: "blur(8px)" }}
             />
           </div>
@@ -268,8 +244,8 @@ export default function ExternalDashboard({ state, navigate }: Props) {
           ) : (
             <div className="text-center py-20">
               <ArdyMark className="empty-squirrel mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-[#0d2240] mb-2">Sin resultados</h3>
-              <p className="text-[#64748b] text-sm mb-4">Ajusta los filtros para ver más vacantes.</p>
+              <h3 className="text-lg font-bold text-[var(--navy)] mb-2">Sin resultados</h3>
+              <p className="text-[var(--muted)] text-sm mb-4">Ajusta los filtros para ver más vacantes.</p>
               <button type="button" className="ext-clear" onClick={clear}>Limpiar filtros</button>
             </div>
           )}
@@ -280,14 +256,13 @@ export default function ExternalDashboard({ state, navigate }: Props) {
 }
 
 function JobCard({ job, isApplied, delay = 0, onClick }: { job: Job; isApplied: boolean; delay?: number; onClick: () => void }) {
-  const bg = logoStyle[job.logo] ?? "linear-gradient(135deg, #0d2240 0%, #163456 100%)";
-  const mod = modalityStyle[job.modality] ?? modalityStyle.Híbrida;
+  const bg = "linear-gradient(145deg, #123b70, #4d87ff)";
   const daysLeft = daysUntil(job.closeDate);
 
   return (
     <button
       onClick={onClick}
-      className="job-card text-left bg-white rounded-2xl border border-[#e8eef4] p-6 hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-0.5 hover:border-[#c5d4e8] group"
+      className="job-card text-left bg-white rounded-[20px] border border-[#d3e0f5] p-6 hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-0.5 hover:border-[#9dbbf3] group"
       style={{ transition: "box-shadow 0.2s, transform 0.2s, border-color 0.15s", animationDelay: `${delay}ms` }}
     >
       <div className="flex items-start gap-3.5 mb-4">
@@ -295,12 +270,12 @@ function JobCard({ job, isApplied, delay = 0, onClick }: { job: Job; isApplied: 
           <span className="text-white font-bold text-sm tracking-tight">{job.logo}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-[#0d2240] text-sm leading-snug line-clamp-2 group-hover:text-[#163456]">{job.title}</h3>
-          <p className="text-[#64748b] text-xs mt-1 font-medium">{job.company}</p>
+          <h3 className="font-bold text-[var(--navy)] text-sm leading-snug line-clamp-2 group-hover:text-[var(--primary)]">{job.title}</h3>
+          <p className="text-[var(--muted)] text-xs mt-1 font-medium">{job.company}</p>
         </div>
         {isApplied && (
-          <div className="w-6 h-6 rounded-full bg-[#dcfce7] flex items-center justify-center flex-shrink-0">
-            <svg className="w-3.5 h-3.5 text-[#16a34a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-6 h-6 rounded-full bg-[#eaf7f0] flex items-center justify-center flex-shrink-0">
+            <svg className="w-3.5 h-3.5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
@@ -308,15 +283,15 @@ function JobCard({ job, isApplied, delay = 0, onClick }: { job: Job; isApplied: 
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-4">
-        <span className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-semibold ${mod.bg} ${mod.text}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${mod.dot}`} />
+        <TypeBadge type={job.type} />
+        <span className="flex items-center gap-1 text-[12px] px-2.5 py-1 rounded-full font-semibold bg-[#f2f6fc] text-[#475467]">
+          <IconMonitor size={13} />
           {job.modality}
         </span>
-        <span className={`text-[11px] px-2.5 py-1 rounded-full font-semibold ${typeStyle[job.type] ?? "bg-slate-100 text-slate-600"}`}>{job.type}</span>
-        <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-slate-100 text-slate-500">{job.area}</span>
+        <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-[#f2f6fc] text-[var(--muted)]">{job.area}</span>
       </div>
 
-      <div className="flex items-center gap-1 text-[12px] text-[#94a3b8] mb-5">
+      <div className="flex items-center gap-1 text-[12px] text-[var(--muted)] mb-5">
         <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -328,19 +303,19 @@ function JobCard({ job, isApplied, delay = 0, onClick }: { job: Job; isApplied: 
         <span>{job.applicants} aplicaron</span>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-[#f1f5f9]">
+      <div className="flex items-center justify-between pt-4 border-t border-[#e3eaf5]">
         <div>
-          <div className="text-[#16a34a] font-bold text-sm">
+          <div className="text-[var(--success)] font-bold text-sm">
             {job.salaryMin || job.salaryMax ? `${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}` : "A convenir"}
           </div>
-          <div className={`text-[11px] mt-0.5 font-medium ${daysLeft <= 5 ? "text-red-500" : "text-[#94a3b8]"}`}>
-            {!Number.isFinite(daysLeft) ? "Sin fecha de cierre" : daysLeft >= 0 ? (daysLeft <= 5 ? `⚠ Cierra en ${daysLeft}d` : `Cierra en ${daysLeft} días`) : "Cerrada"}
+          <div className={`text-[11px] mt-0.5 font-medium ${daysLeft <= 5 ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>
+            {!Number.isFinite(daysLeft) ? "Sin fecha de cierre" : daysLeft >= 0 ? (daysLeft <= 5 ? `Cierra en ${daysLeft} ${daysLeft === 1 ? "día" : "días"}` : `Cierra en ${daysLeft} días`) : "Cerrada"}
           </div>
         </div>
         {isApplied ? (
-          <span className="text-[11px] font-bold text-[#16a34a] bg-[#f0fdf4] px-3 py-1.5 rounded-full">Aplicado ✓</span>
+          <span className="text-[11px] font-bold text-[var(--success)] bg-[#eaf7f0] px-3 py-1.5 rounded-full">Aplicado ✓</span>
         ) : (
-          <span className="text-[11px] font-semibold text-[#0d2240]/60 group-hover:text-[#0d2240] flex items-center gap-1">
+          <span className="text-[11px] font-semibold text-[var(--navy)]/60 group-hover:text-[var(--navy)] flex items-center gap-1">
             Ver vacante
             <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ transition: "transform 0.15s" }}>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

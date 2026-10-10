@@ -12,8 +12,8 @@ type Props = {
   refreshCurrentUser: () => Promise<void>;
 };
 
-const inputClass = "w-full px-4 py-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#1e293b] focus:border-[#0d2240] focus:bg-white";
-const labelClass = "block text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1.5";
+const inputClass = "w-full px-4 py-3 rounded-xl border border-[#d3e0f5] bg-[#f8faff] text-sm text-[var(--text)] focus:border-[var(--primary)] focus:bg-white";
+const labelClass = "block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5";
 
 // Datos de la organización: antes no existía una pantalla para editarlos.
 export default function CompanyProfile({ state, navigate, updateOrganizationProfile, changePassword, refreshCurrentUser }: Props) {
@@ -58,7 +58,7 @@ export default function CompanyProfile({ state, navigate, updateOrganizationProf
   const verified = Boolean(user?.organizacionVerificada);
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8]">
+    <div className="min-h-screen bg-[var(--bg)]">
       <NavBar role="company" navigate={navigate} activeScreen="company-profile" userName={user?.organizacionNombre ?? user?.nombreCompleto ?? "Empresa"} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
@@ -68,21 +68,21 @@ export default function CompanyProfile({ state, navigate, updateOrganizationProf
             photo={findFile(user?.archivos, "FOTO")}
             initials={(user?.organizacionNombre ?? "E").slice(0, 2).toUpperCase()}
             onChanged={refreshCurrentUser}
-            gradient="linear-gradient(135deg, #0d2240 0%, #163456 100%)"
+            gradient="linear-gradient(145deg, #123b70, #4d87ff)"
           />
           <div>
-            <h1 className="text-2xl font-bold text-[#0d2240] mb-1">Mi empresa</h1>
-            <p className="text-[#64748b] text-sm">Estos datos acompañan cada oferta que publicas. Usa el ícono de la cámara para subir el logo.</p>
+            <h1 className="display text-3xl text-[var(--navy)] mb-1">Mi empresa</h1>
+            <p className="text-[var(--muted)] text-sm">Estos datos acompañan cada oferta que publicas. Usa el ícono de la cámara para subir el logo.</p>
           </div>
         </div>
 
-        <div className={`rounded-2xl border p-4 mb-6 text-sm ${verified ? "bg-[#f0fdf4] border-[#bbf7d0] text-[#15803d]" : "bg-amber-50 border-amber-200 text-amber-800"}`} role="status">
+        <div className={`rounded-[20px] border p-4 mb-6 text-sm ${verified ? "bg-[#eaf7f0] border-[#b7e4c7] text-[var(--success)]" : "bg-[#fff4df] border-[#f5d9a8] text-[var(--warning)]"}`} role="status">
           {verified
             ? "✓ Organización verificada. Tus ofertas muestran el sello de verificación."
             : "Tu organización aún no está verificada. Completa la identificación fiscal y el sitio web para facilitar la revisión por parte del equipo de SIPU."}
         </div>
 
-        <form onSubmit={save} className="bg-white rounded-3xl border border-[#e8eef4] shadow-sm p-7" noValidate>
+        <form onSubmit={save} className="bg-white rounded-[24px] border border-[#d3e0f5] shadow-sm p-7" noValidate>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
             <div>
               <label className={labelClass} htmlFor="org-name">Razón social</label>
@@ -110,12 +110,12 @@ export default function CompanyProfile({ state, navigate, updateOrganizationProf
             </div>
             <div className="sm:col-span-2">
               <label className={labelClass} htmlFor="org-email">Correo de la cuenta</label>
-              <input id="org-email" disabled className={`${inputClass} bg-gray-100 text-[#64748b] cursor-not-allowed`} value={user?.email ?? ""} />
+              <input id="org-email" disabled className={`${inputClass} bg-[#f2f6fc] text-[var(--muted)] cursor-not-allowed`} value={user?.email ?? ""} />
             </div>
           </div>
           <div className="flex items-center justify-end gap-3">
-            {message && <span role={message.ok ? "status" : "alert"} className={`text-sm ${message.ok ? "text-[#16a34a]" : "text-red-600"}`}>{message.text}</span>}
-            <button type="submit" disabled={saving} className="px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-50" style={{ background: "linear-gradient(135deg, #0d2240 0%, #163456 100%)" }}>
+            {message && <span role={message.ok ? "status" : "alert"} className={`text-sm ${message.ok ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>{message.text}</span>}
+            <button type="submit" disabled={saving} className="px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 disabled:opacity-50" style={{ background: "linear-gradient(145deg, #123b70, #4d87ff)" }}>
               {saving ? "Guardando..." : "Guardar cambios"}
             </button>
           </div>

@@ -23,7 +23,7 @@ Reglas que aplican a todas las fases:
 | 4 | Detalle de oferta | Terminada |
 | 5 | Panel de empresa | Terminada |
 | 6 | Estadísticas | Terminada |
-| 7 | Resto de pantallas y limpieza de la capa de compatibilidad | Pendiente |
+| 7 | Resto de pantallas y limpieza de la capa de compatibilidad | Terminada |
 
 ## Fase 1: base visual y componentes compartidos
 
@@ -120,6 +120,30 @@ Reglas que aplican a todas las fases:
 - **Meses sin postulaciones:** la API solo devuelve los meses que tienen datos, así que el frontend completa con 0 los meses vacíos.
 - **Periodo:** no se agregó el selector de la maqueta, porque la API no filtra por fechas.
 
+## Fase 7: resto de pantallas y capa de compatibilidad
+
+Pantallas migradas, más los componentes `ProfileSections`, `ProfileFiles` y `ChangePasswordCard`:
+
+- Externo: `ExternalDashboard`, `ExternalJobDetail`, `ExternalApplications` y `ExternalProfile`.
+- Estudiante: `StudentApplications` y `StudentProfile`.
+- Empresa: `CompanyApplicants` y `CompanyProfile`.
+- Administración: `CompanyVerification`, `Convocatorias` y `AdminUsers`.
+
+La lógica de estas pantallas no cambió.
+
+- **Colores fijos:** los de Tailwind (`text-[#0d2240]`, `bg-[#f0f4f8]`, `border-[#e8eef4]`, etc.) pasan a las variables de la paleta: títulos en `--navy`, grises en `--muted`, botones en `--primary`, verdes en `--success` y bordes en `#d3e0f5`. Fueron 399 reemplazos.
+- **Colores con nombre:** los de estado (rojo, ámbar, verde, violeta, azul, gris) pasan a `--danger`, `--warning`, `--success`, `--primary` y neutros, en 175 reemplazos. Solo quedan los tonos translúcidos sobre fondos oscuros.
+- **Degradados:**
+  - Las cabeceras usan el de `.hero-card`.
+  - Las marcas de empresa y los avatares usan uno solo; antes cada letra tenía un color distinto fuera de la paleta.
+  - Las barras de avance son azules.
+- **Botón "Inscribirme" / "Aplicar" del externo:** pasa de verde a azul primario, como el resto de acciones principales. Las acciones de aprobar y aceptar siguen en verde.
+- **Emojis:** se reemplazan por íconos SVG (ubicación, modalidad, área, experiencia, fecha, archivo e imagen) o se quitan cuando solo eran decoración.
+- **Tarjetas de la bolsa externa:** el tipo de vacante usa `TypeBadge`.
+- **Títulos y radios:** los títulos de página usan `.display`. Las tarjetas tienen radios explícitos de 20 y 24 px.
+- **Capa de compatibilidad:** solo conserva las clases que todavía usa `App.tsx` (pantalla de carga y `ErrorBoundary`), además de las reglas generales de altura de campos y transiciones.
+- **Estilos sin uso:** se eliminaron los del diseño anterior que ya no usaba ninguna pantalla (catálogo, detalle y panel antiguos): 107 reglas. `index.css` pasó de 1.082 a 844 líneas.
+
 ## Verificación
 
 | Prueba | Resultado |
@@ -137,5 +161,5 @@ Cada fase se revisó en Microsoft Edge a 1440 y 390 px, sin desplazamiento horiz
 
 ## Pendientes conocidos
 
-- Las clases del catálogo anterior que ya no usa ninguna pantalla (`.offer-card`, `.page-hero` y similares) se eliminan en la Fase 7.
+- `App.tsx` todavía usa algunas clases de colores fijos en la pantalla de carga y en `ErrorBoundary`. Migrarlas permitiría borrar del todo la capa de compatibilidad, pero el plan pedía no modificar `App.tsx`.
 - Un campo `habilidades` propio en las ofertas mejoraría la comparación de habilidades del detalle.

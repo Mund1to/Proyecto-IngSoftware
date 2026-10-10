@@ -45,7 +45,9 @@ export const IconEye = (p: IconProps) => <Icon {...p}><path d="M2 12s4-7 10-7 10
 export const IconEyeOff = (p: IconProps) => <Icon {...p} d="M3 3l18 18M10.6 5.1A10 10 0 0112 5c6 0 10 7 10 7a17 17 0 01-3.2 3.9M6.6 6.6A17 17 0 002 12s4 7 10 7a9.8 9.8 0 005.4-1.6M9.9 9.9a3 3 0 004.2 4.2" />;
 export const IconUser =(p: IconProps) => <Icon {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></Icon>;
 export const IconBuilding = (p: IconProps) => <Icon {...p} d="M4 21V5l8-2v18M12 7l8 2v12M8 9v.01M8 13v.01M8 17v.01M16 13v.01M16 17v.01M2 21h20" />;
-export const IconGrid = (p: IconProps) => <Icon {...p} d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />;
+export const IconFile = (p: IconProps) => <Icon {...p} d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5" />;
+export const IconImage = (p: IconProps) => <Icon {...p}><path d="M4 5h16v14H4z" /><circle cx="9" cy="10" r="2" /><path d="M20 16l-5-5-8 8" /></Icon>;
+export const IconGrid =(p: IconProps) => <Icon {...p} d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />;
 // Tipos de oferta.
 export const IconGraduation = (p: IconProps) => <Icon {...p} d="M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5" />;
 export const IconBriefcase = (p: IconProps) => <Icon {...p} d="M4 8h16v11H4zM9 8V5h6v3M4 13h16" />;

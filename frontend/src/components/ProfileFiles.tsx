@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type FileKind, type StoredFile } from "../lib/api";
+import { IconFile, IconImage } from "./icons";
 
 // Subida de hoja de vida (PDF) y foto del perfil, guardadas en el servidor.
 
@@ -52,26 +53,26 @@ export function FileCard({ token, kind, current, onChanged }: CardProps) {
   };
 
   return (
-    <div className={`rounded-xl border-2 border-dashed p-4 text-center min-w-[180px] ${current ? "border-[#16a34a]/30 bg-[#f0fdf4]" : "border-[#e2e8f0] bg-[#f8fafc]"}`}>
+    <div className={`rounded-xl border-2 border-dashed p-4 text-center min-w-[180px] ${current ? "border-[var(--success)]/30 bg-[#eaf7f0]" : "border-[#d3e0f5] bg-[#f8faff]"}`}>
       <input ref={input} type="file" accept={rule.accept} className="hidden" aria-label={`Subir ${rule.label.toLowerCase()}`} onChange={(event) => { select(event.target.files?.[0]); event.target.value = ""; }} />
-      <div className="text-2xl mb-1" aria-hidden="true">{kind === "cv" ? "📄" : "🖼️"}</div>
+      <div className="mb-1 flex justify-center text-[var(--primary)]" aria-hidden="true">{kind === "cv" ? <IconFile size={26} /> : <IconImage size={26} />}</div>
       {current ? (
         <>
-          <p className="text-xs font-bold text-[#16a34a] break-all">{current.nombre}</p>
-          <p className="text-[10px] text-[#64748b] mt-0.5">{formatSize(current.tamano)} · guardado en tu cuenta</p>
+          <p className="text-xs font-bold text-[var(--success)] break-all">{current.nombre}</p>
+          <p className="text-[10px] text-[var(--muted)] mt-0.5">{formatSize(current.tamano)} · guardado en tu cuenta</p>
           <div className="mt-2 flex justify-center gap-3 text-[11px] font-semibold">
-            <button disabled={busy || !token} onClick={() => token && void api.openMyFile(kind, token).catch((err) => setError(err.message))} className="text-[#0d2240] hover:underline">Ver</button>
-            <button disabled={busy} onClick={() => input.current?.click()} className="text-[#0d2240] hover:underline">Reemplazar</button>
-            <button disabled={busy || !token} onClick={() => token && window.confirm(`¿Eliminar ${rule.label.toLowerCase()}?`) && void run(() => api.deleteFile(kind, token))} className="text-red-600 hover:underline">Eliminar</button>
+            <button disabled={busy || !token} onClick={() => token && void api.openMyFile(kind, token).catch((err) => setError(err.message))} className="text-[var(--navy)] hover:underline">Ver</button>
+            <button disabled={busy} onClick={() => input.current?.click()} className="text-[var(--navy)] hover:underline">Reemplazar</button>
+            <button disabled={busy || !token} onClick={() => token && window.confirm(`¿Eliminar ${rule.label.toLowerCase()}?`) && void run(() => api.deleteFile(kind, token))} className="text-[var(--danger)] hover:underline">Eliminar</button>
           </div>
         </>
       ) : (
         <button disabled={busy} onClick={() => input.current?.click()} className="w-full">
-          <p className="text-xs font-bold text-[#0d2240]">{busy ? "Subiendo..." : `Subir ${rule.label.toLowerCase()}`}</p>
-          <p className="text-[10px] text-[#94a3b8]">{kind === "cv" ? "PDF" : "PNG, JPG o WEBP"} · máx {rule.maxMb} MB</p>
+          <p className="text-xs font-bold text-[var(--navy)]">{busy ? "Subiendo..." : `Subir ${rule.label.toLowerCase()}`}</p>
+          <p className="text-[10px] text-[var(--muted)]">{kind === "cv" ? "PDF" : "PNG, JPG o WEBP"} · máx {rule.maxMb} MB</p>
         </button>
       )}
-      {error && <p className="mt-2 text-xs text-red-600" role="alert">{error}</p>}
+      {error && <p className="mt-2 text-xs text-[var(--danger)]" role="alert">{error}</p>}
     </div>
   );
 }
@@ -132,7 +133,7 @@ export function ProfileAvatar({ token, photo, initials, onChanged, gradient }: {
   return (
     <div className="relative w-fit">
       <div
-        className="w-20 h-20 rounded-2xl border-4 border-white flex items-center justify-center shadow-lg"
+        className="w-20 h-20 rounded-[20px] border-4 border-white flex items-center justify-center shadow-lg"
         style={url ? { backgroundImage: `url(${url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: gradient }}
         role="img"
         aria-label={url ? "Foto de perfil" : `Iniciales ${initials}`}
@@ -143,14 +144,14 @@ export function ProfileAvatar({ token, photo, initials, onChanged, gradient }: {
         title="Cambiar foto"
         aria-label="Cambiar foto"
         onClick={() => input.current?.click()}
-        className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border border-[#e2e8f0] rounded-full flex items-center justify-center shadow-sm hover:bg-[#f8fafc]"
+        className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border border-[#d3e0f5] rounded-full flex items-center justify-center shadow-sm hover:bg-[var(--selection)]"
       >
-        <svg className="w-3.5 h-3.5 text-[#64748b]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="w-3.5 h-3.5 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
         </svg>
       </button>
       <input ref={input} type="file" accept={RULES.foto.accept} className="hidden" onChange={(event) => { void select(event.target.files?.[0]); event.target.value = ""; }} />
-      {error && <p className="absolute top-full mt-1 w-48 text-xs text-red-600" role="alert">{error}</p>}
+      {error && <p className="absolute top-full mt-1 w-48 text-xs text-[var(--danger)]" role="alert">{error}</p>}
     </div>
   );
 }

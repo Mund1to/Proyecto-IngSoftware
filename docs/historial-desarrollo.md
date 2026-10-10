@@ -392,6 +392,7 @@ Se implementa por fases el rediseño visual definido en [`diseno/prompt-implemen
 | 4 | Detalle de oferta con anillo de afinidad, habilidades comparadas con el perfil, proceso y consejo de Ardy. |
 | 5 | Panel de empresa con indicadores, barra de postulantes por etapa y tarjeta de nueva oferta. El backend agrega `conteo_estados` y `nuevos_semana` a `GET /api/offers/mine`. |
 | 6 | Estadísticas con indicadores, dona por tipo, columnas por mes, barras por ciudad y área y ranking de organizaciones, todo en CSS. |
+| 7 | Las 11 pantallas restantes usan la paleta en lugar de colores fijos; emojis por íconos SVG; la capa de compatibilidad queda solo para `App.tsx` y se eliminan 107 reglas sin uso. |
 
 El avance, las decisiones y la verificación están en [`diseno/informe-rediseno-vivo.md`](diseno/informe-rediseno-vivo.md).
 
