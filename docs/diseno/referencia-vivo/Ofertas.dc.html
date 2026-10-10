@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>SIPU · Ofertas del estudiante (vivo)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#155eef}a:hover{color:#0b4dd1}
+@keyframes ddIn{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes chipIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes grow{from{width:0}}
+.dots{background-image:radial-gradient(rgba(255,255,255,.22) 1.4px,transparent 1.4px);background-size:16px 16px}
+.bob{animation:bob 4.5s ease-in-out infinite}
+.nav-link{transition:color .18s ease,background .18s ease}
+.nav-link:hover{color:#155eef !important;background:#eaf2ff !important}
+.dd-panel{animation:ddIn .18s ease;transform-origin:top left}
+.dd-trigger{transition:border-color .18s ease,box-shadow .18s ease,background .18s ease,transform .18s ease}
+.dd-trigger:hover{border-color:#97b4ea !important;transform:translateY(-1px)}
+.dd-trigger svg{transition:transform .2s ease}
+.dd-option{transition:background .15s ease,color .15s ease}
+.dd-option:hover{background:#eaf2ff !important;color:#155eef !important}
+.chip{animation:chipIn .18s ease;transition:border-color .15s ease,box-shadow .15s ease}
+.chip:hover{border-color:#155eef !important;box-shadow:0 6px 14px rgba(21,94,239,.12)}
+.type-tile{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.type-tile:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(18,59,112,.12)}
+.card{animation:cardIn .3s ease;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.card:hover{transform:translateY(-5px);border-color:#9dbbf3 !important;box-shadow:0 22px 40px rgba(18,59,112,.13) !important}
+.card:hover .go{background:#155eef !important;color:white !important;transform:translateX(3px)}
+.go{transition:background .18s ease,color .18s ease,transform .18s ease}
+.save{transition:transform .18s ease,background .18s ease}
+.save:hover{transform:scale(1.08)}
+.meter{animation:grow .8s ease}
+.search-wrap{transition:box-shadow .2s ease}
+.search-wrap:focus-within{box-shadow:0 0 0 4px rgba(223,244,255,.55),0 18px 40px rgba(13,34,64,.3) !important}
+@media (max-width:900px){.nav-links{display:none !important}.menu-btn{display:flex !important}.user-name{display:none !important}.hero-ardy{display:none !important}}
+@media (prefers-reduced-motion:reduce){.bob,.card,.chip,.dd-panel,.meter{animation:none}}
+</style>
+</helmet>
+<div style="min-height: 1760px; font-family: 'DM Sans', sans-serif; color: #1d2939; font-size: 16px; line-height: 1.5; background: radial-gradient(circle at 4% 30%, rgba(21,94,239,.06), transparent 22%), radial-gradient(circle at 96% 70%, rgba(77,135,255,.07), transparent 24%), #f6f9ff">
+<header style="position: sticky; z-index: 50; top: 0; border-bottom: 1px solid rgba(208,217,232,.7); background: rgba(255,255,255,.9); backdrop-filter: blur(16px)">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 32px; height: 72px; display: flex; align-items: center; gap: 24px">
+<a href="#" aria-label="Ir al inicio" style="display: flex; align-items: center"><img src="/_blob/f3afbb451d06b36fd3174a7999799118" alt="" style="display: block; width: 124px; height: 38px; object-fit: contain; border-radius: 8px; background: #f8f7f4"></a>
+<nav class="nav-links" aria-label="Navegación principal" style="display: flex; align-items: center; gap: 6px; padding: 5px; border-radius: 99px; background: #eef3fc">
+<a href="#" aria-current="page" style="display: flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: 99px; color: white; background: #123b70; box-shadow: 0 6px 14px rgba(18,59,112,.25); font-weight: 700; text-decoration: none">Ofertas</a>
+<a class="nav-link" href="#" style="display: flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: 99px; color: #475467; font-weight: 600; text-decoration: none">Mis postulaciones</a>
+<a class="nav-link" href="#" style="display: flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: 99px; color: #475467; font-weight: 600; text-decoration: none">Mi perfil</a>
+</nav>
+<div style="display: flex; align-items: center; gap: 6px; margin-left: auto">
+<button type="button" aria-label="Notificaciones, 2 sin leer" style="position: relative; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid #d0d9e8; border-radius: 50%; color: #123b70; background: white; cursor: pointer">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg>
+<span style="position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; display: grid; place-items: center; border: 2px solid white; border-radius: 99px; color: white; background: #b42318; font-size: 11px; font-weight: 800">2</span>
+</button>
+<button type="button" aria-label="Cuenta de Laura Gómez" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 3px 14px 3px 3px; border: 1px solid #d0d9e8; border-radius: 99px; background: white; color: #1d2939; font: 700 15px 'DM Sans', sans-serif; cursor: pointer">
+<span aria-hidden="true" style="width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: white; background: linear-gradient(145deg, #123b70, #4d87ff); font-size: 14px; font-weight: 800">LG</span>
+<span class="user-name">Laura</span>
+</button>
+<button class="menu-btn" type="button" aria-label="Abrir menú" style="display: none; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid #d0d9e8; border-radius: 50%; color: #155eef; background: white">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+</button>
+</div>
+</div>
+</header>
+<main style="max-width: 1280px; margin: 0 auto; padding: 24px 32px 72px">
+<section style="position: relative; overflow: hidden; border-radius: 28px; padding: 44px 48px; color: white; background: radial-gradient(circle at 78% 30%, rgba(103,176,255,.45), transparent 30%), linear-gradient(130deg, #0d2240, #123b70 40%, #155eef 85%, #3978f4); box-shadow: 0 24px 50px rgba(13,34,64,.22)">
+<div class="dots" aria-hidden="true" style="position: absolute; left: 0; bottom: 0; width: 240px; height: 140px; opacity: .5"></div>
+<div aria-hidden="true" style="position: absolute; right: -80px; top: -80px; width: 320px; height: 320px; border-radius: 50%; background: rgba(255,255,255,.06)"></div>
+<div style="position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 32px">
+<div style="flex: 999 1 520px; min-width: 0">
+<p style="margin: 0 0 10px; color: #dff4ff; font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase">Prácticas universitarias</p>
+<h1 style="margin: 0; max-width: 640px; font-size: 48px; font-weight: 800; line-height: 1.05; letter-spacing: -0.04em">Hola, Laura. Tu próxima <span style="color: #dff4ff; background-image: linear-gradient(transparent 68%, rgba(77,135,255,.8) 68%, rgba(77,135,255,.8) 92%, transparent 92%)">oportunidad</span> está aquí.</h1>
+<p style="margin: 14px 0 0; max-width: 520px; color: #dce9ff; font-size: 18px">Ofertas verificadas por la universidad, ordenadas según tu programa y tus habilidades.</p>
+<form class="search-wrap" role="search" style="margin: 26px 0 0; max-width: 640px; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 18px; border-radius: 16px; background: white; box-shadow: 0 18px 40px rgba(13,34,64,.3)">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 22px; height: 22px; flex: 0 0 auto; fill: none; stroke: #155eef; stroke-width: 2; stroke-linecap: round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<input aria-label="Buscar por cargo o empresa" placeholder="Buscar por cargo o empresa" style="flex: 1; min-width: 0; min-height: 48px; border: 0; outline: none; background: transparent; font: inherit; color: #1d2939">
+<button type="button" style="min-height: 48px; padding: 0 22px; border: 0; border-radius: 12px; color: white; background: linear-gradient(135deg, #155eef, #3478ff); font: 700 16px 'DM Sans', sans-serif; cursor: pointer">Buscar</button>
+</form>
+</div>
+<div class="hero-ardy" style="flex: 1 1 300px; display: flex; flex-direction: column; align-items: center; gap: 14px">
+<div style="position: relative; max-width: 290px; padding: 14px 18px; border-radius: 18px; background: white; color: #1d2939; box-shadow: 0 16px 32px rgba(13,34,64,.25)">
+<strong style="display: block; color: #0d2240">¡Encontré 3 ofertas para ti!</strong>
+<span style="color: #667085; font-size: 14px">Encajan con Ingeniería de Sistemas y tus habilidades en React.</span>
+<span aria-hidden="true" style="position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; margin-left: -8px; background: white; transform: rotate(45deg)"></span>
+</div>
+<span class="bob" role="img" aria-label="Ardy, mascota de la Universidad de Ibagué" style="display: block; width: 132px; height: 132px; overflow: hidden; border-radius: 50%; border: 5px solid white; background: white; box-shadow: 0 16px 32px rgba(13,34,64,.3)">
+<img src="/_blob/57c4d7d0cc1faea5ecf42952cb467ef8" alt="" aria-hidden="true" style="width: 160%; height: 112%; transform: translate(-26%, -5%); object-fit: cover">
+</span>
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px">
+<span style="padding: 6px 12px; border-radius: 99px; background: rgba(255,255,255,.14); font-size: 14px; font-weight: 600"><strong>2</strong> guardadas</span>
+<span style="padding: 6px 12px; border-radius: 99px; background: rgba(255,255,255,.14); font-size: 14px; font-weight: 600"><strong>1</strong> en entrevista</span>
+</div>
+</div>
+</div>
+</section>
+<section aria-label="Explorar por tipo" style="margin-top: 28px">
+<h2 style="margin: 0 0 14px; color: #0d2240; font-size: 22px; font-weight: 800; letter-spacing: -0.03em">Explora por tipo</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px">
+<sc-for list="{{typeTiles}}" as="t" hint-placeholder-count="4">
+<button class="type-tile" type="button" aria-pressed="{{t.pressed}}" onClick="{{t.pick}}" style="{{t.style}}">
+<span aria-hidden="true" style="{{t.iconBox}}"><svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="{{t.icon}}"></path></svg></span>
+<span style="display: grid; text-align: left; line-height: 1.25"><strong style="font-size: 17px">{{t.label}}</strong><small style="{{t.subStyle}}">{{t.sub}}</small></span>
+</button>
+</sc-for>
+</div>
+</section>
+<sc-if value="{{anyOpen}}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-label="Cerrar filtros" onClick="{{closeAll}}" style="position: fixed; inset: 0; z-index: 20; border: 0; padding: 0; background: transparent; cursor: default"></button>
+</sc-if>
+<div aria-label="Filtros de ofertas" style="position: relative; z-index: 30; margin-top: 24px; padding: 16px; border: 1px solid #d3e0f5; border-radius: 18px; background: white; box-shadow: 0 12px 28px rgba(18,59,112,.07)">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; gap: 10px">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+<div style="position: relative">
+<span style="display: block; margin-bottom: 6px; color: #475467; font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase">{{f.label}}</span>
+<button class="dd-trigger" type="button" aria-haspopup="listbox" aria-expanded="{{f.expanded}}" onClick="{{f.toggle}}" style="{{f.triggerStyle}}">
+<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{f.value}}</span>
+<svg viewBox="0 0 24 24" aria-hidden="true" style="{{f.chevronStyle}}"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<sc-if value="{{f.isOpen}}" hint-placeholder-val="{{ false }}">
+<div class="dd-panel" role="listbox" aria-label="{{f.label}}" style="position: absolute; z-index: 40; top: calc(100% + 8px); left: 0; min-width: 100%; width: max-content; max-width: 280px; padding: 6px; border: 1px solid #c7d8f3; border-radius: 14px; background: white; box-shadow: 0 18px 40px rgba(18,59,112,.16)">
+<sc-for list="{{f.options}}" as="op" hint-placeholder-count="4">
+<button class="dd-option" type="button" role="option" aria-selected="{{op.selected}}" onClick="{{op.pick}}" style="{{op.style}}">
+<span>{{op.label}}</span>
+<sc-if value="{{op.hasCount}}" hint-placeholder-val="{{ true }}"><span style="{{op.countStyle}}">{{op.count}}</span></sc-if>
+<sc-if value="{{op.selected}}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: #155eef; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12l5 5 9-10"></path></svg></sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<button type="button" aria-pressed="{{onlySaved}}" onClick="{{toggleSaved}}" style="{{savedStyle}}">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="{{savedIconStyle}}"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>
+Solo guardadas ({{savedCount}})
+</button>
+</div>
+<sc-if value="{{hasActive}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e3eaf5">
+<span style="color: #667085; font-size: 14px; font-weight: 600">Filtros activos:</span>
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="2">
+<button class="chip" type="button" aria-label="Quitar filtro {{c.text}}" onClick="{{c.remove}}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 8px 4px 12px; border: 1px solid #cfe0ff; border-radius: 99px; color: #155eef; background: linear-gradient(135deg, white, #eaf2ff); font: 700 14px 'DM Sans', sans-serif; cursor: pointer">
+{{c.text}}
+<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+</button>
+</sc-for>
+<button type="button" onClick="{{clear}}" style="min-height: 32px; margin-left: 4px; padding: 0; border: 0; color: #155eef; background: transparent; font: 700 14px 'DM Sans', sans-serif; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">Limpiar filtros</button>
+</div>
+</sc-if>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: end; justify-content: space-between; margin: 32px 0 18px">
+<h2 style="margin: 0; color: #0d2240; font-size: 26px; font-weight: 800; letter-spacing: -0.03em">{{countLabel}}</h2>
+<p style="margin: 0; color: #667085">Ordenadas según tu afinidad con cada oferta</p>
+</div>
+<sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 56px 24px; border: 2px dashed #c7d8f3; border-radius: 22px; text-align: center; background: white">
+<span role="img" aria-label="Ardy, mascota de la Universidad de Ibagué" style="display: block; overflow: hidden; width: 104px; height: 104px; margin: 0 auto 16px; border: 5px solid #eaf2ff; border-radius: 50%; background: white"><img src="/_blob/57c4d7d0cc1faea5ecf42952cb467ef8" alt="" aria-hidden="true" style="width: 160%; height: 112%; transform: translate(-26%, -5%); object-fit: cover"></span>
+<h2 style="margin: 0; color: #0d2240; font-size: 24px; font-weight: 800; letter-spacing: -0.03em">No encontramos ofertas</h2>
+<p style="color: #667085">Ardy siguió buscando, pero nada coincide. Prueba quitando algunos filtros.</p>
+<button type="button" onClick="{{clear}}" style="min-height: 48px; border: 0; border-radius: 12px; padding: 10px 22px; font: 700 16px 'DM Sans', sans-serif; color: white; background: linear-gradient(135deg, #155eef, #3478ff); box-shadow: 0 8px 18px rgba(21,94,239,.25); cursor: pointer">Limpiar filtros</button>
+</div>
+</sc-if>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px">
+<sc-for list="{{offers}}" as="o" hint-placeholder-count="6">
+<article class="card" style="position: relative; display: flex; flex-direction: column; border: 1px solid #d3e0f5; border-radius: 20px; background: white; box-shadow: 0 6px 18px rgba(18,59,112,.05); overflow: hidden">
+<div style="display: flex; align-items: center; gap: 10px; padding: 18px 18px 0">
+<span style="{{o.typeStyle}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="{{o.typeIcon}}"></path></svg>{{o.type}}</span>
+<span style="{{o.dueStyle}}">{{o.due}}</span>
+<button class="save" type="button" aria-pressed="{{o.savedPressed}}" aria-label="{{o.saveLabel}}" onClick="{{o.toggleSave}}" style="{{o.saveStyle}}">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="{{o.saveIcon}}"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>
+</button>
+</div>
+<a href="Detalle.dc.html" style="display: flex; flex-direction: column; flex: 1; gap: 14px; padding: 16px 18px 18px; color: inherit; text-decoration: none">
+<div style="display: flex; gap: 12px; align-items: center">
+<span aria-hidden="true" style="width: 48px; height: 48px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 14px; color: white; background: linear-gradient(145deg, #123b70, #4d87ff); box-shadow: 0 6px 14px rgba(21,94,239,.2); font-weight: 800; font-size: 17px">{{o.logo}}</span>
+<span style="display: grid; min-width: 0; line-height: 1.25">
+<strong style="color: #0d2240; font-size: 19px; font-weight: 800; letter-spacing: -0.02em">{{o.title}}</strong>
+<span style="display: flex; align-items: center; gap: 5px; margin-top: 3px; color: #667085; font-size: 14px">{{o.company}} <svg viewBox="0 0 24 24" role="img" aria-label="Organización verificada" style="width: 16px; height: 16px; fill: #157347; stroke: white; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"><circle cx="12" cy="12" r="10" stroke="none"></circle><path d="M7.5 12.5l3 3 6-6.5"></path></svg></span>
+</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 99px; color: #475467; background: #f2f6fc; font-size: 13px; font-weight: 600"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>{{o.city}}</span>
+<span style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 99px; color: #475467; background: #f2f6fc; font-size: 13px; font-weight: 600"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 5h16v10H4zM2 19h20"></path></svg>{{o.modality}}</span>
+<span style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 99px; color: #475467; background: #f2f6fc; font-size: 13px; font-weight: 600">{{o.area}}</span>
+</div>
+<div>
+<div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px"><span style="color: #475467; font-weight: 600">Afinidad con tu perfil</span><strong style="color: #155eef">{{o.match}}%</strong></div>
+<div style="height: 8px; border-radius: 99px; background: #e6eefc; overflow: hidden"><div class="meter" style="{{o.matchStyle}}"></div></div>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 14px; border-top: 1px dashed #d3e0f5">
+<span style="display: grid; line-height: 1.2"><small style="color: #667085; font-size: 12px">Remuneración</small><strong style="color: #0d2240; font-size: 17px">{{o.salary}}</strong></span>
+<span class="go" aria-hidden="true" style="width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; color: #155eef; background: #eaf2ff"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+</div>
+</a>
+</article>
+</sc-for>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1760}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { open: null, city: 'Todas', area: 'Todas', modality: 'Todas', type: 'Todas', sort: 'Mayor afinidad', onlySaved: false, saved: { 0: true, 3: true } };
+}
+renderVals() {
+var self = this;
+var s = this.state;
+var raw = [
+{ logo: 'TS', title: 'Practicante de desarrollo web', company: 'TecnoSur S.A.S.', city: 'Ibagué', modality: 'Híbrida', type: 'Práctica', area: 'Tecnología', salary: '$1.300.000', salaryN: 1300000, days: 5, match: 92 },
+{ logo: 'AC', title: 'Auxiliar contable', company: 'Agroindustrias del Centro', city: 'Ibagué', modality: 'Presencial', type: 'Empleo', area: 'Contabilidad', salary: '$1.800.000', salaryN: 1800000, days: 42, match: 48 },
+{ logo: 'CM', title: 'Practicante de marketing digital', company: 'Comercial Musical', city: 'Bogotá', modality: 'Remota', type: 'Práctica', area: 'Marketing', salary: '$1.300.000', salaryN: 1300000, days: 37, match: 71 },
+{ logo: 'IT', title: 'Curso de analítica de datos', company: 'Instituto Tolima Digital', city: 'Ibagué', modality: 'Remota', type: 'Formación', area: 'Tecnología', salary: 'Sin costo', salaryN: 0, days: 53, match: 85 },
+{ logo: 'LP', title: 'Analista de recursos humanos', company: 'Logística del Pacífico', city: 'Cali', modality: 'Presencial', type: 'Empleo', area: 'Recursos Humanos', salary: '$2.400.000', salaryN: 2400000, days: 62, match: 39 },
+{ logo: 'IP', title: 'Practicante de producción', company: 'Industrias Piedra Pintada', city: 'Ibagué', modality: 'Presencial', type: 'Práctica', area: 'Producción', salary: '$1.300.000', salaryN: 1300000, days: 9, match: 63 }
+];
+raw.forEach(function (o, i) { o.id = i; o.saved = Boolean(s.saved[i]); });
+var typeMeta = {
+'Práctica': { icon: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', fg: '#155eef', bg: '#dce9ff' },
+'Empleo': { icon: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16', fg: '#ffffff', bg: '#123b70' },
+'Formación': { icon: 'M4 5h7a2 2 0 012 2v12a2 2 0 00-2-2H4zM20 5h-7a2 2 0 00-2 2v12a2 2 0 012-2h7z', fg: '#0d2240', bg: '#dff4ff' }
+};
+var defs = [
+{ key: 'city', field: 'city', label: 'Ciudad', def: 'Todas', options: ['Todas', 'Ibagué', 'Bogotá', 'Cali'] },
+{ key: 'area', field: 'area', label: 'Área', def: 'Todas', options: ['Todas', 'Tecnología', 'Marketing', 'Contabilidad', 'Recursos Humanos', 'Producción'] },
+{ key: 'modality', field: 'modality', label: 'Modalidad', def: 'Todas', options: ['Todas', 'Presencial', 'Remota', 'Híbrida'] },
+{ key: 'sort', field: null, label: 'Ordenar por', def: 'Mayor afinidad', options: ['Mayor afinidad', 'Cierra pronto', 'Mayor remuneración'] }
+];
+var all = defs.concat([{ key: 'type', field: 'type', label: 'Tipo', def: 'Todas' }]);
+var matches = function (o, skipKey) {
+if (s.onlySaved && !o.saved) return false;
+return all.every(function (d) {
+if (!d.field || d.key === skipKey || s[d.key] === 'Todas') return true;
+return o[d.field] === s[d.key];
+});
+};
+var filters = defs.map(function (d) {
+var isOpen = s.open === d.key;
+var active = s[d.key] !== d.def;
+return {
+label: d.label,
+value: s[d.key],
+isOpen: isOpen,
+expanded: isOpen ? 'true' : 'false',
+toggle: function () { self.setState({ open: isOpen ? null : d.key }); },
+triggerStyle: 'width: 100%; min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 12px; font: 600 16px DM Sans, sans-serif; text-align: left; cursor: pointer; '
++ (isOpen ? 'border: 1px solid #155eef; box-shadow: 0 0 0 4px rgba(21,94,239,.10); color: #1d2939; background: white'
+: active ? 'border: 1px solid #9dbbf3; color: #155eef; background: #eaf2ff'
+: 'border: 1px solid #d0d9e8; color: #1d2939; background: #f8faff'),
+chevronStyle: 'width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: ' + (isOpen || active ? '#155eef' : '#667085') + '; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform: rotate(' + (isOpen ? 180 : 0) + 'deg)',
+options: d.options.map(function (opt) {
+var selected = s[d.key] === opt;
+var count = d.field ? raw.filter(function (o) { return matches(o, d.key) && (opt === 'Todas' || o[d.field] === opt); }).length : 0;
+return {
+label: opt,
+selected: selected,
+hasCount: Boolean(d.field),
+count: count,
+countStyle: 'margin-left: auto; min-width: 24px; padding: 1px 7px; border-radius: 99px; font-size: 12px; font-weight: 700; text-align: center; ' + (selected ? 'color: white; background: #155eef' : 'color: #667085; background: #f1f5fb'),
+pick: function () { var n = { open: null }; n[d.key] = opt; self.setState(n); },
+style: 'width: 100%; min-height: 40px; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 10px; font: ' + (selected ? '700' : '500') + ' 15px DM Sans, sans-serif; text-align: left; cursor: pointer; white-space: nowrap; '
++ (selected ? 'color: #155eef; background: #f3f7ff' : 'color: #1d2939; background: transparent')
+};
+})
+};
+});
+var tileDefs = [
+{ label: 'Todas', value: 'Todas', icon: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z', fg: '#123b70', bg: '#eef3fc' },
+{ label: 'Prácticas', value: 'Práctica', icon: typeMeta['Práctica'].icon, fg: '#155eef', bg: '#dce9ff' },
+{ label: 'Empleos', value: 'Empleo', icon: typeMeta['Empleo'].icon, fg: '#ffffff', bg: '#123b70' },
+{ label: 'Formación', value: 'Formación', icon: typeMeta['Formación'].icon, fg: '#0d2240', bg: '#dff4ff' }
+];
+var typeTiles = tileDefs.map(function (t) {
+var on = s.type === t.value;
+var n = raw.filter(function (o) { return matches(o, 'type') && (t.value === 'Todas' || o.type === t.value); }).length;
+return {
+label: t.label,
+icon: t.icon,
+pressed: on ? 'true' : 'false',
+sub: n === 1 ? '1 oferta' : n + ' ofertas',
+pick: function () { self.setState({ type: t.value, open: null }); },
+iconBox: 'width: 48px; height: 48px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 14px; ' + (on ? 'color: #155eef; background: white' : 'color: ' + t.fg + '; background: ' + t.bg),
+subStyle: 'font-size: 14px; ' + (on ? 'color: #dce9ff' : 'color: #667085'),
+style: 'display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 18px; font: inherit; cursor: pointer; text-align: left; '
++ (on ? 'border: 1px solid #155eef; color: white; background: linear-gradient(135deg, #155eef, #3478ff); box-shadow: 0 12px 24px rgba(21,94,239,.28)' : 'border: 1px solid #d3e0f5; color: #0d2240; background: white')
+};
+});
+var chips = all.filter(function (d) { return s[d.key] !== d.def; }).map(function (d) {
+return { text: d.label + ': ' + s[d.key], remove: function () { var n = {}; n[d.key] = d.def; self.setState(n); } };
+});
+if (s.onlySaved) chips.push({ text: 'Solo guardadas', remove: function () { self.setState({ onlySaved: false }); } });
+var list = raw.filter(function (o) { return matches(o, null); });
+if (s.sort === 'Cierra pronto') list.sort(function (a, b) { return a.days - b.days; });
+else if (s.sort === 'Mayor remuneración') list.sort(function (a, b) { return b.salaryN - a.salaryN; });
+else list.sort(function (a, b) { return b.match - a.match; });
+var savedCount = raw.filter(function (o) { return o.saved; }).length;
+return {
+typeTiles: typeTiles,
+filters: filters,
+anyOpen: s.open !== null,
+closeAll: function () { self.setState({ open: null }); },
+chips: chips,
+hasActive: chips.length > 0,
+clear: function () { self.setState({ open: null, city: 'Todas', area: 'Todas', modality: 'Todas', type: 'Todas', sort: 'Mayor afinidad', onlySaved: false }); },
+onlySaved: s.onlySaved ? 'true' : 'false',
+toggleSaved: function () { self.setState({ onlySaved: !s.onlySaved, open: null }); },
+savedCount: savedCount,
+savedStyle: 'min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border-radius: 12px; font: 700 15px DM Sans, sans-serif; cursor: pointer; '
++ (s.onlySaved ? 'border: 1px solid #155eef; color: #155eef; background: #eaf2ff' : 'border: 1px solid #d0d9e8; color: #475467; background: #f8faff'),
+savedIconStyle: 'width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; fill: ' + (s.onlySaved ? 'currentColor' : 'none'),
+countLabel: list.length === 1 ? '1 oferta abierta' : list.length + ' ofertas abiertas',
+isEmpty: list.length === 0,
+offers: list.map(function (o) {
+var m = typeMeta[o.type];
+var soon = o.days <= 14;
+return Object.assign({}, o, {
+typeIcon: m.icon,
+typeStyle: 'display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; font-size: 13px; font-weight: 700; color: ' + m.fg + '; background: ' + m.bg,
+due: soon ? 'Cierra en ' + o.days + ' días' : 'Abierta',
+dueStyle: 'display: inline-flex; align-items: center; padding: 5px 10px; border-radius: 99px; font-size: 13px; font-weight: 700; ' + (soon ? 'color: #a15c00; background: #fff4df' : 'color: #157347; background: #eaf7f0'),
+savedPressed: o.saved ? 'true' : 'false',
+saveLabel: (o.saved ? 'Quitar de guardadas: ' : 'Guardar oferta: ') + o.title,
+toggleSave: function () { var n = Object.assign({}, s.saved); n[o.id] = !o.saved; self.setState({ saved: n }); },
+saveStyle: 'margin-left: auto; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; ' + (o.saved ? 'border: 1px solid #155eef; color: white; background: #155eef' : 'border: 1px solid #d0d9e8; color: #155eef; background: white'),
+saveIcon: 'width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; fill: ' + (o.saved ? 'currentColor' : 'none'),
+matchStyle: 'height: 100%; border-radius: 99px; width: ' + o.match + '%; background: linear-gradient(90deg, #155eef, #4d87ff)'
+});
+})
+};
+}
+}
+</script>
+</body>
+</html>

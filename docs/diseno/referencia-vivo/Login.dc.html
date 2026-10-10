@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>SIPU · Iniciar sesión (vivo)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#155eef}a:hover{color:#0b4dd1}
+@keyframes floatA{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-10px) rotate(-3deg)}}
+@keyframes floatB{0%,100%{transform:translateY(0) rotate(2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+@keyframes floatC{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes wave{0%,100%{transform:rotate(0)}25%{transform:rotate(14deg)}75%{transform:rotate(-8deg)}}
+.float-a{animation:floatA 6s ease-in-out infinite}
+.float-b{animation:floatB 7s ease-in-out infinite}
+.float-c{animation:floatC 5.5s ease-in-out infinite}
+.view{animation:fadeUp .28s ease}
+.wave{display:inline-block;transform-origin:70% 80%;animation:wave 2.4s ease-in-out infinite}
+.dots{background-image:radial-gradient(rgba(255,255,255,.22) 1.4px,transparent 1.4px);background-size:16px 16px}
+.field-wrap{transition:border-color .18s ease,box-shadow .18s ease}
+.field-wrap:focus-within{border-color:#155eef !important;box-shadow:0 0 0 4px rgba(21,94,239,.12)}
+.field-wrap input{flex:1;min-width:0;min-height:48px;border:0;outline:none;background:transparent;font:inherit;color:#1d2939}
+.cta{transition:transform .18s ease,box-shadow .18s ease}
+.cta:hover{transform:translateY(-2px);box-shadow:0 14px 28px rgba(21,94,239,.32) !important}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+.cta-arrow{transition:transform .18s ease}
+.role-tile{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.role-tile:hover{transform:translateY(-3px);border-color:#155eef !important;box-shadow:0 12px 24px rgba(18,59,112,.10)}
+.tab{transition:color .18s ease,background .18s ease}
+@media (max-width:960px){.brand{display:none !important}.shell{grid-template-columns:1fr !important}.mobile-logo{display:flex !important}}
+@media (prefers-reduced-motion:reduce){.float-a,.float-b,.float-c,.wave,.view{animation:none}}
+</style>
+</helmet>
+<main class="shell" style="min-height: 900px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: #f6f9ff; font-family: 'DM Sans', sans-serif; color: #1d2939; font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased">
+<section class="brand" aria-label="Presentación de SIPU" style="position: relative; margin: 16px; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; padding: 44px 52px; color: white; background: radial-gradient(circle at 85% 18%, rgba(103,176,255,.45), transparent 32%), radial-gradient(circle at 10% 95%, rgba(77,135,255,.35), transparent 30%), linear-gradient(145deg, #0d2240, #123b70 35%, #155eef 78%, #3978f4)">
+<div class="dots" aria-hidden="true" style="position: absolute; top: 0; right: 0; width: 260px; height: 200px; opacity: .6"></div>
+<div style="position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+<img src="/_blob/f3afbb451d06b36fd3174a7999799118" alt="SIPU" style="display: block; width: 150px; height: 46px; object-fit: contain; border-radius: 10px; background: #f8f7f4; border: 5px solid white">
+<span style="padding: 6px 12px; border: 1px solid rgba(255,255,255,.28); border-radius: 99px; background: rgba(255,255,255,.10); color: #dff4ff; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase">Universidad de Ibagué</span>
+</div>
+<div style="position: relative">
+<h1 style="margin: 0; max-width: 560px; font-size: 60px; font-weight: 800; line-height: 1.02; letter-spacing: -0.04em">Tu talento encuentra <span style="color: #dff4ff; background-image: linear-gradient(transparent 68%, rgba(77,135,255,.75) 68%, rgba(77,135,255,.75) 92%, transparent 92%)">oportunidades reales.</span></h1>
+<p style="margin: 20px 0 0; max-width: 480px; color: #eaf2ff; font-size: 19px">Prácticas, empleo y formación en un solo lugar, con empresas verificadas por la universidad.</p>
+</div>
+<div style="position: relative; height: 300px">
+<div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 300px; height: 300px; margin: -150px 0 0 -150px; border-radius: 50%; border: 1px dashed rgba(255,255,255,.35)"></div>
+<div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%; background: rgba(255,255,255,.10)"></div>
+<span role="img" aria-label="Ardy, mascota de la Universidad de Ibagué" style="position: absolute; left: 50%; top: 50%; width: 176px; height: 176px; margin: -88px 0 0 -88px; overflow: hidden; border-radius: 50%; border: 6px solid white; background: white; box-shadow: 0 20px 44px rgba(13,34,64,.35)">
+<img src="/_blob/57c4d7d0cc1faea5ecf42952cb467ef8" alt="" aria-hidden="true" style="width: 160%; height: 112%; transform: translate(-26%, -5%); object-fit: cover">
+</span>
+<div class="float-a" style="position: absolute; left: 2%; top: 14px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: white; color: #1d2939; box-shadow: 0 16px 32px rgba(13,34,64,.25)">
+<span aria-hidden="true" style="width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; color: white; background: linear-gradient(145deg, #123b70, #4d87ff); font-size: 13px; font-weight: 800">TS</span>
+<span style="display: grid; line-height: 1.25"><strong style="font-size: 14px">Practicante web</strong><small style="color: #667085; font-size: 12px">Ibagué · Híbrida</small></span>
+</div>
+<div class="float-b" style="position: absolute; right: 0; top: 64px; display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 99px; background: #eaf7f0; color: #157347; font-size: 14px; font-weight: 700; box-shadow: 0 16px 32px rgba(13,34,64,.22)">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12l5 5 9-10"></path></svg>
+Empresa verificada
+</div>
+<div class="float-c" style="position: absolute; right: 8%; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: white; color: #1d2939; box-shadow: 0 16px 32px rgba(13,34,64,.25)">
+<span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: #155eef; box-shadow: 0 0 0 4px #dce9ff"></span>
+<span style="font-size: 14px"><strong>Tu postulación</strong> pasó a entrevista</span>
+</div>
+</div>
+<div style="position: relative; display: flex; flex-wrap: wrap; gap: 8px">
+<span style="padding: 7px 14px; border-radius: 99px; background: rgba(255,255,255,.14); color: white; font-size: 14px; font-weight: 600">Estudiantes</span>
+<span style="padding: 7px 14px; border-radius: 99px; background: rgba(255,255,255,.14); color: white; font-size: 14px; font-weight: 600">Profesionales</span>
+<span style="padding: 7px 14px; border-radius: 99px; background: rgba(255,255,255,.14); color: white; font-size: 14px; font-weight: 600">Empresas</span>
+</div>
+</section>
+<section style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px">
+<div class="mobile-logo" style="display: none; width: 100%; max-width: 480px; margin-bottom: 24px">
+<img src="/_blob/f3afbb451d06b36fd3174a7999799118" alt="SIPU" style="width: 150px; height: 46px; object-fit: contain; border-radius: 8px; background: #f8f7f4">
+</div>
+<div style="width: 100%; max-width: 480px">
+<p style="margin: 0 0 6px; color: #155eef; font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase">{{eyebrow}}</p>
+<h2 style="margin: 0; font-size: 38px; font-weight: 800; line-height: 1.1; letter-spacing: -0.035em; color: #0d2240">{{title}}</h2>
+<p style="margin: 10px 0 24px; color: #667085">{{intro}}</p>
+<div role="tablist" aria-label="Acceso" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: #e6eefc">
+<button class="tab" type="button" role="tab" aria-selected="{{loginSelected}}" onClick="{{toLogin}}" style="{{loginTabStyle}}">Iniciar sesión</button>
+<button class="tab" type="button" role="tab" aria-selected="{{registerSelected}}" onClick="{{toRegister}}" style="{{registerTabStyle}}">Crear cuenta</button>
+</div>
+<sc-if value="{{isLogin}}" hint-placeholder-val="{{ true }}">
+<form class="view" style="margin: 22px 0 0; display: grid; gap: 16px">
+<div>
+<label for="v-correo" style="display: block; margin-bottom: 6px; font-weight: 700">Correo</label>
+<div class="field-wrap" style="display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1px solid #d0d9e8; border-radius: 12px; background: white">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; flex: 0 0 auto; fill: none; stroke: #667085; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="M4 6h16v12H4z"></path><path d="M4 7l8 6 8-6"></path></svg>
+<input id="v-correo" type="email" value="laura.gomez@estudiantesunibague.edu.co" autocomplete="email">
+</div>
+</div>
+<div>
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<label for="v-clave" style="display: block; margin-bottom: 6px; font-weight: 700">Contraseña</label>
+<a href="#" style="font-size: 14px; font-weight: 700; text-underline-offset: 3px">¿Olvidaste tu contraseña?</a>
+</div>
+<div class="field-wrap" style="display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; border: 1px solid #d0d9e8; border-radius: 12px; background: white">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; flex: 0 0 auto; fill: none; stroke: #667085; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="M6 11h12v9H6z"></path><path d="M8 11V8a4 4 0 018 0v3"></path></svg>
+<input id="v-clave" type="{{passType}}" value="Unibague2026" autocomplete="current-password">
+<button type="button" aria-label="{{eyeLabel}}" onClick="{{toggleEye}}" style="width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 10px; color: #155eef; background: transparent; cursor: pointer">
+<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+</button>
+</div>
+</div>
+<button class="cta" type="button" style="min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 12px; color: white; background: linear-gradient(135deg, #155eef, #3478ff); box-shadow: 0 8px 18px rgba(21,94,239,.25); font: 700 17px 'DM Sans', sans-serif; cursor: pointer">
+Iniciar sesión
+<svg class="cta-arrow" viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+</button>
+<div style="display: flex; align-items: center; gap: 12px; color: #667085; font-size: 14px; margin-top: 6px"><span style="flex: 1; height: 1px; background: #d0d9e8"></span>¿Eres nuevo? Elige tu perfil<span style="flex: 1; height: 1px; background: #d0d9e8"></span></div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{roles}}" as="r" hint-placeholder-count="3">
+<button class="role-tile" type="button" onClick="{{r.go}}" style="display: grid; justify-items: center; gap: 6px; padding: 14px 8px; border: 1px solid #d0d9e8; border-radius: 14px; background: white; color: #1d2939; font: 700 14px 'DM Sans', sans-serif; cursor: pointer">
+<span aria-hidden="true" style="{{r.iconBox}}"><svg viewBox="0 0 24 24" style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="{{r.icon}}"></path></svg></span>
+{{r.title}}
+</button>
+</sc-for>
+</div>
+</form>
+</sc-if>
+<sc-if value="{{isRegister}}" hint-placeholder-val="{{ false }}">
+<form class="view" style="margin: 22px 0 0; display: grid; gap: 16px">
+<fieldset style="margin: 0; padding: 0; border: 0; display: grid; gap: 8px">
+<legend style="margin-bottom: 8px; font-weight: 700">Tipo de cuenta</legend>
+<sc-for list="{{roles}}" as="r" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{r.checked}}" onClick="{{r.pick}}" style="{{r.cardStyle}}">
+<span aria-hidden="true" style="{{r.iconBox}}"><svg viewBox="0 0 24 24" style="width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"><path d="{{r.icon}}"></path></svg></span>
+<span style="display: grid; text-align: left; line-height: 1.3"><strong>{{r.title}}</strong><small style="color: #667085; font-weight: 400; font-size: 14px">{{r.description}}</small></span>
+<span aria-hidden="true" style="{{r.radio}}"></span>
+</button>
+</sc-for>
+</fieldset>
+<div>
+<label for="v-nombre" style="display: block; margin-bottom: 6px; font-weight: 700">{{nameLabel}}</label>
+<div class="field-wrap" style="display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1px solid #d0d9e8; border-radius: 12px; background: white"><input id="v-nombre" type="text"></div>
+</div>
+<div>
+<label for="v-correo2" style="display: block; margin-bottom: 6px; font-weight: 700">{{emailLabel}}</label>
+<div class="field-wrap" style="display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1px solid #d0d9e8; border-radius: 12px; background: white"><input id="v-correo2" type="email"></div>
+</div>
+<button class="cta" type="button" style="min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 12px; color: white; background: linear-gradient(135deg, #155eef, #3478ff); box-shadow: 0 8px 18px rgba(21,94,239,.25); font: 700 17px 'DM Sans', sans-serif; cursor: pointer">
+Continuar
+<svg class="cta-arrow" viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+</button>
+</form>
+</sc-if>
+<p style="margin: 24px 0 0; color: #667085; font-size: 13px; text-align: center">Al continuar confirmas que tus datos se usarán para gestionar tu cuenta y tus postulaciones.</p>
+</div>
+</section>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { view: 'login', role: 'student', showPass: false };
+}
+renderVals() {
+var self = this;
+var s = this.state;
+var isLogin = s.view === 'login';
+var tabOn = 'min-height: 44px; border: 0; border-radius: 10px; color: #0d2240; background: white; box-shadow: 0 4px 12px rgba(18,59,112,.12); font: 700 15px DM Sans, sans-serif; cursor: pointer';
+var tabOff = 'min-height: 44px; border: 0; border-radius: 10px; color: #667085; background: transparent; font: 600 15px DM Sans, sans-serif; cursor: pointer';
+var defs = [
+{ id: 'student', title: 'Estudiante', description: 'Encuentra y gestiona tus prácticas universitarias.', icon: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', bg: '#dce9ff', fg: '#155eef' },
+{ id: 'external', title: 'Profesional', description: 'Consulta las vacantes de la bolsa general.', icon: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16', bg: '#dff4ff', fg: '#123b70' },
+{ id: 'company', title: 'Empresa', description: 'Publica ofertas y acompaña tu proceso de selección.', icon: 'M4 20V6l8-3v17M12 9h8v11M7 9h2M7 13h2M15 13h2M15 17h2', bg: '#eaf2ff', fg: '#0d2240' }
+];
+var roles = defs.map(function (d) {
+var on = s.role === d.id;
+return Object.assign({}, d, {
+checked: on ? 'true' : 'false',
+iconBox: 'width: 40px; height: 40px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 12px; color: ' + d.fg + '; background: ' + d.bg,
+go: function () { self.setState({ view: 'register', role: d.id }); },
+pick: function () { self.setState({ role: d.id }); },
+cardStyle: 'display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; font: inherit; color: #1d2939; cursor: pointer; transition: all .18s ease; ' + (on ? 'border: 1px solid #155eef; background: #eaf2ff; box-shadow: inset 0 0 0 1px #155eef' : 'border: 1px solid #d0d9e8; background: white'),
+radio: 'margin-left: auto; width: 20px; height: 20px; flex: 0 0 auto; border-radius: 50%; box-sizing: border-box; ' + (on ? 'border: 6px solid #155eef; background: white' : 'border: 2px solid #b8c6dc; background: white')
+});
+});
+return {
+isLogin: isLogin,
+isRegister: !isLogin,
+eyebrow: isLogin ? 'Acceso seguro' : 'Nueva cuenta',
+title: isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta',
+intro: isLogin ? 'Ingresa con el correo asociado a tu cuenta.' : 'Selecciona el tipo de cuenta y completa tus datos.',
+loginSelected: isLogin ? 'true' : 'false',
+registerSelected: isLogin ? 'false' : 'true',
+loginTabStyle: isLogin ? tabOn : tabOff,
+registerTabStyle: isLogin ? tabOff : tabOn,
+toLogin: function () { self.setState({ view: 'login' }); },
+toRegister: function () { self.setState({ view: 'register' }); },
+passType: s.showPass ? 'text' : 'password',
+eyeLabel: s.showPass ? 'Ocultar contraseña' : 'Mostrar contraseña',
+toggleEye: function () { self.setState({ showPass: !s.showPass }); },
+roles: roles,
+nameLabel: s.role === 'company' ? 'Nombre de la organización' : 'Nombre completo',
+emailLabel: s.role === 'student' ? 'Correo institucional' : s.role === 'company' ? 'Correo corporativo' : 'Correo'
+};
+}
+}
+</script>
+</body>
+</html>

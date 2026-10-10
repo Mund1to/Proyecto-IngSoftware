@@ -380,6 +380,20 @@ El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-
 - `feat(frontend)`: la bolsa de empleo del candidato externo cambia sus `<select>` por pestañas de tipo con contador, menús en forma de pastilla (Área, Modalidad, Ciudad y Ordenar), chips de filtros activos y animaciones de resultados. `FilterDropdown` gana la variante `pill`. Las etiquetas del formulario de perfil externo quedan asociadas a sus campos.
 - `fix(frontend)`: revisión del centrado de botones en todas las pantallas (medición automática de 347 botones). El texto ya estaba centrado; se corrigió el espaciado del botón principal en inicio de sesión y registro, los enlaces bajo el formulario, el padding de las pastillas de filtro y el encabezado de los perfiles, que montaba el nombre y la tarjeta de hoja de vida sobre el banner.
 
-## 18. Regla para mantener la documentación
+## 18. Rediseño "vivo" del frontend
+
+Se implementa por fases el rediseño visual definido en [`diseno/prompt-implementacion-vivo.md`](diseno/prompt-implementacion-vivo.md), con las maquetas de [`diseno/referencia-vivo/`](diseno/referencia-vivo/). No cambia la paleta, la lógica, `App.tsx` ni la navegación.
+
+| Fase | Contenido |
+| --- | --- |
+| 1 | Base visual y componentes compartidos (`icons.tsx`, `TypeBadge`, `DueBadge`, `ArdyBubble`, `ProgressMeter`) y nueva barra de navegación, con "Cerrar sesión" en el menú del celular. |
+| 2 | Autenticación con control segmentado, botón de ojo y accesos de registro por perfil. |
+| 3 | Catálogo del estudiante. El backend agrega `affinity` (0 a 100) a las ofertas recomendadas. |
+| 4 | Detalle de oferta con anillo de afinidad, habilidades comparadas con el perfil, proceso y consejo de Ardy. |
+| 5 | Panel de empresa con indicadores, barra de postulantes por etapa y tarjeta de nueva oferta. El backend agrega `conteo_estados` y `nuevos_semana` a `GET /api/offers/mine`. |
+
+El avance, las decisiones y la verificación están en [`diseno/informe-rediseno-vivo.md`](diseno/informe-rediseno-vivo.md).
+
+## 19. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.

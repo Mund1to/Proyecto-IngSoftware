@@ -100,8 +100,8 @@ Las respuestas reales del backend devolvieron `ok: true` en todos los endpoints 
 | `GET` | `/api/profile/me` | Bearer JWT | Devuelve los datos del usuario autenticado. |
 | `GET` | `/api/db-check` | Pública | Comprueba la conexión con PostgreSQL. |
 | `GET` | `/api/offers` | Pública | Lista las ofertas públicas y activas. |
-| `GET` | `/api/offers/recommended` | Bearer JWT + candidato | Ordena las ofertas publicadas por afinidad con el perfil (Fase 3, #20 HU-16). |
-| `GET` | `/api/offers/mine` | Bearer JWT + organización | Lista las ofertas creadas por la organización autenticada. |
+| `GET` | `/api/offers/recommended` | Bearer JWT + candidato | Ordena las ofertas publicadas por afinidad con el perfil (Fase 3, #20 HU-16). Cada oferta trae `recommendationScore` y `affinity` (0 a 100, rediseño "vivo"). |
+| `GET` | `/api/offers/mine` | Bearer JWT + organización | Lista las ofertas creadas por la organización autenticada. Cada oferta trae `conteo_estados` (postulaciones por estado) y `nuevos_semana` (postulaciones de los últimos 7 días). |
 | `POST` | `/api/offers` | Bearer JWT + organización | Crea una oferta para la organización autenticada. |
 | `GET` | `/api/offers/:id` | Pública | Detalla una oferta concreta. |
 | `PATCH` | `/api/offers/:id` | Bearer JWT + organización | Actualiza una oferta propia. |
