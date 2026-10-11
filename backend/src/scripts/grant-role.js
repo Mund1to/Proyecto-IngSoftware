@@ -3,7 +3,7 @@
 //
 // Uso: npm run grant-role -- correo@dominio.com ADMINISTRADOR
 import { pool } from '../core/database/database.js';
-import { ASSIGNABLE_ROLES } from '../modules/admin/admin.controller.js';
+import { ASSIGNABLE_ROLES } from '../modules/admin/admin.domain.js';
 
 const [email, rawRole = 'ADMINISTRADOR'] = process.argv.slice(2);
 const role = String(rawRole).trim().toUpperCase();
