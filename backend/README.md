@@ -115,15 +115,28 @@ El detalle está en [`docs/informe-fase-6-perfil-archivos.md`](../docs/informe-f
 
 ## Estructura relevante
 
+El backend es un **monolito modular**: el código se agrupa por funcionalidad en
+`src/modules/`, y lo que comparten todos los módulos vive en `src/core/`.
+
 ```text
 src/
-├── controllers/  # Lógica de los endpoints
-├── routes/       # Definición de rutas HTTP
-├── middleware/   # Autenticación y roles
-├── utils/        # Helpers compartidos (payload, perfiles, ofertas, parámetros)
-├── scripts/      # grant-role.js
-├── app.js        # Configuración de Express (importable por las pruebas)
-└── server.js     # Arranque del servidor y migraciones
+├── core/
+│   ├── config/       # Variables de entorno (env.js)
+│   ├── database/     # Pool de PostgreSQL, withTransaction y migraciones
+│   ├── http/         # HttpError, asyncHandler, lectura del cuerpo, envío de archivos
+│   ├── mail/         # Envío de correos (Resend)
+│   └── middleware/   # Autenticación, roles y límite de peticiones
+├── modules/
+│   ├── auth/  profile/  offers/  applications/
+│   ├── convocatorias/  verifications/  admin/  stats/  health/
+│   └── <modulo>/
+│       ├── <modulo>.routes.js      # URLs y middlewares
+│       ├── <modulo>.controller.js  # HTTP: lee la petición y arma la respuesta
+│       ├── <modulo>.service.js     # Reglas de negocio; lanza HttpError
+│       └── <modulo>.repository.js  # Único lugar con SQL
+├── scripts/          # grant-role.js
+├── app.js            # Configuración de Express (importable por las pruebas)
+└── server.js         # Arranque del servidor y migraciones
 
 tests/            # Pruebas de la API (npm test)
 
@@ -131,3 +144,17 @@ database/
 ├── schema.sql    # Esquema PostgreSQL inicial
 └── migrations/   # Migraciones idempotentes, aplicadas en orden y registradas en schema_migrations
 ```
+
+### Reglas de las capas
+
+- **Las dependencias van en una sola dirección:** routes → controller → service → repository.
+- **El controlador no tiene lógica.** Envuelve su función en `asyncHandler(fn, mensajeDe500)`:
+  - si el servicio lanza un `HttpError`, responde con su estado y mensaje;
+  - cualquier otro error responde 500 con el mensaje indicado.
+- **El servicio no conoce Express ni SQL.** Valida, aplica las reglas y lanza `badRequest`, `forbidden`, `notFound` o `conflict`.
+- **Solo el repositorio escribe SQL.** Las funciones que deben ir en una transacción reciben `db`; el servicio las agrupa con `withTransaction(async (db) => …)`.
+- **Las funciones puras van en archivos propios,** por ejemplo `offers.scoring.js` y `offers.validation.js`, y se prueban sin base de datos.
+- **Para agregar una funcionalidad:**
+  1. crea `src/modules/<nombre>/` con los cuatro archivos;
+  2. monta el router en `app.js`.
+- **Para cambiar de base de datos o pasar a un ORM,** solo se tocan los `*.repository.js`.
