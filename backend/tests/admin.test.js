@@ -9,7 +9,7 @@ import {
   registerUser,
   resetDatabase,
 } from './helpers.js';
-import { sentEmails } from '../src/utils/mailer.js';
+import { sentEmails } from '../src/core/mail/mailer.js';
 
 before(resetDatabase);
 after(closeDatabase);

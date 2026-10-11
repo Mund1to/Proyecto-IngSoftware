@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
-import { pool } from '../src/config/database.js';
-import { loginRateLimiter, passwordResetRateLimiter } from '../src/middleware/rateLimit.middleware.js';
-import { sentEmails } from '../src/utils/mailer.js';
+import { pool } from '../src/core/database/database.js';
+import { loginRateLimiter, passwordResetRateLimiter } from '../src/core/middleware/rateLimit.middleware.js';
+import { sentEmails } from '../src/core/mail/mailer.js';
 import {
   PASSWORD,
   api,

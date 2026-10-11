@@ -1,7 +1,7 @@
 import { app } from './app.js';
-import { env } from './config/env.js';
-import { pool, testDatabaseConnection } from './config/database.js';
-import { initializeDatabaseSchema } from './config/migrate.js';
+import { env } from './core/config/env.js';
+import { pool, testDatabaseConnection } from './core/database/database.js';
+import { initializeDatabaseSchema } from './core/database/migrate.js';
 
 app.listen(env.port, async () => {
   console.log(`SIPU backend listening on port ${env.port}`);

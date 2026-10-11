@@ -1,18 +1,18 @@
 import cors from 'cors';
 import express from 'express';
-import { env } from './config/env.js';
-import { testDatabaseConnection } from './config/database.js';
-import { initializeDatabaseSchema } from './config/migrate.js';
-import { authenticate, requireRole } from './middleware/auth.middleware.js';
-import adminRouter from './routes/admin.routes.js';
-import applicationsRouter from './routes/applications.routes.js';
-import authRouter from './routes/auth.routes.js';
-import convocatoriasRouter from './routes/convocatorias.routes.js';
-import healthRouter from './routes/health.routes.js';
-import offersRouter from './routes/offers.routes.js';
-import profileRouter from './routes/profile.routes.js';
-import statsRouter from './routes/stats.routes.js';
-import verificationsRouter from './routes/verifications.routes.js';
+import { env } from './core/config/env.js';
+import { testDatabaseConnection } from './core/database/database.js';
+import { initializeDatabaseSchema } from './core/database/migrate.js';
+import { authenticate, requireRole } from './core/middleware/auth.middleware.js';
+import adminRouter from './modules/admin/admin.routes.js';
+import applicationsRouter from './modules/applications/applications.routes.js';
+import authRouter from './modules/auth/auth.routes.js';
+import convocatoriasRouter from './modules/convocatorias/convocatorias.routes.js';
+import healthRouter from './modules/health/health.routes.js';
+import offersRouter from './modules/offers/offers.routes.js';
+import profileRouter from './modules/profile/profile.routes.js';
+import statsRouter from './modules/stats/stats.routes.js';
+import verificationsRouter from './modules/verifications/verifications.routes.js';
 
 export const app = express();
 

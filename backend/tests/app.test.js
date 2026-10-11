@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { pool } from '../src/config/database.js';
-import { listMigrationFiles } from '../src/config/migrate.js';
+import { pool } from '../src/core/database/database.js';
+import { listMigrationFiles } from '../src/core/database/migrate.js';
 import { api, auth, closeDatabase, createAdmin, registerUser, resetDatabase } from './helpers.js';
 
 before(resetDatabase);
