@@ -1,6 +1,6 @@
 // Capa HTTP de postulaciones: lee la petición, llama al servicio y arma la respuesta.
 import { asyncHandler } from '../../core/http/errors.js';
-import { sendStoredFile } from '../profile/profileDetails.controller.js';
+import { sendStoredFile } from '../../core/http/files.js';
 import * as applicationsService from './applications.service.js';
 
 export const listMyApplicationsController = asyncHandler(async function listMyApplicationsController(request, response) {
