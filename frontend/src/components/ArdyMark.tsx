@@ -1,4 +1,5 @@
-import ardy from "../imports/ardy.png";
+// Versión de Ardy sobre fondo blanco y centrada, para los círculos (generada a partir de ardy.png).
+import ardy from "../imports/ardy-avatar.png";
 
 type Props = {
   className?: string;

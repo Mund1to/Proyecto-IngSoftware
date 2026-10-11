@@ -52,7 +52,7 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .ardy-mark { display: block; overflow: hidden; background: white; }
 .ardy-mark img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .empty-squirrel { width: 88px; height: 88px; margin: 0 auto 16px; border: 5px solid var(--selection); border-radius: 50%; }
-.empty-squirrel img { width: 160%; height: 112%; transform: translate(-26%, -5%); object-fit: cover; object-position: center; }
+.empty-squirrel img { width: 84%; max-width: none; height: 84%; margin: 8%; object-fit: contain; transform: none; object-fit: cover; object-position: center; }
 
 /* Authentication */
 .auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--bg); }
@@ -69,7 +69,7 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .auth-orbit-ring { width: 300px; height: 300px; margin: -150px 0 0 -150px; border: 1px dashed rgba(255, 255, 255, .35); }
 .auth-orbit-glow { width: 220px; height: 220px; margin: -110px 0 0 -110px; background: rgba(255, 255, 255, .10); }
 .auth-orbit-ardy { width: 176px; height: 176px; margin: -88px 0 0 -88px; border: 6px solid #ffffff; box-shadow: 0 20px 44px rgba(13, 34, 64, .35); }
-.auth-orbit-ardy img { width: 160%; height: 112%; transform: translate(-26%, -5%); }
+.auth-orbit-ardy img { width: 84%; max-width: none; height: 84%; margin: 8%; object-fit: contain; transform: none; }
 .auth-float { position: absolute; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; color: var(--text); background: #ffffff; box-shadow: 0 16px 32px rgba(13, 34, 64, .25); font-size: 14px; line-height: 1.25; }
 .auth-float small { display: block; color: var(--muted); font-size: 12px; }
 .auth-float-logo { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; color: #ffffff; background: linear-gradient(145deg, var(--primary-dark), var(--primary-bright)); font-size: 13px; font-weight: 800; }
@@ -371,7 +371,7 @@ button.user-chip:hover { border-color: #97b4ea; background: var(--selection); }
 .ardy-bubble-speech::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; margin-left: -8px; background: #ffffff; transform: rotate(45deg); }
 .ardy-bubble-avatar { width: 132px; height: 132px; border: 5px solid #ffffff; border-radius: 50%; box-shadow: 0 16px 32px rgba(13, 34, 64, .3); }
 .ardy-bubble-md .ardy-bubble-avatar { width: 96px; height: 96px; border-width: 4px; }
-.ardy-bubble-avatar img { width: 160%; height: 112%; transform: translate(-26%, -5%); object-fit: cover; }
+.ardy-bubble-avatar img { width: 84%; max-width: none; height: 84%; margin: 8%; object-fit: contain; transform: none; object-fit: cover; }
 .bob { animation: bob 4.5s ease-in-out infinite; }
 
 .progress-meter-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 13px; }
@@ -460,7 +460,7 @@ button.user-chip:hover { border-color: #97b4ea; background: var(--selection); }
 
 .empty-vivo { padding: 56px 24px; border: 2px dashed #c7d8f3; border-radius: 22px; text-align: center; background: #ffffff; }
 .empty-vivo-ardy { width: 104px; height: 104px; margin: 0 auto 16px; border: 5px solid var(--selection); border-radius: 50%; }
-.empty-vivo-ardy img { width: 160%; height: 112%; transform: translate(-26%, -5%); }
+.empty-vivo-ardy img { width: 84%; max-width: none; height: 84%; margin: 8%; object-fit: contain; transform: none; }
 .empty-vivo h2 { margin: 0; color: var(--navy); font-size: 24px; font-weight: 800; letter-spacing: -0.03em; }
 .empty-vivo p { margin: 8px 0 20px; color: var(--muted); }
 @media (max-width: 900px) {
@@ -555,7 +555,7 @@ button.user-chip:hover { border-color: #97b4ea; background: var(--selection); }
 .apply-panel :focus-visible { outline-color: #ffffff !important; }
 .ardy-tip { display: flex; align-items: flex-start; gap: 14px; padding: 18px; border: 1px solid #c7d9f6; border-radius: 22px; background: #ffffff; box-shadow: 0 10px 24px rgba(18, 59, 112, .07); }
 .ardy-tip-avatar { width: 64px; height: 64px; flex: none; border: 4px solid var(--selection); border-radius: 50%; }
-.ardy-tip-avatar img { width: 160%; height: 112%; transform: translate(-26%, -5%); }
+.ardy-tip-avatar img { width: 84%; max-width: none; height: 84%; margin: 8%; object-fit: contain; transform: none; }
 .ardy-tip strong { display: block; color: var(--navy); }
 .ardy-tip p { margin: 4px 0 8px; color: #475467; font-size: 14px; }
 .ardy-tip-track { height: 6px; margin-bottom: 6px; overflow: hidden; border-radius: 99px; background: #e6eefc; }
