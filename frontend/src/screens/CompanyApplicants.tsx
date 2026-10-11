@@ -265,6 +265,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                   {/* Actions */}
                   <div className="flex gap-2.5 pt-4 border-t border-[#e3eaf5]">
                     <button
+                      aria-label={`Ver perfil de ${candidate.name}`}
                       onClick={() => setSelected(candidate)}
                       className="flex-1 py-2.5 text-sm font-semibold text-[var(--navy)] border border-[#d3e0f5] rounded-xl hover:bg-[var(--selection)] hover:border-[#97b4ea] flex items-center justify-center gap-1.5"
                     >
@@ -276,6 +277,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                     {candidate.status === "En revisión" ? (
                       <>
                         <button
+                          aria-label={`Aceptar a ${candidate.name}`}
                           onClick={() => void changeCandidateStatus(candidate.id, "Aceptada")}
                           className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl hover:opacity-90 flex items-center justify-center gap-1"
                           style={{ background: "linear-gradient(135deg, #157347, #1f8a57)" }}
@@ -286,6 +288,8 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                           Aceptar
                         </button>
                         <button
+                          aria-label={`Rechazar a ${candidate.name}`}
+                          title="Rechazar"
                           onClick={() => void changeCandidateStatus(candidate.id, "Rechazada")}
                           className="px-3.5 py-2.5 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2]"
                         >

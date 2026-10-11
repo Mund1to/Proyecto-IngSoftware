@@ -207,8 +207,9 @@ function InfoTab({ user, onSave }: { user: AppState["currentUser"]; onSave: (pay
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
         {fields.map((f) => (
           <div key={f.label}>
-            <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">{f.label}</label>
+            <label htmlFor={`student-${String(f.key)}`} className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">{f.label}</label>
             <input
+              id={`student-${String(f.key)}`}
               type={f.type ?? "text"}
               min={f.type === "number" ? 1 : undefined}
               value={form[f.key]}

@@ -147,20 +147,20 @@ export default function Convocatorias({ state, navigate }: Props) {
           <h2 className="font-bold text-[var(--navy)] mb-4">{editingId === null ? "Nueva convocatoria" : `Editando convocatoria #${editingId}`}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div className="sm:col-span-2">
-              <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Título</label>
-              <input className={inputClass} value={draft.titulo} onChange={(e) => setDraft({ ...draft, titulo: e.target.value })} />
+              <label htmlFor="conv-titulo" className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Título</label>
+              <input id="conv-titulo" className={inputClass} value={draft.titulo} onChange={(e) => setDraft({ ...draft, titulo: e.target.value })} />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Fecha de inicio</label>
-              <input type="date" className={inputClass} value={draft.fechaInicio} onChange={(e) => setDraft({ ...draft, fechaInicio: e.target.value })} />
+              <label htmlFor="conv-inicio" className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Fecha de inicio</label>
+              <input id="conv-inicio" type="date" className={inputClass} value={draft.fechaInicio} onChange={(e) => setDraft({ ...draft, fechaInicio: e.target.value })} />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Fecha de fin</label>
-              <input type="date" className={inputClass} value={draft.fechaFin} onChange={(e) => setDraft({ ...draft, fechaFin: e.target.value })} />
+              <label htmlFor="conv-fin" className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Fecha de fin</label>
+              <input id="conv-fin" type="date" className={inputClass} value={draft.fechaFin} onChange={(e) => setDraft({ ...draft, fechaFin: e.target.value })} />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Descripción</label>
-              <textarea rows={3} className={inputClass} value={draft.descripcion} onChange={(e) => setDraft({ ...draft, descripcion: e.target.value })} />
+              <label htmlFor="conv-descripcion" className="block text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1.5">Descripción</label>
+              <textarea id="conv-descripcion" rows={3} className={inputClass} value={draft.descripcion} onChange={(e) => setDraft({ ...draft, descripcion: e.target.value })} />
             </div>
           </div>
           <div className="flex justify-end gap-3">
@@ -197,9 +197,9 @@ export default function Convocatorias({ state, navigate }: Props) {
                     </div>
                   </div>
                   <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-                    <button onClick={() => void toggleOffers(convocatoria.id)} aria-expanded={openId === convocatoria.id} className="text-xs font-semibold text-[var(--navy)] border border-[#d3e0f5] rounded-lg px-3 py-1.5 hover:bg-[var(--selection)]">{openId === convocatoria.id ? "Ocultar ofertas" : "Ofertas"}</button>
-                    <button onClick={() => startEdit(convocatoria)} className="text-xs font-semibold text-[var(--navy)] border border-[#d3e0f5] rounded-lg px-3 py-1.5 hover:bg-[var(--selection)]">Editar</button>
-                    <button onClick={() => void remove(convocatoria.id)} className="text-xs font-semibold text-[var(--danger)] border border-[#fecdca] rounded-lg px-3 py-1.5 hover:bg-[#fef3f2]">Eliminar</button>
+                    <button onClick={() => void toggleOffers(convocatoria.id)} aria-label={`Ofertas de ${convocatoria.titulo}`} aria-expanded={openId === convocatoria.id} className="text-xs font-semibold text-[var(--navy)] border border-[#d3e0f5] rounded-lg px-3 py-1.5 hover:bg-[var(--selection)]">{openId === convocatoria.id ? "Ocultar ofertas" : "Ofertas"}</button>
+                    <button onClick={() => startEdit(convocatoria)} aria-label={`Editar ${convocatoria.titulo}`} className="text-xs font-semibold text-[var(--navy)] border border-[#d3e0f5] rounded-lg px-3 py-1.5 hover:bg-[var(--selection)]">Editar</button>
+                    <button onClick={() => void remove(convocatoria.id)} aria-label={`Eliminar ${convocatoria.titulo}`} className="text-xs font-semibold text-[var(--danger)] border border-[#fecdca] rounded-lg px-3 py-1.5 hover:bg-[#fef3f2]">Eliminar</button>
                   </div>
                 </div>
                 {openId === convocatoria.id && (
@@ -211,7 +211,7 @@ export default function Convocatorias({ state, navigate }: Props) {
                         {linked.map((offer) => (
                           <li key={offer.id} className="flex items-center justify-between gap-3 text-sm">
                             <span><strong className="text-[var(--navy)]">{offer.titulo}</strong> <span className="text-[var(--muted)]">· {offer.empresa}</span></span>
-                            <button onClick={() => void changeOffer(convocatoria.id, offer.id, "remove")} className="text-xs font-semibold text-[var(--danger)] hover:underline">Quitar</button>
+                            <button onClick={() => void changeOffer(convocatoria.id, offer.id, "remove")} aria-label={`Quitar ${offer.titulo} de la convocatoria`} className="text-xs font-semibold text-[var(--danger)] hover:underline">Quitar</button>
                           </li>
                         ))}
                       </ul>

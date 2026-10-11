@@ -735,8 +735,8 @@ button.user-chip:hover { border-color: #97b4ea; background: var(--selection); }
 .stats-hbar-head strong { color: var(--navy); }
 .stats-hbar-track { height: 12px; overflow: hidden; border-radius: 99px; background: #eef3fc; }
 .stats-hbar-track > div { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--primary), var(--primary-bright)); animation: meter-grow .8s ease; }
-.stats-ranking { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.stats-ranking li { display: flex; align-items: center; gap: 12px; }
+.stats-ranking { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.stats-ranking li { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .stats-rank { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%; color: var(--primary); background: var(--selection); font-size: 13px; font-weight: 800; }
 .stats-rank.is-first { color: #ffffff; background: var(--primary); }
 .stats-rank-mark { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 10px; color: #ffffff; background: linear-gradient(145deg, var(--primary-dark), var(--primary-bright)); font-size: 13px; font-weight: 800; }

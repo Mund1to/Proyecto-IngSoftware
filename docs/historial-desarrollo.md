@@ -394,6 +394,36 @@ Se implementa por fases el rediseño visual definido en [`diseno/prompt-implemen
 | 6 | Estadísticas con indicadores, dona por tipo, columnas por mes, barras por ciudad y área y ranking de organizaciones, todo en CSS. |
 | 7 | Las 11 pantallas restantes usan la paleta en lugar de colores fijos; emojis por íconos SVG; la capa de compatibilidad queda solo para `App.tsx` y se eliminan 107 reglas sin uso. |
 
+### Prueba integral entre roles (11 de octubre de 2026)
+
+Se recorrió la aplicación completa en Microsoft Edge con los cinco perfiles (empresa, administrador, funcionario público, estudiante y candidato externo) y sus interacciones, en 25 comprobaciones. También pasaron las pruebas automatizadas: 102 del backend y 43 del frontend.
+
+Recorrido cubierto:
+
+1. **Empresa:** publica una práctica, un empleo y una formación, y edita una oferta.
+2. **Administrador:** verifica la empresa y arma una convocatoria.
+3. **Estudiante:** completa su perfil con CV y foto, filtra el catálogo, se postula y retira una postulación.
+4. **Candidato externo:** no ve las prácticas ni puede postularse a ellas, y sí a los empleos.
+5. **Empresa:** revisa al postulante, descarga su CV y lo acepta.
+6. **Estudiante:** ve "Aceptada" y la notificación en la campana.
+7. **Administrador:**
+   - desactiva una cuenta (que deja de poder entrar) y la reactiva;
+   - asigna una contraseña nueva.
+8. **Funcionario público:** accede a Verificación y Convocatorias, pero no gestiona usuarios.
+9. **Recuperación de contraseña:** funciona por correo y cierra la sesión anterior.
+10. **Celular:** las cuatro pantallas de inicio funcionan sin desplazamiento horizontal.
+
+Resultado final: 25 de 25 comprobaciones correctas, sin errores de consola ni de red.
+
+Corregido durante la prueba:
+
+- **Estadísticas en el celular:** la pastilla de ofertas del ranking se salía de la pantalla con nombres largos.
+- **Convocatorias:** las etiquetas no estaban asociadas a sus campos, y los botones repetidos ("Ofertas", "Editar", "Eliminar", "Quitar") no indicaban a qué convocatoria u oferta se referían.
+- **Postulantes:** el botón de rechazar solo tenía un ícono y no tenía nombre accesible. "Aceptar" y "Ver perfil" ahora incluyen el nombre del candidato.
+- **Mi perfil del estudiante:** las etiquetas no estaban asociadas a sus campos.
+
+Pendiente detectado: la empresa solo puede aceptar o rechazar, así que desde la interfaz no puede pasar a un postulante a "En revisión" ni a "Entrevista".
+
 ### Cambio de contraseña por el administrador
 
 Sirve cuando el enlace de recuperación no le llega a la persona. Por ejemplo, mientras Resend no tenga un dominio verificado, solo entrega correos al dueño de la cuenta.
