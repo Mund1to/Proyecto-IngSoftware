@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { maxScoreOffer, offerAffinity, scoreOffer } from '../src/modules/offers/offers.controller.js';
+import { maxScoreOffer, offerAffinity, scoreOffer } from '../src/modules/offers/offers.scoring.js';
 import { createRateLimiter } from '../src/core/middleware/rateLimit.middleware.js';
 import { normalizeModality } from '../src/modules/offers/offers.domain.js';
 import {
