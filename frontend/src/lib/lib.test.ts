@@ -100,7 +100,10 @@ describe("utilidades de ofertas", () => {
   });
 
   it("mapApplicationStatus traduce todos los estados", () => {
-    expect(mapApplicationStatus("PRESELECCIONADA")).toBe("En revisión");
+    expect(mapApplicationStatus("EN_REVISION")).toBe("En revisión");
+    expect(mapApplicationStatus("PRESELECCIONADA")).toBe("Entrevista");
+    expect(mapApplicationStatus("ACEPTADA")).toBe("Aceptada");
+    expect(mapApplicationStatus("RECHAZADA")).toBe("Rechazada");
     expect(mapApplicationStatus("RETIRADA")).toBe("Retirada");
     expect(mapApplicationStatus("ENVIADA")).toBe("Enviada");
   });

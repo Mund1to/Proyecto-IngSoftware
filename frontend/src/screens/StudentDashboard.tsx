@@ -166,7 +166,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
   const resultKey = [city, area, modality, offerType, sort, onlySaved, search].join("|");
 
   const firstName = state.currentUser?.nombreCompleto?.split(" ")[0] ?? "estudiante";
-  const inReview = state.applications.filter((item) => item.status === "En revisión").length;
+  const inInterview = state.applications.filter((item) => item.status === "Entrevista").length;
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
     resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -198,7 +198,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
               )}
               <ul className="catalog-hero-pills" aria-label="Tu actividad">
                 <li><strong>{saved.length}</strong> {saved.length === 1 ? "guardada" : "guardadas"}</li>
-                <li><strong>{inReview}</strong> en revisión</li>
+                <li><strong>{inInterview}</strong> en entrevista</li>
               </ul>
             </div>
           )}

@@ -30,6 +30,14 @@ const statusConfig = {
       </svg>
     ),
   },
+  Entrevista: {
+    bg: "bg-[var(--selection)]", text: "text-[var(--primary-dark)]", dot: "bg-[var(--primary-dark)]",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" />
+      </svg>
+    ),
+  },
   Aceptada: {
     bg: "bg-[#eaf7f0]", text: "text-[var(--success)]", dot: "bg-[var(--success)]",
     icon: (
@@ -65,7 +73,7 @@ const logoStyle: Record<string, string> = {
   AL: "linear-gradient(145deg, #123b70, #4d87ff)",
 };
 
-const steps = ["Enviada", "En revisión", "Aceptada"] as const;
+const steps = ["Enviada", "En revisión", "Entrevista", "Aceptada"] as const;
 
 export default function StudentApplications({ state, navigate, reloadApplications, withdrawApplication }: Props) {
   const apps = state.applications;
@@ -101,7 +109,7 @@ export default function StudentApplications({ state, navigate, reloadApplication
 
   const counts = {
     total: apps.length,
-    active: apps.filter((a) => a.status === "Enviada" || a.status === "En revisión").length,
+    active: apps.filter((a) => a.status === "Enviada" || a.status === "En revisión" || a.status === "Entrevista").length,
     accepted: apps.filter((a) => a.status === "Aceptada").length,
     rejected: apps.filter((a) => a.status === "Rechazada").length,
   };
@@ -234,7 +242,7 @@ export default function StudentApplications({ state, navigate, reloadApplication
                     )}
 
                     <div className="mt-5 pt-4 border-t border-[#e3eaf5] flex justify-end gap-4">
-                      {(app.status === "Enviada" || app.status === "En revisión") && (
+                      {(app.status === "Enviada" || app.status === "En revisión" || app.status === "Entrevista") && (
                         <button
                           onClick={() => void withdraw(app.id)}
                           disabled={busyId === app.id}

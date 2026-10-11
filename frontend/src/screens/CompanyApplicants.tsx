@@ -13,6 +13,8 @@ type Props = {
 };
 
 const statusConfig = {
+  Nueva: { bg: "bg-[var(--selection)]", text: "text-[var(--primary)]", border: "border-[#cfe0ff]", dot: "bg-[var(--primary)]" },
+  Entrevista: { bg: "bg-[var(--sky)]", text: "text-[var(--primary-dark)]", border: "border-[#b9dcf0]", dot: "bg-[var(--primary-dark)]" },
   "En revisión": { bg: "bg-[#fff4df]", text: "text-[var(--warning)]", border: "border-[#f5d9a8]", dot: "bg-[var(--warning)]" },
   Aceptada: { bg: "bg-[#eaf7f0]", text: "text-[var(--success)]", border: "border-[#b7e4c7]", dot: "bg-[var(--success)]" },
   Rechazada: { bg: "bg-[#fef3f2]", text: "text-[var(--danger)]", border: "border-[#fecdca]", dot: "bg-[var(--danger)]" },
@@ -34,12 +36,26 @@ const mapStatus = (status?: string): Candidate["status"] => {
       return "Aceptada";
     case "RECHAZADA":
       return "Rechazada";
-    default:
+    case "PRESELECCIONADA":
+      return "Entrevista";
+    case "EN_REVISION":
       return "En revisión";
+    default:
+      return "Nueva";
   }
 };
 
-type Candidate = { id: number; name: string; career: string; semester: string; university: string; email: string; phone: string; summary: string; cvUrl: string; hasCv: boolean; education: { titulo: string; institucion: string; periodo: string }[]; experience: { cargo: string; empresa: string; periodo: string; descripcion?: string | null }[]; city: string; appliedDate: string; status: "En revisión" | "Aceptada" | "Rechazada" | "Retirada"; skills: string[] };
+type Stage = "Nueva" | "En revisión" | "Entrevista" | "Aceptada" | "Rechazada" | "Retirada";
+const PENDING: Stage[] = ["Nueva", "En revisión", "Entrevista"];
+// Siguiente paso de cada etapa abierta; Rechazar está disponible en todas.
+const NEXT_STEP: Partial<Record<Stage, { label: string; to: Stage }>> = {
+  Nueva: { label: "Pasar a revisión", to: "En revisión" },
+  "En revisión": { label: "Citar a entrevista", to: "Entrevista" },
+  Entrevista: { label: "Aceptar", to: "Aceptada" },
+};
+const API_STATUS: Partial<Record<Stage, string>> = { "En revisión": "EN_REVISION", Entrevista: "PRESELECCIONADA" };
+
+type Candidate = { id: number; name: string; career: string; semester: string; university: string; email: string; phone: string; summary: string; cvUrl: string; hasCv: boolean; education: { titulo: string; institucion: string; periodo: string }[]; experience: { cargo: string; empresa: string; periodo: string; descripcion?: string | null }[]; city: string; appliedDate: string; status: Stage; skills: string[] };
 
 export default function CompanyApplicants({ state, navigate, updateCandidateStatus }: Props) {
   const offer = state.selectedCompanyOffer;
@@ -91,10 +107,12 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
       });
   }, [offer, state.token]);
 
-  const changeCandidateStatus = async (id: number, status: "Aceptada" | "Rechazada") => {
+  const changeCandidateStatus = async (id: number, status: Stage) => {
     setActionError("");
     try {
-      await updateCandidateStatus(id, status);
+      // Aceptar y rechazar pasan por App; revisión y entrevista usan el mismo endpoint directamente.
+      if (status === "Aceptada" || status === "Rechazada") await updateCandidateStatus(id, status);
+      else await api.updateApplicationStatus(id, API_STATUS[status] ?? "EN_REVISION", state.token ?? "");
       setCandidates((current) => current.map((candidate) => candidate.id === id ? { ...candidate, status } : candidate));
       setSelected((current) => current?.id === id ? { ...current, status } : current);
       return true;
@@ -104,9 +122,10 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
     }
   };
 
-  const filtered = candidates.filter((c) => filter === "Todos" || c.status === filter);
+  // El filtro "En revisión" (que llega también desde el panel) agrupa las etapas abiertas.
+  const filtered = candidates.filter((c) => filter === "Todos" || (filter === "En revisión" ? PENDING.includes(c.status) : c.status === filter));
   const counts = {
-    pending: candidates.filter((c) => c.status === "En revisión").length,
+    pending: candidates.filter((c) => PENDING.includes(c.status)).length,
     accepted: candidates.filter((c) => c.status === "Aceptada").length,
     rejected: candidates.filter((c) => c.status === "Rechazada").length,
   };
@@ -205,7 +224,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                   : "bg-white text-[var(--muted)] border border-[#d3e0f5] hover:border-[#97b4ea]"
               }`}
             >
-              {f}
+              {f === "En revisión" ? "En proceso" : f}
               {f !== "Todos" && (
                 <span className={`ml-1.5 text-xs ${filter === f ? "opacity-70" : "text-[var(--muted)]"}`}>
                   ({f === "En revisión" ? counts.pending : f === "Aceptada" ? counts.accepted : counts.rejected})
@@ -274,18 +293,15 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                       </svg>
                       Ver perfil
                     </button>
-                    {candidate.status === "En revisión" ? (
+                    {PENDING.includes(candidate.status) ? (
                       <>
                         <button
-                          aria-label={`Aceptar a ${candidate.name}`}
-                          onClick={() => void changeCandidateStatus(candidate.id, "Aceptada")}
+                          aria-label={`${NEXT_STEP[candidate.status]!.label}: ${candidate.name}`}
+                          onClick={() => void changeCandidateStatus(candidate.id, NEXT_STEP[candidate.status]!.to)}
                           className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl hover:opacity-90 flex items-center justify-center gap-1"
-                          style={{ background: "linear-gradient(135deg, #157347, #1f8a57)" }}
+                          style={{ background: candidate.status === "Entrevista" ? "linear-gradient(135deg, #157347, #1f8a57)" : "linear-gradient(135deg, #155eef, #3478ff)" }}
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Aceptar
+                          {NEXT_STEP[candidate.status]!.label}
                         </button>
                         <button
                           aria-label={`Rechazar a ${candidate.name}`}
@@ -293,7 +309,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                           onClick={() => void changeCandidateStatus(candidate.id, "Rechazada")}
                           className="px-3.5 py-2.5 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2]"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
@@ -421,14 +437,22 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                 </div>
               </div>
 
-              {selected.status === "En revisión" && (
-                <div className="flex gap-3 mt-6">
+              {PENDING.includes(selected.status) && (
+                <div className="flex flex-wrap gap-3 mt-6">
                   <button
                     onClick={() => void changeCandidateStatus(selected.id, "Rechazada").then((updated) => { if (updated) setSelected(null); })}
                     className="flex-1 py-3 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2]"
                   >
                     Rechazar
                   </button>
+                  {selected.status !== "Entrevista" && (
+                    <button
+                      onClick={() => void changeCandidateStatus(selected.id, NEXT_STEP[selected.status]!.to)}
+                      className="flex-1 py-3 text-sm font-bold text-[var(--primary)] border border-[#cfe0ff] rounded-xl hover:bg-[var(--selection)]"
+                    >
+                      {NEXT_STEP[selected.status]!.label}
+                    </button>
+                  )}
                   <button
                     onClick={() => void changeCandidateStatus(selected.id, "Aceptada").then((updated) => { if (updated) setSelected(null); })}
                     className="flex-1 py-3 text-sm font-bold text-white rounded-xl hover:opacity-90"

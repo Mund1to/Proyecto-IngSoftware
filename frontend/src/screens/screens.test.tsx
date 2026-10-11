@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App, { type AppState } from "../App";
 import AdminUsers from "./AdminUsers";
 import AuthScreen from "./AuthScreen";
+import CompanyApplicants from "./CompanyApplicants";
 import CompanyDashboard from "./CompanyDashboard";
 import EmploymentStats from "./EmploymentStats";
 import ExternalDashboard from "./ExternalDashboard";
@@ -224,6 +225,27 @@ describe("AdminUsers: cambio de contraseña", () => {
     const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/admin/users/8/password"));
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({ password: generated });
     expect(screen.queryByText(/Pidió cambiar su contraseña/)).toBeNull();
+  });
+});
+
+describe("CompanyApplicants: etapas", () => {
+  it("avanza al postulante de Nueva a En revisión y a Entrevista", async () => {
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => Promise.resolve(url.includes("/status")
+      ? jsonResponse(200, { ok: true })
+      : jsonResponse(200, { ok: true, applications: [{ id: 5, estado: "ENVIADA", postulante_nombre: "Sara Estudiante", perfil_tipo: "ESTUDIANTE", created_at: "2026-10-10T00:00:00.000Z" }] })));
+    vi.stubGlobal("fetch", fetchMock);
+    const offer = { id: 4, title: "Práctica QA", company: "TS", logo: "TS", city: "Ibagué", area: "TI", modality: "Remota" as const, closeDate: "", salary: "", description: "", requirements: [] };
+    const state: AppState = { ...baseState, role: "company", screen: "company-applicants", selectedCompanyOffer: offer };
+    const updateCandidateStatus = vi.fn().mockResolvedValue(undefined);
+    render(<CompanyApplicants state={state} navigate={vi.fn()} updateCandidateStatus={updateCandidateStatus} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Pasar a revisión: Sara Estudiante" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Citar a entrevista: Sara Estudiante" }));
+    expect(await screen.findByRole("button", { name: "Aceptar: Sara Estudiante" })).toBeTruthy();
+
+    const bodies = fetchMock.mock.calls.filter(([url]) => String(url).includes("/status")).map(([, init]) => JSON.parse(String(init?.body)));
+    expect(bodies.map((body) => body.estado ?? body.status)).toEqual(["EN_REVISION", "PRESELECCIONADA"]);
+    expect(updateCandidateStatus).not.toHaveBeenCalled();
   });
 });
 

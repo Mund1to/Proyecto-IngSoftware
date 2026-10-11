@@ -44,6 +44,7 @@ type NotificationItem = { id: string; title: string; detail: string; screen: Scr
 
 const statusText: Record<string, string> = {
   "En revisión": "está en revisión",
+  Entrevista: "pasó a entrevista",
   Aceptada: "fue aceptada",
   Rechazada: "no fue seleccionada",
 };

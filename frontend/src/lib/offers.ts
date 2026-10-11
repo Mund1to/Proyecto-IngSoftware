@@ -46,13 +46,14 @@ export function daysUntil(value: unknown): number {
   return Math.ceil((new Date(String(value)).getTime() - Date.now()) / 86400000);
 }
 
-export type ApplicationStatus = "Enviada" | "En revisión" | "Aceptada" | "Rechazada" | "Retirada";
+export type ApplicationStatus = "Enviada" | "En revisión" | "Entrevista" | "Aceptada" | "Rechazada" | "Retirada";
 
 export function mapApplicationStatus(status?: string): ApplicationStatus {
   switch (status) {
     case "EN_REVISION":
-    case "PRESELECCIONADA":
       return "En revisión";
+    case "PRESELECCIONADA":
+      return "Entrevista";
     case "ACEPTADA":
       return "Aceptada";
     case "RECHAZADA":

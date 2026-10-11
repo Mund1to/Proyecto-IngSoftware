@@ -422,7 +422,13 @@ Corregido durante la prueba:
 - **Postulantes:** el botón de rechazar solo tenía un ícono y no tenía nombre accesible. "Aceptar" y "Ver perfil" ahora incluyen el nombre del candidato.
 - **Mi perfil del estudiante:** las etiquetas no estaban asociadas a sus campos.
 
-Pendiente detectado: la empresa solo puede aceptar o rechazar, así que desde la interfaz no puede pasar a un postulante a "En revisión" ni a "Entrevista".
+Pendiente detectado y resuelto en la misma fecha: la empresa solo podía aceptar o rechazar. Ahora "Postulantes" sigue las etapas Nueva → En revisión → Entrevista → Aceptada, con Rechazar disponible en cualquiera de ellas:
+
+- Cada tarjeta muestra el siguiente paso ("Pasar a revisión", "Citar a entrevista", "Aceptar"), y el perfil del candidato ofrece todas las acciones.
+- El estudiante ve el estado "Entrevista" (`PRESELECCIONADA`), que antes aparecía como "En revisión", y recibe en la campana el aviso "Tu postulación pasó a entrevista". Puede retirar la postulación mientras esté abierta.
+- El catálogo del estudiante muestra cuántas postulaciones tiene en entrevista.
+
+Con este cambio, la prueba entre roles pasó de 25 a 27 comprobaciones, todas correctas.
 
 ### Cambio de contraseña por el administrador
 
