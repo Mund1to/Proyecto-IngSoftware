@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { buildToken } from '../auth/auth.controller.js';
+import { buildToken } from '../auth/auth.tokens.js';
 import { pool } from '../../core/database/database.js';
 import { getBodyValue, hasBodyValue, toNullableString } from '../../core/http/payload.js';
 
