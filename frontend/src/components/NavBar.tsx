@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HOME_SCREEN, Role, Screen } from "../App";
 import { useSession } from "../lib/session";
 import UniversityLogo from "./UniversityLogo";
@@ -55,6 +55,27 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
   const role = session.role ?? requestedRole;
   const [open, setOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+
+  // El panel de notificaciones se cierra con un clic fuera de él o con Escape.
+  useEffect(() => {
+    if (!showNotifications) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!notificationsRef.current?.contains(event.target as Node)) setShowNotifications(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setShowNotifications(false);
+      bellRef.current?.focus();
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showNotifications]);
   const name = userName ?? session.currentUser?.nombreCompleto ?? "Usuario";
   const firstName = name.split(/\s+/).filter(Boolean)[0] ?? name;
   const ownProfile = profileScreen[role];
@@ -115,8 +136,8 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
           </button>
         </nav>
         <div className="nav-actions">
-          <div className="notification-wrap">
-            <button className="icon-button nav-circle" aria-label={`Notificaciones, ${unreadCount} sin leer`} aria-expanded={showNotifications} onClick={() => setShowNotifications(!showNotifications)}>
+          <div className="notification-wrap" ref={notificationsRef}>
+            <button ref={bellRef} className="icon-button nav-circle" aria-label={`Notificaciones, ${unreadCount} sin leer`} aria-expanded={showNotifications} onClick={() => setShowNotifications(!showNotifications)}>
               <IconBell />{unreadCount > 0 && <span className="badge" aria-hidden="true">{unreadCount}</span>}
             </button>
             {showNotifications && (

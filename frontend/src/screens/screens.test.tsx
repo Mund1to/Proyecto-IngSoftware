@@ -155,6 +155,23 @@ describe("StudentDashboard: filtros desplegables", () => {
     expect(screen.getByRole("button", { name: "Quitar filtro Tipo: Formación" })).toBeTruthy();
   });
 
+  it("el panel de notificaciones se cierra con un clic fuera o con Escape", async () => {
+    await renderDashboard();
+    const bell = screen.getByRole("button", { name: /Notificaciones/ });
+
+    fireEvent.click(bell);
+    const panel = screen.getByRole("dialog", { name: "Notificaciones" });
+    fireEvent.mouseDown(panel);
+    expect(screen.getByRole("dialog", { name: "Notificaciones" })).toBeTruthy();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("dialog", { name: "Notificaciones" })).toBeNull();
+
+    fireEvent.click(bell);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Notificaciones" })).toBeNull();
+    expect(document.activeElement).toBe(bell);
+  });
+
   it("cierra el menú con Escape", async () => {
     await renderDashboard();
 
