@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppState, Screen } from "../App";
 import NavBar from "../components/NavBar";
+import { IconClock } from "../components/icons";
 import { api, type AdminUser } from "../lib/api";
+import { formatDate } from "../lib/offers";
 
 type Props = {
   state: AppState;
@@ -27,6 +29,8 @@ export default function AdminUsers({ state, navigate }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [passwordFor, setPasswordFor] = useState<AdminUser | null>(null);
+  const [notice, setNotice] = useState("");
 
   const load = useCallback((query = "") => {
     if (!state.token || !isAdmin) {
@@ -107,6 +111,7 @@ export default function AdminUsers({ state, navigate }: Props) {
             </form>
 
             {error && <div className="form-error mb-5" role="alert">{error}</div>}
+            {notice && <div className="success-panel mb-5" role="status"><p>{notice}</p></div>}
 
             {loading ? (
               <div className="bg-white rounded-[20px] border border-[#d3e0f5] text-center py-16 text-[var(--muted)] text-sm">Cargando usuarios...</div>
@@ -119,7 +124,7 @@ export default function AdminUsers({ state, navigate }: Props) {
                   const isSelf = String(user.id) === String(state.currentUser?.id);
                   return (
                     <div key={user.id} className={`bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm p-5 ${user.activo ? "" : "opacity-70"}`}>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="min-w-0">
                           <h3 className="font-bold text-[var(--navy)]">{user.nombre_completo}{isSelf && <span className="text-xs text-[var(--muted)] font-normal"> (tú)</span>}</h3>
                           <p className="text-sm text-[var(--muted)] break-all">{user.email}</p>
@@ -127,8 +132,14 @@ export default function AdminUsers({ state, navigate }: Props) {
                             {(user.profile_types ?? []).map((type) => profileLabels[type] ?? type).join(", ") || "Sin perfil"}
                             {!user.activo && " · Cuenta desactivada"}
                           </p>
+                          {user.solicitud_contrasena && (
+                            <p className="reset-request">
+                              <IconClock size={14} />
+                              Pidió cambiar su contraseña el {formatDate(user.solicitud_contrasena)}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           {Object.entries(roleLabels).map(([role, label]) => {
                             const active = user.roles.includes(role);
                             return (
@@ -150,6 +161,15 @@ export default function AdminUsers({ state, navigate }: Props) {
                           >
                             {user.activo ? "Desactivar" : "Activar"}
                           </button>
+                          {!isSelf && (
+                            <button
+                              disabled={busy}
+                              onClick={() => { setNotice(""); setPasswordFor(user); }}
+                              className={`text-xs font-semibold rounded-lg px-3 py-1.5 border disabled:opacity-40 ${user.solicitud_contrasena ? "bg-[#fff4df] text-[var(--warning)] border-[#f5d9a8] hover:bg-[#ffecc7]" : "text-[var(--navy)] border-[#d3e0f5] hover:bg-[var(--selection)]"}`}
+                            >
+                              Cambiar contraseña
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -160,6 +180,105 @@ export default function AdminUsers({ state, navigate }: Props) {
           </>
         )}
       </div>
+
+      {passwordFor && state.token && (
+        <PasswordModal
+          user={passwordFor}
+          token={state.token}
+          onClose={() => setPasswordFor(null)}
+          onDone={(updated) => {
+            replaceUser(updated);
+            setPasswordFor(null);
+            setNotice(`Contraseña de ${updated.nombre_completo} actualizada. Se cerraron sus sesiones abiertas y se le avisó por correo. Entrégale la contraseña por un canal seguro y pídele que la cambie al entrar.`);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Genera una contraseña aleatoria que cumple las reglas (8+ caracteres, mayúscula y número).
+function generatePassword() {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const all = upper + lower + digits;
+  const random = new Uint32Array(12);
+  crypto.getRandomValues(random);
+  const chars = Array.from(random, (value, index) => (index === 0 ? upper : index === 1 ? digits : all)[value % (index === 0 ? upper.length : index === 1 ? digits.length : all.length)]);
+  // Mezcla Fisher-Yates para que la mayúscula y el número no queden siempre al inicio.
+  const swaps = new Uint32Array(chars.length);
+  crypto.getRandomValues(swaps);
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = swaps[i] % (i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+const isStrongPassword = (value: string) => value.length >= 8 && /[A-Z]/.test(value) && /\d/.test(value);
+
+function PasswordModal({ user, token, onClose, onDone }: { user: AdminUser; token: string; onClose: () => void; onDone: (user: AdminUser) => void }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [show, setShow] = useState(false);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    if (!isStrongPassword(password)) return setError("La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.");
+    if (password !== confirm) return setError("Las contraseñas no coinciden.");
+    setSaving(true);
+    try {
+      const response = await api.setUserPassword(user.id, password, token);
+      onDone(response.user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar la contraseña.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const generate = () => {
+    const value = generatePassword();
+    setPassword(value);
+    setConfirm(value);
+    setShow(true);
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <form className="modal" role="dialog" aria-modal="true" aria-labelledby="password-title" onMouseDown={(e) => e.stopPropagation()} onSubmit={(e) => void submit(e)} noValidate>
+        <p className="eyebrow">Recuperación de acceso</p>
+        <h2 id="password-title">Cambiar contraseña</h2>
+        <p className="muted">
+          Asigna una contraseña nueva a <strong>{user.nombre_completo}</strong> ({user.email}). Se cerrarán sus sesiones abiertas y recibirá un aviso por correo.
+        </p>
+        <label className="field">
+          <span>Nueva contraseña</span>
+          <input type={show ? "text" : "password"} value={password} autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Confirmar contraseña</span>
+          <input type={show ? "text" : "password"} value={confirm} autoComplete="new-password" onChange={(e) => setConfirm(e.target.value)} />
+        </label>
+        <div className="password-modal-tools">
+          <label className="password-modal-show"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Mostrar</label>
+          <button type="button" className="text-button" onClick={generate}>Generar una segura</button>
+        </div>
+        <ul className="password-rules" aria-label="Requisitos de contraseña">
+          <li className={password.length >= 8 ? "valid" : ""}>Mínimo 8 caracteres</li>
+          <li className={/[A-Z]/.test(password) ? "valid" : ""}>Una mayúscula</li>
+          <li className={/\d/.test(password) ? "valid" : ""}>Un número</li>
+        </ul>
+        {error && <div className="form-error" role="alert">{error}</div>}
+        <div className="modal-actions">
+          <button type="button" className="button secondary" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="button primary" disabled={saving}>{saving ? "Guardando..." : "Guardar contraseña"}</button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -94,9 +94,10 @@ La respuesta esperada es:
 | `PATCH` | `/api/applications/:id/withdraw` | Candidato dueño | Retira una postulación pendiente. |
 | `GET` | `/api/convocatorias/:id/offers` | Público | Ofertas publicadas de una convocatoria. |
 | `PUT` / `DELETE` | `/api/convocatorias/:id/offers/:offerId` | Administrador o funcionario | Asocia o quita una oferta. |
-| `GET` | `/api/admin/users?q=` | Administrador | Lista usuarios con roles y perfiles. |
+| `GET` | `/api/admin/users?q=` | Administrador | Lista usuarios con roles, perfiles y `solicitud_contrasena` (última solicitud de recuperación sin atender, últimos 7 días). |
 | `PUT` | `/api/admin/users/:userId/roles` | Administrador | Reemplaza los roles (siempre conserva `USUARIO`; no deja el sistema sin administradores). |
 | `PATCH` | `/api/admin/users/:userId/active` | Administrador | Activa o desactiva una cuenta. |
+| `PUT` | `/api/admin/users/:userId/password` | Administrador | Asigna una contraseña nueva a otra cuenta (8+ caracteres, mayúscula y número). Cierra sus sesiones, invalida sus enlaces de recuperación y le avisa por correo. No aplica a la cuenta propia (`409`). |
 | `POST` | `/api/init-db` | Administrador | Reaplica las migraciones pendientes (antes era `GET` público). |
 
 ## Endpoints añadidos en la Fase 6

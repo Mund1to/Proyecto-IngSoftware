@@ -9,6 +9,7 @@ import {
   registerUser,
   resetDatabase,
 } from './helpers.js';
+import { sentEmails } from '../src/utils/mailer.js';
 
 before(resetDatabase);
 after(closeDatabase);
@@ -190,5 +191,36 @@ describe('estadísticas', () => {
   it('exige rol de administrador o funcionario', async () => {
     const user = await registerUser('ORGANIZACION', { razonSocial: 'Curiosa SAS' });
     assert.equal((await api().get('/api/stats/employment').set(auth(user.token))).status, 403);
+  });
+});
+
+describe('cambio de contraseña por el administrador', () => {
+  it('avisa a los administradores de la solicitud y permite asignar una contraseña nueva', async () => {
+    const admin = await createAdmin();
+    const person = await registerUser('CANDIDATO_EXTERNO', { nombreCompleto: 'Pedro Olvido' });
+
+    // La solicitud de recuperación avisa por correo a los administradores.
+    sentEmails.length = 0;
+    await api().post('/api/auth/forgot-password').send({ email: person.email });
+    assert.ok(sentEmails.some((mail) => mail.to === admin.email && mail.subject.includes('Pedro Olvido')));
+
+    // El listado marca la solicitud pendiente.
+    const listed = await api().get('/api/admin/users').query({ q: person.email }).set(auth(admin.token));
+    assert.ok(listed.body.users[0].solicitud_contrasena);
+
+    // Validaciones: contraseña débil, cuenta propia y solo administradores.
+    const url = `/api/admin/users/${person.user.id}/password`;
+    assert.equal((await api().put(url).set(auth(admin.token)).send({ password: 'debil' })).status, 400);
+    assert.equal((await api().put(`/api/admin/users/${admin.user.id}/password`).set(auth(admin.token)).send({ password: 'Nueva12345' })).status, 409);
+    assert.equal((await api().put(url).set(auth(person.token)).send({ password: 'Nueva12345' })).status, 403);
+
+    const changed = await api().put(url).set(auth(admin.token)).send({ password: 'Nueva12345' });
+    assert.equal(changed.status, 200);
+    assert.equal(changed.body.user.solicitud_contrasena, null);
+    assert.ok(sentEmails.some((mail) => mail.to === person.email && mail.subject.includes('cambió tu contraseña')));
+
+    // La sesión anterior se cierra y la contraseña nueva funciona.
+    assert.equal((await api().get('/api/profile/me').set(auth(person.token))).status, 401);
+    assert.equal((await api().post('/api/auth/login').send({ email: person.email, password: 'Nueva12345' })).status, 200);
   });
 });

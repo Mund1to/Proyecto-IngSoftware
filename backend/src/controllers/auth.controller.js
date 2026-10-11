@@ -342,6 +342,9 @@ export async function forgotPasswordController(request, response) {
       html: `<p>Hola ${escapeHtml(user.nombre_completo)}:</p><p>Para crear una nueva contraseña abre este enlace (vence en ${RESET_TOKEN_TTL_MINUTES} minutos):</p><p><a href="${link}">Restablecer contraseña</a></p><p>Si no solicitaste el cambio, ignora este mensaje.</p>`,
     }).catch((error) => console.error('forgotPassword sendEmail error:', error));
 
+    await notifyAdminsOfResetRequest(user.nombre_completo, email)
+      .catch((error) => console.error('forgotPassword notifyAdmins error:', error));
+
     return response.json(genericResponse);
   } catch (error) {
     console.error('forgotPasswordController error:', error);
@@ -393,6 +396,26 @@ export async function resetPasswordController(request, response) {
   } finally {
     client.release();
   }
+}
+
+// Avisa a los administradores activos de una solicitud de cambio de contraseña,
+// para que puedan asignar una nueva desde Usuarios si el enlace no le llega a la persona.
+async function notifyAdminsOfResetRequest(name, email) {
+  const admins = await pool.query(
+    `SELECT DISTINCT u.email
+     FROM usuarios u
+     INNER JOIN usuario_roles ur ON ur.usuario_id = u.id
+     INNER JOIN roles r ON r.id = ur.rol_id
+     WHERE r.nombre = 'ADMINISTRADOR' AND u.activo AND LOWER(u.email) <> LOWER($1)`,
+    [email]
+  );
+  const usersLink = `${env.appUrl}/`;
+  await Promise.all(admins.rows.map((admin) => sendEmail({
+    to: admin.email,
+    subject: `Solicitud de cambio de contraseña: ${name}`,
+    text: `${name} (${email}) pidió restablecer su contraseña de SIPU.\n\nSi no recibe el enlace, entra a SIPU como administrador, ve a Usuarios y usa "Cambiar contraseña" en su cuenta:\n${usersLink}`,
+    html: `<p><strong>${escapeHtml(name)}</strong> (${escapeHtml(email)}) pidió restablecer su contraseña de SIPU.</p><p>Si no recibe el enlace, entra a SIPU como administrador, ve a <strong>Usuarios</strong> y usa <strong>Cambiar contraseña</strong> en su cuenta.</p><p><a href="${usersLink}">Abrir SIPU</a></p>`,
+  })));
 }
 
 function escapeHtml(value) {

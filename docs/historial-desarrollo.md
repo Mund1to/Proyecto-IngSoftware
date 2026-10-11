@@ -394,6 +394,23 @@ Se implementa por fases el rediseño visual definido en [`diseno/prompt-implemen
 | 6 | Estadísticas con indicadores, dona por tipo, columnas por mes, barras por ciudad y área y ranking de organizaciones, todo en CSS. |
 | 7 | Las 11 pantallas restantes usan la paleta en lugar de colores fijos; emojis por íconos SVG; la capa de compatibilidad queda solo para `App.tsx` y se eliminan 107 reglas sin uso. |
 
+### Cambio de contraseña por el administrador
+
+Sirve cuando el enlace de recuperación no le llega a la persona. Por ejemplo, mientras Resend no tenga un dominio verificado, solo entrega correos al dueño de la cuenta.
+
+- **Aviso por correo:** `POST /api/auth/forgot-password` también avisa a los administradores activos con el nombre y el correo de quien hizo la solicitud.
+- **Pantalla Usuarios:** marca "Pidió cambiar su contraseña" con la fecha, y tiene el botón "Cambiar contraseña". El botón abre una ventana con contraseña y confirmación, reglas visibles y la opción "Generar una segura".
+- **Endpoint:** `PUT /api/admin/users/:userId/password` aplica las mismas reglas de contraseña. Además:
+  - cierra las sesiones de la cuenta (`token_version`);
+  - marca como usados sus enlaces de recuperación;
+  - avisa a la persona por correo.
+
+  No se puede usar sobre la cuenta propia; esa contraseña se cambia desde el perfil.
+- **Otros ajustes de esta entrega:**
+  - Los botones de la vista previa y del formulario de oferta quedan centrados.
+  - La confirmación "Oferta publicada" tiene un título y espacio antes del botón.
+  - Los botones de cada usuario quedan centrados en su tarjeta.
+
 ### Ofertas según el tipo de perfil
 
 Las prácticas son solo para estudiantes de la universidad. El candidato externo ve empleos, empleos públicos y formación; el estudiante ve todos los tipos.

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   listUsersController,
+  setUserPasswordController,
   updateUserActiveController,
   updateUserRolesController,
 } from '../controllers/admin.controller.js';
@@ -14,5 +15,6 @@ adminRouter.use(authenticate, requireRole('ADMINISTRADOR'));
 adminRouter.get('/users', listUsersController);
 adminRouter.put('/users/:userId/roles', updateUserRolesController);
 adminRouter.patch('/users/:userId/active', updateUserActiveController);
+adminRouter.put('/users/:userId/password', setUserPasswordController);
 
 export default adminRouter;

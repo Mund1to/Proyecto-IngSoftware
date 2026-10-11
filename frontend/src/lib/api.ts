@@ -65,6 +65,8 @@ export type AdminUser = {
   created_at: string;
   roles: string[];
   profile_types: string[];
+  // Fecha de la última solicitud de cambio de contraseña sin atender (últimos 7 días).
+  solicitud_contrasena?: string | null;
 };
 
 export class ApiError extends Error {
@@ -295,4 +297,7 @@ export const api = {
 
   updateUserActive: (userId: string | number, activo: boolean, token: string) =>
     request<{ ok: boolean; user: AdminUser }>(`/admin/users/${userId}/active`, json('PATCH', { activo }), token),
+
+  setUserPassword: (userId: string | number, password: string, token: string) =>
+    request<{ ok: boolean; message: string; user: AdminUser }>(`/admin/users/${userId}/password`, json('PUT', { password }), token),
 };

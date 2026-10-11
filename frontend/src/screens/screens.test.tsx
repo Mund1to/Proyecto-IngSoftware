@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App, { type AppState } from "../App";
+import AdminUsers from "./AdminUsers";
 import AuthScreen from "./AuthScreen";
 import CompanyDashboard from "./CompanyDashboard";
 import EmploymentStats from "./EmploymentStats";
@@ -198,6 +199,31 @@ describe("OfferDetail", () => {
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalled());
     expect(screen.queryByRole("img", { name: /Afinidad/ })).toBeNull();
     expect(screen.queryByText("Consejo de Ardy")).toBeNull();
+  });
+});
+
+describe("AdminUsers: cambio de contraseña", () => {
+  it("marca la solicitud pendiente y asigna una contraseña generada", async () => {
+    const person = { id: 8, email: "pedro@x.co", nombre_completo: "Pedro Olvido", activo: true, created_at: "2026-10-01", roles: ["USUARIO"], profile_types: ["CANDIDATO_EXTERNO"], solicitud_contrasena: "2026-10-10T15:00:00.000Z" };
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => Promise.resolve(url.includes("/password")
+      ? jsonResponse(200, { ok: true, message: "Contraseña actualizada.", user: { ...person, solicitud_contrasena: null }, sent: init?.body })
+      : jsonResponse(200, { ok: true, users: [person] })));
+    vi.stubGlobal("fetch", fetchMock);
+    const adminState: AppState = { ...baseState, role: "admin", screen: "admin-users", currentUser: { id: 1, email: "admin@x.co", nombreCompleto: "Ana Admin", profileTypes: ["ESTUDIANTE"], roles: ["USUARIO", "ADMINISTRADOR"] } };
+    render(<AdminUsers state={adminState} navigate={vi.fn()} />);
+
+    expect(await screen.findByText(/Pidió cambiar su contraseña/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+    const dialog = screen.getByRole("dialog", { name: "Cambiar contraseña" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Generar una segura" }));
+    const generated = (within(dialog).getByLabelText("Nueva contraseña") as HTMLInputElement).value;
+    expect(generated).toMatch(/^(?=.*[A-Z])(?=.*\d).{8,}$/);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Guardar contraseña" }));
+
+    expect(await screen.findByText(/Contraseña de Pedro Olvido actualizada/)).toBeTruthy();
+    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/admin/users/8/password"));
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ password: generated });
+    expect(screen.queryByText(/Pidió cambiar su contraseña/)).toBeNull();
   });
 });
 

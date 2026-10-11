@@ -3,7 +3,7 @@ import { AppState, Offer, Screen } from "../App";
 import NavBar from "../components/NavBar";
 import ArdyMark from "../components/ArdyMark";
 import TypeBadge from "../components/TypeBadge";
-import { IconBriefcase, IconCheck, IconClock, IconPlus, IconSearch, IconUser } from "../components/icons";
+import { IconArrowRight, IconBriefcase, IconCheck, IconClock, IconPlus, IconSearch, IconUser } from "../components/icons";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/offers";
 import { companyInitials, daysUntil, formatSalary, normalizeModality, OFFER_AUDIENCE, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero, type OfferType } from "../lib/offers";
@@ -227,9 +227,9 @@ export default function CompanyDashboard({ state, navigate }: Props) {
     <div className="app-shell">
       <NavBar role="company" navigate={navigate} activeScreen="company-dashboard" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
       <main className="container publish-page">
-        <button className="back-button" onClick={cancelEditOrCreate}>← Volver al panel</button>
+        <button className="back-link" onClick={cancelEditOrCreate}><IconArrowRight className="back-link-icon" size={18} />Volver al panel</button>
         {published ? (
-          <div className="publish-success"><div className="success-icon">✓</div><h1>{editingId ? "Oferta actualizada" : "Oferta publicada"}</h1><p>{editingId ? "Los cambios ya son visibles para estudiantes y candidatos." : "La oferta ya está visible para estudiantes y candidatos externos."}</p><button className="button primary" onClick={cancelEditOrCreate}>Volver a mis ofertas</button></div>
+          <div className="publish-success"><div className="success-icon" aria-hidden="true"><IconCheck size={30} /></div><h1>{editingId ? "Oferta actualizada" : "Oferta publicada"}</h1><p>{editingId ? "Los cambios ya son visibles para estudiantes y candidatos." : "La oferta ya está visible para estudiantes y candidatos externos."}</p><button className="button primary" onClick={cancelEditOrCreate}>Volver a mis ofertas</button></div>
         ) : preview ? (
           <>
             <div className="page-title"><p className="eyebrow">Paso 2 de 2</p><h1>{editingId ? "Vista previa de cambios" : "Vista previa de la oferta"}</h1><p>Así la verán los estudiantes y candidatos externos. Revisa la información antes de guardar.</p></div>
