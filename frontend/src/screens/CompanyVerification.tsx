@@ -21,7 +21,7 @@ type Props = {
 
 type Tab = "PENDIENTES" | "HISTORIAL" | "ORGANIZACIONES";
 type HistoryFilter = RequestStatus | "TODAS";
-type Decision = { estado: "APROBADA" | "RECHAZADA"; organizationName: string; confirm: (observaciones: string) => Promise<void> };
+type Decision = { estado: "APROBADA" | "RECHAZADA"; revoke?: boolean; organizationName: string; confirm: (observaciones: string) => Promise<void> };
 
 const PAGE_SIZE = 10;
 const cardClass = "bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm p-6";
@@ -113,6 +113,8 @@ export default function CompanyVerification({ state, navigate }: Props) {
     setNotice("");
     setDecision({
       estado,
+      // Rechazar a una organización ya verificada equivale a retirarle la verificación.
+      revoke: organization.verificada && estado === "RECHAZADA",
       organizationName: organization.razon_social,
       confirm: async (observaciones) => {
         await api.updateOrganizationVerification(organization.organizacion_id, estado, state.token ?? "", observaciones || undefined);
@@ -193,6 +195,7 @@ export default function CompanyVerification({ state, navigate }: Props) {
         <VerificationDecisionModal
           organizationName={decision.organizationName}
           decision={decision.estado}
+          revoke={decision.revoke}
           onConfirm={decision.confirm}
           onClose={() => setDecision(null)}
         />
@@ -280,10 +283,10 @@ function RequestCard({ request, onOpenDocument, onDecide }: {
           <button
             type="button"
             onClick={() => onDecide("RECHAZADA")}
-            aria-label={`Rechazar solicitud de ${organizacion.razonSocial}`}
+            aria-label={`Rechazar verificación de ${organizacion.razonSocial}`}
             className="flex-1 py-2.5 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2]"
           >
-            Rechazar
+            Rechazar verificación
           </button>
         </div>
       )}
@@ -335,10 +338,10 @@ function OrganizationList({ organizations, onDecide }: {
                 type="button"
                 disabled={!org.verificada && status === "RECHAZADA"}
                 onClick={() => onDecide(org, "RECHAZADA")}
-                aria-label={`${org.verificada ? "Retirar verificación" : "Rechazar"} de ${org.razon_social}`}
+                aria-label={`${org.verificada ? "Retirar verificación" : "Rechazar verificación"} de ${org.razon_social}`}
                 className="flex-1 py-2.5 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2] disabled:opacity-40"
               >
-                {org.verificada ? "Retirar verificación" : "Rechazar"}
+                {org.verificada ? "Retirar verificación" : "Rechazar verificación"}
               </button>
             </div>
           </div>

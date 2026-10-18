@@ -595,19 +595,54 @@ describe("CompanyVerification: bandeja de solicitudes", () => {
     await waitFor(() => expect(tab.location.href).toBe("blob:documento"));
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/verifications/documents/7"))).toBe(true);
 
-    fireEvent.click(within(card).getByRole("button", { name: "Rechazar solicitud de Acme SAS" }));
-    const dialog = screen.getByRole("dialog", { name: "Rechazar solicitud" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar solicitud" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Rechazar verificación de Acme SAS" }));
+    const dialog = screen.getByRole("dialog", { name: "Rechazar verificación" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar verificación" }));
     expect(within(dialog).getByRole("alert").textContent).toContain("mínimo 10 caracteres");
 
     fireEvent.change(within(dialog).getByLabelText("Motivo del rechazo"), { target: { value: "El RUT no corresponde al NIT." } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar solicitud" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar verificación" }));
 
     expect(await screen.findByText("No hay solicitudes pendientes. ¡Todo al día!")).toBeTruthy();
     expect(screen.getByRole("status").textContent).toContain("Acme SAS: solicitud rechazada");
     const decision = fetchMock.mock.calls.find(([, options]) => options?.method === "PATCH")!;
     expect(JSON.parse(String(decision[1]!.body))).toEqual({ estado: "RECHAZADA", observaciones: "El RUT no corresponde al NIT." });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("retira la verificación de una organización verificada con su propio texto", async () => {
+    const verified = { organizacion_id: 5, razon_social: "Bancolombia", identificacion_fiscal: null, sitio_web: null, verificada: true, verificacion_estado: "APROBADA", observaciones: null, verificacion_fecha: null, documentos_count: 0 };
+    const pending = { ...verified, organizacion_id: 6, razon_social: "Nueva SAS", verificada: false, verificacion_estado: null };
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+      if (url.includes("/verifications/organizations/5") && options?.method === "PATCH") {
+        return Promise.resolve(jsonResponse(200, { ok: true, organization: { verificada: false }, verificationStatus: "RECHAZADA" }));
+      }
+      if (url.endsWith("/verifications/organizations")) return Promise.resolve(jsonResponse(200, { ok: true, organizations: [verified, pending] }));
+      return Promise.resolve(jsonResponse(200, { ok: true, requests: [], total: 0, page: 1, limit: 10 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompanyVerification state={adminState} navigate={vi.fn()} />);
+    await screen.findByText("No hay solicitudes pendientes. ¡Todo al día!");
+    fireEvent.click(screen.getByRole("button", { name: "Organizaciones" }));
+
+    // Una organización sin verificar conserva el texto de rechazo.
+    fireEvent.click(await screen.findByRole("button", { name: "Rechazar verificación de Nueva SAS" }));
+    expect(screen.getByRole("dialog", { name: "Rechazar verificación" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Retirar verificación de Bancolombia" }));
+    const dialog = screen.getByRole("dialog", { name: "Retirar verificación" });
+    expect(within(dialog).getByText(/dejará de estar verificada/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retirar verificación" }));
+    expect(within(dialog).getByRole("alert").textContent).toContain("motivo del retiro");
+
+    fireEvent.change(within(dialog).getByLabelText("Motivo del retiro"), { target: { value: "La matrícula mercantil fue cancelada." } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retirar verificación" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const patch = fetchMock.mock.calls.find(([, options]) => options?.method === "PATCH")!;
+    expect(JSON.parse(String(patch[1]!.body))).toEqual({ estado: "RECHAZADA", observaciones: "La matrícula mercantil fue cancelada." });
+    expect(screen.getByRole("status").textContent).toContain("Bancolombia: verificación retirada");
   });
 
   it("muestra el historial con el revisor y las observaciones", async () => {
