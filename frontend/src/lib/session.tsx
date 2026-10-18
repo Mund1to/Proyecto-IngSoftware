@@ -8,6 +8,9 @@ export type SessionContextValue = {
   currentUser: UserSession | null;
   applications: Application[];
   jobApplications: JobApplication[];
+  // Solicitudes de verificación pendientes (solo para administradores y funcionarios).
+  pendingVerifications: number;
+  refreshPendingVerifications: () => void;
   logout: () => void;
 };
 
@@ -16,6 +19,8 @@ export const SessionContext = createContext<SessionContextValue>({
   currentUser: null,
   applications: [],
   jobApplications: [],
+  pendingVerifications: 0,
+  refreshPendingVerifications: () => undefined,
   logout: () => undefined,
 });
 

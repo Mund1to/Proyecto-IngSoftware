@@ -6,6 +6,7 @@ import AuthScreen from "./AuthScreen";
 import CompanyApplicants from "./CompanyApplicants";
 import CompanyDashboard from "./CompanyDashboard";
 import CompanyProfile from "./CompanyProfile";
+import CompanyVerification from "./CompanyVerification";
 import EmploymentStats from "./EmploymentStats";
 import ExternalDashboard from "./ExternalDashboard";
 import OfferDetail from "./OfferDetail";
@@ -543,5 +544,105 @@ describe("CompanyProfile: verificación documental", () => {
     expect(within(section).getByText("Rechazada")).toBeTruthy();
     expect((within(section).getByRole("button", { name: "Enviar de nuevo" }) as HTMLButtonElement).disabled).toBe(false);
     expect(within(section).getByRole("button", { name: "Eliminar rut.pdf" })).toBeTruthy();
+  });
+});
+
+describe("CompanyVerification: bandeja de solicitudes", () => {
+  // jsdom no implementa las URL de objetos; se simulan solo en este bloque.
+  const { createObjectURL, revokeObjectURL } = URL;
+  afterEach(() => Object.assign(URL, { createObjectURL, revokeObjectURL }));
+
+  const adminState: AppState = {
+    ...baseState,
+    role: "admin",
+    screen: "company-verification",
+    currentUser: { id: 9, email: "admin@x.co", nombreCompleto: "Admin", profileTypes: ["ESTUDIANTE"], roles: ["USUARIO", "ADMINISTRADOR"] },
+  };
+  const pendingRequest = {
+    id: 21, estado: "PENDIENTE", mensaje: "Adjuntamos RUT vigente.", observaciones: null,
+    documentos: [{ id: 7, tipo: "RUT", nombre: "rut.pdf", mime: "application/pdf", tamano: 2048 }],
+    enviadaAt: "2026-10-16T10:00:00.000Z", revisadaAt: null, revisor: null,
+    organizacion: { id: 4, razonSocial: "Acme SAS", identificacionFiscal: "900123", sitioWeb: "https://acme.co", descripcion: null, verificada: false },
+    solicitante: { nombre: "Ana Gómez", email: "rrhh@acme.co", telefono: null },
+  };
+
+  it("abre documentos y rechaza con motivo obligatorio", async () => {
+    let pending = [pendingRequest];
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+      if (url.includes("/verifications/documents/")) {
+        return Promise.resolve(new Response(new Blob(["%PDF"]), { status: 200, headers: { "content-type": "application/pdf" } }));
+      }
+      if (url.includes("/verifications/requests/21") && options?.method === "PATCH") {
+        pending = [];
+        return Promise.resolve(jsonResponse(200, { ok: true, request: { id: 21, estado: "RECHAZADA" }, organization: { verificada: false } }));
+      }
+      return Promise.resolve(jsonResponse(200, { ok: true, requests: pending, total: pending.length, page: 1, limit: 10 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const tab = { location: { href: "" }, close: vi.fn() };
+    vi.stubGlobal("open", vi.fn(() => tab));
+    URL.createObjectURL = vi.fn(() => "blob:documento");
+    URL.revokeObjectURL = vi.fn();
+
+    render(<CompanyVerification state={adminState} navigate={vi.fn()} />);
+
+    const card = await screen.findByRole("article", { name: "Acme SAS" });
+    expect(within(card).getByText("Adjuntamos RUT vigente.")).toBeTruthy();
+    expect(within(card).getByText(/rrhh@acme\.co/)).toBeTruthy();
+    expect(String(fetchMock.mock.calls[0][0])).toContain("estado=PENDIENTE");
+
+    fireEvent.click(within(card).getByRole("button", { name: "Ver rut.pdf de Acme SAS" }));
+    await waitFor(() => expect(tab.location.href).toBe("blob:documento"));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/verifications/documents/7"))).toBe(true);
+
+    fireEvent.click(within(card).getByRole("button", { name: "Rechazar solicitud de Acme SAS" }));
+    const dialog = screen.getByRole("dialog", { name: "Rechazar solicitud" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar solicitud" }));
+    expect(within(dialog).getByRole("alert").textContent).toContain("mínimo 10 caracteres");
+
+    fireEvent.change(within(dialog).getByLabelText("Motivo del rechazo"), { target: { value: "El RUT no corresponde al NIT." } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar solicitud" }));
+
+    expect(await screen.findByText("No hay solicitudes pendientes. ¡Todo al día!")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Acme SAS: solicitud rechazada");
+    const decision = fetchMock.mock.calls.find(([, options]) => options?.method === "PATCH")!;
+    expect(JSON.parse(String(decision[1]!.body))).toEqual({ estado: "RECHAZADA", observaciones: "El RUT no corresponde al NIT." });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("muestra el historial con el revisor y las observaciones", async () => {
+    const reviewed = { ...pendingRequest, id: 22, estado: "APROBADA", revisor: "Laura Díaz", revisadaAt: "2026-10-17T09:00:00.000Z", observaciones: "Documentos vigentes." };
+    const fetchMock = vi.fn((url: string) => Promise.resolve(jsonResponse(200, {
+      ok: true, requests: url.includes("estado=TODAS") ? [reviewed] : [], total: url.includes("estado=TODAS") ? 1 : 0, page: 1, limit: 10,
+    })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompanyVerification state={adminState} navigate={vi.fn()} />);
+    await screen.findByText("No hay solicitudes pendientes. ¡Todo al día!");
+
+    fireEvent.click(screen.getByRole("button", { name: "Historial" }));
+    const card = await screen.findByRole("article", { name: "Acme SAS" });
+    expect(within(card).getByText(/Revisada por Laura Díaz/)).toBeTruthy();
+    expect(within(card).getByText("Documentos vigentes.")).toBeTruthy();
+    expect(within(card).queryByRole("button", { name: /Aprobar/ })).toBeNull();
+  });
+});
+
+describe("NavBar: solicitudes pendientes", () => {
+  it("muestra al administrador cuántas solicitudes esperan revisión", async () => {
+    localStorage.setItem("sipu-token", "admin-token");
+    vi.stubGlobal("fetch", vi.fn((url: string) => {
+      if (url.endsWith("/profile/me")) {
+        return Promise.resolve(jsonResponse(200, {
+          ok: true,
+          user: { id: 1, email: "admin@x.co", nombreCompleto: "Admin", roles: ["USUARIO", "ADMINISTRADOR"], perfiles: [{ tipo: "ESTUDIANTE" }] },
+        }));
+      }
+      if (url.endsWith("/verifications/requests/summary")) return Promise.resolve(jsonResponse(200, { ok: true, pendientes: 3 }));
+      return Promise.resolve(jsonResponse(200, { ok: true, stats: { totals: {}, offersByType: [], offersByArea: [], offersByCity: [], topOrganizations: [], applicationsByMonth: [] } }));
+    }));
+
+    render(<App />);
+    expect(await screen.findByRole("button", { name: "Solicitudes, 3 pendientes" })).toBeTruthy();
   });
 });
