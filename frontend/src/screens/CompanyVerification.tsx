@@ -21,7 +21,7 @@ type Props = {
 
 type Tab = "PENDIENTES" | "HISTORIAL" | "ORGANIZACIONES";
 type HistoryFilter = RequestStatus | "TODAS";
-type Decision = { estado: "APROBADA" | "RECHAZADA"; organizationName: string; confirm: (observaciones: string) => Promise<void> };
+type Decision = { estado: "APROBADA" | "RECHAZADA"; revoke?: boolean; organizationName: string; confirm: (observaciones: string) => Promise<void> };
 
 const PAGE_SIZE = 10;
 const cardClass = "bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm p-6";
@@ -113,6 +113,8 @@ export default function CompanyVerification({ state, navigate }: Props) {
     setNotice("");
     setDecision({
       estado,
+      // Rechazar a una organización ya verificada equivale a retirarle la verificación.
+      revoke: organization.verificada && estado === "RECHAZADA",
       organizationName: organization.razon_social,
       confirm: async (observaciones) => {
         await api.updateOrganizationVerification(organization.organizacion_id, estado, state.token ?? "", observaciones || undefined);
@@ -193,6 +195,7 @@ export default function CompanyVerification({ state, navigate }: Props) {
         <VerificationDecisionModal
           organizationName={decision.organizationName}
           decision={decision.estado}
+          revoke={decision.revoke}
           onConfirm={decision.confirm}
           onClose={() => setDecision(null)}
         />
