@@ -3,6 +3,11 @@ import { env } from '../config/env.js';
 // Correos enviados durante las pruebas, para poder inspeccionarlos.
 export const sentEmails = [];
 
+// Escapa el texto que viene del usuario antes de insertarlo en el HTML del correo.
+export function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+
 // Envía un correo con la API HTTP de Resend (https://resend.com).
 // Sin RESEND_API_KEY no se envía nada: en desarrollo el contenido se muestra en
 // la consola y en producción se registra una advertencia.

@@ -2,6 +2,7 @@
 // perfil (hoja de vida y foto). Antes estos datos solo vivían en el navegador.
 import { withTransaction } from '../../core/database/database.js';
 import { HttpError, badRequest, notFound } from '../../core/http/errors.js';
+import { cleanFileName, hasValidSignature, normalizeMime } from '../../core/http/files.js';
 import * as detailsRepository from './profileDetails.repository.js';
 
 const MAX_ITEMS = 30;
@@ -13,18 +14,16 @@ export const FILE_RULES = {
     tipo: 'CV',
     maxBytes: 5 * 1024 * 1024,
     label: 'La hoja de vida',
-    allowed: { 'application/pdf': (buffer) => buffer.subarray(0, 5).toString('latin1') === '%PDF-' },
+    allowed: ['application/pdf'],
+    defaultName: 'hoja-de-vida.pdf',
     candidateOnly: true,
   },
   foto: {
     tipo: 'FOTO',
     maxBytes: 2 * 1024 * 1024,
     label: 'La foto',
-    allowed: {
-      'image/png': (buffer) => buffer.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47])),
-      'image/jpeg': (buffer) => buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])),
-      'image/webp': (buffer) => buffer.subarray(0, 4).toString('latin1') === 'RIFF' && buffer.subarray(8, 12).toString('latin1') === 'WEBP',
-    },
+    allowed: ['image/png', 'image/jpeg', 'image/webp'],
+    defaultName: 'foto',
     candidateOnly: false,
   },
 };
@@ -127,16 +126,6 @@ export function resolveFileRule(tipo) {
   return rule;
 }
 
-function cleanFileName(rawName, rule) {
-  let fileName;
-  try {
-    fileName = cleanText(decodeURIComponent(rawName ?? ''), 200);
-  } catch {
-    fileName = '';
-  }
-  return fileName.replace(/[\\/\r\n"]/g, '_') || (rule.tipo === 'CV' ? 'hoja-de-vida.pdf' : 'foto');
-}
-
 // Valida tamaño y tipo real del archivo (por su firma, no solo por la cabecera).
 export async function uploadFile(userId, tipo, { buffer, contentType, rawName }) {
   const rule = resolveFileRule(tipo);
@@ -147,14 +136,13 @@ export async function uploadFile(userId, tipo, { buffer, contentType, rawName })
     throw new HttpError(413, `${rule.label} no puede superar ${rule.maxBytes / 1024 / 1024} MB.`);
   }
 
-  const mime = String(contentType ?? '').split(';')[0].trim().toLowerCase();
-  const matches = rule.allowed[mime];
-  if (!matches || !matches(buffer)) {
+  const mime = normalizeMime(contentType);
+  if (!hasValidSignature(mime, buffer, rule.allowed)) {
     const formats = rule.tipo === 'CV' ? 'PDF' : 'PNG, JPG o WEBP';
     throw new HttpError(415, `${rule.label} debe ser un archivo ${formats} válido.`);
   }
 
-  const nombre = cleanFileName(rawName, rule);
+  const nombre = cleanFileName(rawName, rule.defaultName);
 
   const profile = await detailsRepository.findProfile(userId, { candidateOnly: rule.candidateOnly });
   if (!profile) throw notFound('Tu cuenta no tiene un perfil que admita este archivo.');

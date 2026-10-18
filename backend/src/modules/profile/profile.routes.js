@@ -1,4 +1,4 @@
-import express, { Router } from 'express';
+import { Router } from 'express';
 import {
   changePasswordController,
   getCurrentUserController,
@@ -16,6 +16,7 @@ import {
   replaceSkillsController,
   uploadProfileFileController,
 } from './profileDetails.controller.js';
+import { rawFileBody } from '../../core/http/files.js';
 import { authenticate } from '../../core/middleware/auth.middleware.js';
 
 const profileRouter = Router();
@@ -34,7 +35,7 @@ profileRouter.put('/experience', authenticate, replaceExperienceController);
 profileRouter.put('/skills', authenticate, replaceSkillsController);
 
 // El archivo llega como cuerpo binario; el nombre viaja en la cabecera X-File-Name.
-const rawFile = express.raw({ type: () => true, limit: '5mb' });
+const rawFile = rawFileBody('5mb');
 profileRouter.get('/files/:tipo', authenticate, getProfileFileController);
 profileRouter.put('/files/:tipo', authenticate, rawFile, uploadProfileFileController);
 profileRouter.delete('/files/:tipo', authenticate, deleteProfileFileController);

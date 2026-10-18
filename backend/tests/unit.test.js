@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { maxScoreOffer, offerAffinity, scoreOffer } from '../src/modules/offers/offers.scoring.js';
+import { cleanFileName, hasValidSignature, normalizeMime } from '../src/core/http/files.js';
 import { createRateLimiter } from '../src/core/middleware/rateLimit.middleware.js';
 import { normalizeModality } from '../src/modules/offers/offers.domain.js';
 import {
@@ -125,5 +126,30 @@ describe('createRateLimiter', () => {
     limiter.reset();
     limiter({}, response, next);
     assert.equal(passed, 3);
+  });
+});
+
+describe('validación de archivos', () => {
+  const PDF = Buffer.from('%PDF-1.7\n');
+  const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+
+  it('normalizeMime quita parámetros y mayúsculas', () => {
+    assert.equal(normalizeMime('Application/PDF; charset=binary'), 'application/pdf');
+    assert.equal(normalizeMime(undefined), '');
+  });
+
+  it('hasValidSignature exige un tipo permitido y la firma real del contenido', () => {
+    assert.equal(hasValidSignature('application/pdf', PDF, ['application/pdf']), true);
+    assert.equal(hasValidSignature('application/pdf', PNG, ['application/pdf']), false);
+    assert.equal(hasValidSignature('image/png', PNG, ['application/pdf']), false);
+    assert.equal(hasValidSignature('text/plain', PDF, ['text/plain']), false);
+  });
+
+  it('cleanFileName decodifica, limita y quita caracteres peligrosos', () => {
+    assert.equal(cleanFileName(encodeURIComponent('RUT 2026.pdf'), 'x.pdf'), 'RUT 2026.pdf');
+    assert.equal(cleanFileName(encodeURIComponent('../a"b\r\n.pdf'), 'x.pdf'), '.._a_b__.pdf');
+    assert.equal(cleanFileName('%E0%A4%A', 'x.pdf'), 'x.pdf');
+    assert.equal(cleanFileName('', 'x.pdf'), 'x.pdf');
+    assert.equal(cleanFileName('a'.repeat(300), 'x.pdf').length, 200);
   });
 });

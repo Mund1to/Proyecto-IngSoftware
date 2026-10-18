@@ -5,7 +5,7 @@ import { env } from '../../core/config/env.js';
 import { withTransaction } from '../../core/database/database.js';
 import { HttpError, badRequest, conflict, forbidden } from '../../core/http/errors.js';
 import { getBodyValue } from '../../core/http/payload.js';
-import { sendEmail } from '../../core/mail/mailer.js';
+import { escapeHtml, sendEmail } from '../../core/mail/mailer.js';
 import * as authRepository from './auth.repository.js';
 import { buildToken } from './auth.tokens.js';
 
@@ -41,10 +41,6 @@ function normalizeProfileType(value) {
 
   const normalized = String(value).trim().toLowerCase();
   return PROFILE_TYPES.get(normalized) ?? String(value).trim().toUpperCase();
-}
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }
 
 function publicUser(user, roles, profileTypes) {
