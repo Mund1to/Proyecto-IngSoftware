@@ -77,7 +77,7 @@ La respuesta esperada es:
 | --- | --- |
 | `npm run dev` | Inicia Express con reinicio automático mediante `node --watch`. |
 | `npm start` | Inicia Express sin modo de vigilancia. |
-| `npm test` | Ejecuta las 94 pruebas de la API (`node:test` + `supertest`) sobre una base `<base>_test` que se recrea en cada ejecución. |
+| `npm test` | Ejecuta las 123 pruebas de la API (`node:test` + `supertest`) sobre una base `<base>_test` que se recrea en cada ejecución. |
 | `npm run grant-role -- correo ROL` | Asigna `ADMINISTRADOR` o `FUNCIONARIO_PUBLICO` a una cuenta existente. Sirve para crear el primer administrador. |
 
 ## Seguridad
@@ -85,6 +85,9 @@ La respuesta esperada es:
 - Los roles y el estado de la cuenta se consultan en la base en cada petición autenticada; retirar un rol o desactivar una cuenta aplica de inmediato.
 - `/api/auth/login` admite 10 intentos por IP y correo cada 15 minutos.
 - Un identificador no numérico en la URL responde `400`, igual que el JSON mal formado o el texto con codificación inválida.
+- Todas las respuestas llevan `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` y `Content-Security-Policy: default-src 'none'`. En producción llevan además HSTS. No se envía `X-Powered-By`.
+- Los archivos subidos (CV, foto y documentos de verificación) se validan por su firma binaria y no solo por `Content-Type`.
+- Ante `SIGTERM` o `SIGINT` el servidor termina las peticiones en curso y cierra el pool antes de salir, con un máximo de 10 segundos.
 
 ## Endpoints añadidos en la Fase 5
 
@@ -113,6 +116,21 @@ La respuesta esperada es:
 
 El detalle está en [`docs/informe-fase-6-perfil-archivos.md`](../docs/informe-fase-6-perfil-archivos.md).
 
+## Endpoints añadidos en la Fase 7
+
+| Método | Ruta | Acceso | Descripción |
+| --- | --- | --- | --- |
+| `GET` | `/api/verifications/me` | Organización | Estado de la verificación, documentos, requisitos faltantes y catálogo de tipos y límites. |
+| `POST` | `/api/verifications/me/documents?tipo=` | Organización | Sube un documento (`RUT`, `CAMARA_COMERCIO`, `CEDULA_REPRESENTANTE` u `OTRO`). Acepta PDF, PNG o JPG de hasta 5 MB y como máximo 10 documentos. El cuerpo es binario y el nombre va en `X-File-Name`. |
+| `GET` / `DELETE` | `/api/verifications/me/documents/:documentId` | Organización dueña | Abre o elimina un documento. Durante la revisión y tras la aprobación la eliminación responde `409`. |
+| `POST` / `DELETE` | `/api/verifications/me/request` | Organización | Envía la solicitud (exige el NIT, el RUT y la Cámara de Comercio) o la retira mientras está pendiente. |
+| `GET` | `/api/verifications/requests?estado=&page=&limit=` | Administrador o funcionario | Bandeja paginada de solicitudes (`PENDIENTE` por defecto, `APROBADA`, `RECHAZADA` o `TODAS`). |
+| `GET` | `/api/verifications/requests/summary` | Administrador o funcionario | Número de solicitudes pendientes. |
+| `PATCH` | `/api/verifications/requests/:requestId` | Administrador o funcionario | Aprueba o rechaza una solicitud; rechazar exige un motivo de al menos 10 caracteres. |
+| `GET` | `/api/verifications/documents/:documentId` | Administrador o funcionario | Abre un documento de cualquier organización. |
+
+El detalle está en [`docs/informe-fase-7-verificacion-documental.md`](../docs/informe-fase-7-verificacion-documental.md).
+
 ## Estructura relevante
 
 El backend es un **monolito modular**: el código se agrupa por funcionalidad en
@@ -123,9 +141,9 @@ src/
 ├── core/
 │   ├── config/       # Variables de entorno (env.js)
 │   ├── database/     # Pool de PostgreSQL, withTransaction y migraciones
-│   ├── http/         # HttpError, asyncHandler, lectura del cuerpo, envío de archivos
+│   ├── http/         # HttpError, asyncHandler, lectura del cuerpo, paginación, validación y envío de archivos
 │   ├── mail/         # Envío de correos (Resend)
-│   └── middleware/   # Autenticación, roles y límite de peticiones
+│   └── middleware/   # Autenticación, roles, límite de peticiones y cabeceras de seguridad
 ├── modules/
 │   ├── auth/  profile/  offers/  applications/
 │   ├── convocatorias/  verifications/  admin/  stats/  health/
@@ -153,7 +171,8 @@ database/
   - cualquier otro error responde 500 con el mensaje indicado.
 - **El servicio no conoce Express ni SQL.** Valida, aplica las reglas y lanza `badRequest`, `forbidden`, `notFound` o `conflict`.
 - **Solo el repositorio escribe SQL.** Las funciones que deben ir en una transacción reciben `db`; el servicio las agrupa con `withTransaction(async (db) => …)`.
-- **Las funciones puras van en archivos propios,** por ejemplo `offers.scoring.js` y `offers.validation.js`, y se prueban sin base de datos.
+- **Las funciones puras van en archivos propios,** por ejemplo `offers.scoring.js`, `offers.validation.js` y `verifications.rules.js`, y se prueban sin base de datos.
+- **Un módulo puede tener varios controladores y servicios si atiende a actores distintos.** Por ejemplo, en `profile/` están `profile.*` y `profileDetails.*`, y en `verifications/` están `organizationVerification.*` (la empresa) y `verifications.*` (la revisión). Comparten un único repositorio por tabla.
 - **Para agregar una funcionalidad:**
   1. crea `src/modules/<nombre>/` con los cuatro archivos;
   2. monta el router en `app.js`.
