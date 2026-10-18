@@ -3,7 +3,7 @@ import { env } from './core/config/env.js';
 import { pool, testDatabaseConnection } from './core/database/database.js';
 import { initializeDatabaseSchema } from './core/database/migrate.js';
 
-app.listen(env.port, async () => {
+const server = app.listen(env.port, async () => {
   console.log(`SIPU backend listening on port ${env.port}`);
 
   if (!env.databaseUrl) {
@@ -21,7 +21,28 @@ app.listen(env.port, async () => {
   }
 });
 
-process.on('SIGINT', async () => {
-  await pool.end();
-  process.exit(0);
-});
+// Render envía SIGTERM antes de reemplazar la instancia en cada despliegue.
+// Se dejan de aceptar conexiones, se terminan las peticiones en curso y se
+// cierra el pool; si algo se cuelga, se fuerza la salida a los 10 segundos.
+const SHUTDOWN_TIMEOUT_MS = 10000;
+let shuttingDown = false;
+
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${signal} received. Closing SIPU backend...`);
+
+  setTimeout(() => {
+    console.error('Graceful shutdown timed out; forcing exit.');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS).unref();
+
+  server.close(async () => {
+    await pool.end().catch((error) => console.error('Error closing PostgreSQL pool:', error));
+    process.exit(0);
+  });
+  server.closeIdleConnections?.();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

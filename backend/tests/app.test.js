@@ -18,6 +18,15 @@ describe('infraestructura de la API', () => {
     assert.equal(db.body.ok, true);
   });
 
+  it('envía cabeceras de seguridad y oculta el framework', async () => {
+    const response = await api().get('/api/health');
+    assert.equal(response.headers['x-content-type-options'], 'nosniff');
+    assert.equal(response.headers['x-frame-options'], 'DENY');
+    assert.equal(response.headers['referrer-policy'], 'no-referrer');
+    assert.match(response.headers['content-security-policy'], /default-src 'none'/);
+    assert.equal(response.headers['x-powered-by'], undefined);
+  });
+
   it('devuelve 404 JSON para rutas desconocidas', async () => {
     const response = await api().get('/api/no-existe');
     assert.equal(response.status, 404);

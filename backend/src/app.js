@@ -4,6 +4,7 @@ import { env } from './core/config/env.js';
 import { testDatabaseConnection } from './core/database/database.js';
 import { initializeDatabaseSchema } from './core/database/migrate.js';
 import { authenticate, requireRole } from './core/middleware/auth.middleware.js';
+import { securityHeaders } from './core/middleware/securityHeaders.middleware.js';
 import adminRouter from './modules/admin/admin.routes.js';
 import applicationsRouter from './modules/applications/applications.routes.js';
 import authRouter from './modules/auth/auth.routes.js';
@@ -19,7 +20,9 @@ export const app = express();
 // Render y Vercel actúan como proxy; sin esto request.ip sería la IP del proxy
 // y el limitador de login agruparía a todos los usuarios.
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
+app.use(securityHeaders);
 app.use(cors(env.corsOrigins.length > 0 ? { origin: env.corsOrigins } : undefined));
 app.use(express.json({ limit: '1mb' }));
 
