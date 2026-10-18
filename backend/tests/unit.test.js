@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { maxScoreOffer, offerAffinity, scoreOffer } from '../src/modules/offers/offers.scoring.js';
 import { cleanFileName, hasValidSignature, normalizeMime } from '../src/core/http/files.js';
+import { parsePagination } from '../src/core/http/pagination.js';
 import { createRateLimiter } from '../src/core/middleware/rateLimit.middleware.js';
+import {
+  documentsLocked,
+  normalizeDocumentType,
+  organizationStatus,
+  submissionBlockers,
+} from '../src/modules/verifications/verifications.rules.js';
 import { normalizeModality } from '../src/modules/offers/offers.domain.js';
 import {
   getBodyValue,
@@ -151,5 +158,39 @@ describe('validación de archivos', () => {
     assert.equal(cleanFileName('%E0%A4%A', 'x.pdf'), 'x.pdf');
     assert.equal(cleanFileName('', 'x.pdf'), 'x.pdf');
     assert.equal(cleanFileName('a'.repeat(300), 'x.pdf').length, 200);
+  });
+});
+
+describe('paginación', () => {
+  it('usa valores por defecto, acota el límite y calcula el desplazamiento', () => {
+    assert.deepEqual(parsePagination({}), { page: 1, limit: 20, offset: 0 });
+    assert.deepEqual(parsePagination({ page: '3', limit: '10' }), { page: 3, limit: 10, offset: 20 });
+    assert.deepEqual(parsePagination({ page: '0', limit: '999' }), { page: 1, limit: 50, offset: 0 });
+    assert.deepEqual(parsePagination({ page: 'x', limit: '2.5' }), { page: 1, limit: 20, offset: 0 });
+    assert.equal(parsePagination({ page: '1e300' }).page, 100000);
+  });
+});
+
+describe('reglas de verificación documental', () => {
+  it('normaliza el tipo de documento y rechaza los desconocidos', () => {
+    assert.equal(normalizeDocumentType(' camara_comercio '), 'CAMARA_COMERCIO');
+    assert.equal(normalizeDocumentType('PASAPORTE'), null);
+    assert.equal(normalizeDocumentType(undefined), null);
+    assert.equal(normalizeDocumentType('constructor'), null);
+  });
+
+  it('lista lo que falta para enviar la solicitud', () => {
+    assert.deepEqual(submissionBlockers({ identificacionFiscal: '', documents: [] }), ['NIT', 'RUT', 'CAMARA_COMERCIO']);
+    assert.deepEqual(submissionBlockers({ identificacionFiscal: '900', documents: [{ tipo: 'RUT' }, { tipo: 'OTRO' }] }), ['CAMARA_COMERCIO']);
+    assert.deepEqual(submissionBlockers({ identificacionFiscal: '900', documents: [{ tipo: 'CAMARA_COMERCIO' }, { tipo: 'RUT' }] }), []);
+  });
+
+  it('bloquea documentos en revisión o aprobados y resuelve el estado visible', () => {
+    assert.equal(documentsLocked({ verified: false, hasPendingRequest: false }), false);
+    assert.equal(documentsLocked({ verified: false, hasPendingRequest: true }), true);
+    assert.equal(documentsLocked({ verified: true, hasPendingRequest: false }), true);
+    assert.equal(organizationStatus({ verified: false, latestRequest: null }), 'SIN_SOLICITUD');
+    assert.equal(organizationStatus({ verified: false, latestRequest: { estado: 'RECHAZADA' } }), 'RECHAZADA');
+    assert.equal(organizationStatus({ verified: true, latestRequest: { estado: 'RECHAZADA' } }), 'APROBADA');
   });
 });
