@@ -283,10 +283,10 @@ function RequestCard({ request, onOpenDocument, onDecide }: {
           <button
             type="button"
             onClick={() => onDecide("RECHAZADA")}
-            aria-label={`Rechazar solicitud de ${organizacion.razonSocial}`}
+            aria-label={`Rechazar verificación de ${organizacion.razonSocial}`}
             className="flex-1 py-2.5 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2]"
           >
-            Rechazar
+            Rechazar verificación
           </button>
         </div>
       )}
@@ -338,10 +338,10 @@ function OrganizationList({ organizations, onDecide }: {
                 type="button"
                 disabled={!org.verificada && status === "RECHAZADA"}
                 onClick={() => onDecide(org, "RECHAZADA")}
-                aria-label={`${org.verificada ? "Retirar verificación" : "Rechazar"} de ${org.razon_social}`}
+                aria-label={`${org.verificada ? "Retirar verificación" : "Rechazar verificación"} de ${org.razon_social}`}
                 className="flex-1 py-2.5 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2] disabled:opacity-40"
               >
-                {org.verificada ? "Retirar verificación" : "Rechazar"}
+                {org.verificada ? "Retirar verificación" : "Rechazar verificación"}
               </button>
             </div>
           </div>

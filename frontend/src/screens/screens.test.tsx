@@ -595,13 +595,13 @@ describe("CompanyVerification: bandeja de solicitudes", () => {
     await waitFor(() => expect(tab.location.href).toBe("blob:documento"));
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/verifications/documents/7"))).toBe(true);
 
-    fireEvent.click(within(card).getByRole("button", { name: "Rechazar solicitud de Acme SAS" }));
-    const dialog = screen.getByRole("dialog", { name: "Rechazar solicitud" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar solicitud" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Rechazar verificación de Acme SAS" }));
+    const dialog = screen.getByRole("dialog", { name: "Rechazar verificación" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar verificación" }));
     expect(within(dialog).getByRole("alert").textContent).toContain("mínimo 10 caracteres");
 
     fireEvent.change(within(dialog).getByLabelText("Motivo del rechazo"), { target: { value: "El RUT no corresponde al NIT." } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar solicitud" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Rechazar verificación" }));
 
     expect(await screen.findByText("No hay solicitudes pendientes. ¡Todo al día!")).toBeTruthy();
     expect(screen.getByRole("status").textContent).toContain("Acme SAS: solicitud rechazada");
@@ -627,8 +627,8 @@ describe("CompanyVerification: bandeja de solicitudes", () => {
     fireEvent.click(screen.getByRole("button", { name: "Organizaciones" }));
 
     // Una organización sin verificar conserva el texto de rechazo.
-    fireEvent.click(await screen.findByRole("button", { name: "Rechazar de Nueva SAS" }));
-    expect(screen.getByRole("dialog", { name: "Rechazar solicitud" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Rechazar verificación de Nueva SAS" }));
+    expect(screen.getByRole("dialog", { name: "Rechazar verificación" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Retirar verificación de Bancolombia" }));

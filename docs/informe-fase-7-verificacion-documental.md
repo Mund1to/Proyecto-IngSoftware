@@ -81,7 +81,7 @@ Se reutiliza la tabla `verificaciones`, porque su diseño original ya tenía un 
   - Pendientes: tarjetas con los datos de la empresa, el contacto, el mensaje y los documentos.
   - Historial: filtrable por estado, con "Cargar más".
   - Organizaciones: la vista general, con aprobación directa y la opción de retirar una verificación.
-- La decisión se toma en `VerificationDecisionModal`, que reemplaza el `window.prompt` anterior. Tiene tres textos: "Aprobar verificación", "Rechazar solicitud" y "Retirar verificación". El último aparece al rechazar a una organización que ya estaba verificada. Rechazar y retirar exigen un motivo.
+- La decisión se toma en `VerificationDecisionModal`, que reemplaza el `window.prompt` anterior. Tiene tres textos: "Aprobar verificación", "Rechazar verificación" y "Retirar verificación". "Retirar verificación" aparece si la organización ya estaba verificada, y "Rechazar verificación" si no lo estaba. Rechazar y retirar exigen un motivo.
 - El menú del revisor muestra el número de solicitudes pendientes (`SessionContext.pendingVerifications`).
 - `lib/verification.ts` reúne las etiquetas, los estados y la validación previa, a partir del catálogo que envía el servidor. `lib/files.ts` comparte `formatSize`.
 

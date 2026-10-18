@@ -26,7 +26,7 @@ const TEXTS: Record<Mode, {
     placeholder: "Por ejemplo: RUT y Cámara de Comercio vigentes.",
   },
   reject: {
-    title: "Rechazar solicitud",
+    title: "Rechazar verificación",
     summary: (name) => <>La empresa <strong>{name}</strong> verá el motivo y podrá corregir sus documentos.</>,
     label: "Motivo del rechazo",
     placeholder: "Por ejemplo: el certificado de Cámara de Comercio tiene más de 30 días.",
