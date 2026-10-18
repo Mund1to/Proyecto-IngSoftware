@@ -5,6 +5,7 @@ import AdminUsers from "./AdminUsers";
 import AuthScreen from "./AuthScreen";
 import CompanyApplicants from "./CompanyApplicants";
 import CompanyDashboard from "./CompanyDashboard";
+import CompanyProfile from "./CompanyProfile";
 import EmploymentStats from "./EmploymentStats";
 import ExternalDashboard from "./ExternalDashboard";
 import OfferDetail from "./OfferDetail";
@@ -456,5 +457,91 @@ describe("App: recuperación de contraseña", () => {
     expect(window.location.search).toBe("");
     const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/auth/reset-password"));
     expect(JSON.parse(String((call as unknown as [string, RequestInit])[1].body))).toEqual({ token, password: "Nueva12345" });
+  });
+});
+
+describe("CompanyProfile: verificación documental", () => {
+  const requisitos = {
+    tipos: [
+      { tipo: "RUT", etiqueta: "RUT (Registro Único Tributario)", obligatorio: true },
+      { tipo: "CAMARA_COMERCIO", etiqueta: "Certificado de Cámara de Comercio", obligatorio: true },
+      { tipo: "OTRO", etiqueta: "Otro documento de soporte", obligatorio: false },
+    ],
+    formatos: ["application/pdf", "image/png", "image/jpeg"],
+    maxBytes: 5 * 1024 * 1024,
+    maxDocumentos: 10,
+    maxMensaje: 1000,
+  };
+  const rut = { id: 7, tipo: "RUT", nombre: "rut.pdf", mime: "application/pdf", tamano: 2048, createdAt: "2026-10-16T10:00:00.000Z" };
+  const camara = { id: 8, tipo: "CAMARA_COMERCIO", nombre: "camara.pdf", mime: "application/pdf", tamano: 4096, createdAt: "2026-10-17T10:00:00.000Z" };
+  const base = { estado: "SIN_SOLICITUD", verificada: false, solicitud: null, bloqueada: false, requisitos };
+  const companyState: AppState = {
+    ...baseState,
+    role: "company",
+    screen: "company-profile",
+    currentUser: { id: 3, email: "rrhh@acme.co", nombreCompleto: "Ana Gómez", organizacionNombre: "Acme SAS", identificacionFiscal: "900123", profileTypes: ["ORGANIZACION"], roles: ["USUARIO"] },
+  };
+
+  const renderProfile = () => render(
+    <CompanyProfile state={companyState} navigate={vi.fn()} updateOrganizationProfile={vi.fn()} changePassword={vi.fn()} refreshCurrentUser={vi.fn()} />,
+  );
+
+  it("adjunta el documento que falta y envía la solicitud", async () => {
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+      if (url.includes("/verifications/me/documents")) {
+        return Promise.resolve(jsonResponse(201, { ok: true, document: camara, verification: { ...base, documentos: [rut, camara], faltantes: [], puedeEnviar: true } }));
+      }
+      if (url.endsWith("/verifications/me/request") && options?.method === "POST") {
+        return Promise.resolve(jsonResponse(201, {
+          ok: true,
+          verification: { ...base, estado: "PENDIENTE", bloqueada: true, documentos: [rut, camara], faltantes: [], puedeEnviar: false,
+            solicitud: { id: 1, estado: "PENDIENTE", mensaje: "Gracias", observaciones: null, enviadaPorEmpresa: true, enviadaAt: "2026-10-17T12:00:00.000Z", revisadaAt: null, revisor: null } },
+        }));
+      }
+      return Promise.resolve(jsonResponse(200, { ok: true, verification: { ...base, documentos: [rut], faltantes: ["CAMARA_COMERCIO"], puedeEnviar: false } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderProfile();
+
+    const section = await screen.findByRole("region", { name: "Verificación de la empresa" });
+    const requirements = within(section).getByRole("list", { name: "Requisitos para enviar la solicitud" });
+    expect(within(requirements).getByText(/Certificado de Cámara de Comercio/).textContent).toContain("pendiente");
+    expect((within(section).getByRole("combobox", { name: "Tipo de documento" }) as HTMLSelectElement).value).toBe("CAMARA_COMERCIO");
+    expect((within(section).getByRole("button", { name: "Enviar solicitud de verificación" }) as HTMLButtonElement).disabled).toBe(true);
+
+    // Un formato no admitido se rechaza sin llamar a la API.
+    const input = within(section).getByLabelText("Archivo del documento");
+    fireEvent.change(input, { target: { files: [new File(["x"], "nota.txt", { type: "text/plain" })] } });
+    expect(within(section).getByRole("alert").textContent).toContain("PDF, PNG, JPG");
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/documents"))).toBe(false);
+
+    fireEvent.change(input, { target: { files: [new File(["%PDF-1.4"], "camara.pdf", { type: "application/pdf" })] } });
+    expect(await within(section).findByText("camara.pdf")).toBeTruthy();
+    const upload = fetchMock.mock.calls.find(([url]) => String(url).includes("/documents"))!;
+    expect(String(upload[0])).toContain("tipo=CAMARA_COMERCIO");
+    expect((upload[1]!.headers as Headers).get("X-File-Name")).toBe("camara.pdf");
+
+    fireEvent.change(within(section).getByLabelText("Mensaje para el revisor (opcional)"), { target: { value: "Gracias" } });
+    fireEvent.click(within(section).getByRole("button", { name: "Enviar solicitud de verificación" }));
+    expect(await within(section).findByText("En revisión")).toBeTruthy();
+    const sent = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith("/verifications/me/request") && options?.method === "POST")!;
+    expect(JSON.parse(String(sent[1]!.body))).toEqual({ mensaje: "Gracias" });
+    expect(within(section).queryByRole("button", { name: "Eliminar camara.pdf" })).toBeNull();
+    expect(within(section).getByRole("button", { name: "Retirar solicitud" })).toBeTruthy();
+  });
+
+  it("muestra el motivo del rechazo y permite enviar de nuevo", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, {
+      ok: true,
+      verification: { ...base, estado: "RECHAZADA", documentos: [rut, camara], faltantes: [], puedeEnviar: true,
+        solicitud: { id: 2, estado: "RECHAZADA", mensaje: null, observaciones: "El RUT no es legible.", enviadaPorEmpresa: true, enviadaAt: "2026-10-15T12:00:00.000Z", revisadaAt: "2026-10-16T12:00:00.000Z", revisor: "Admin" } },
+    })));
+    renderProfile();
+
+    const section = await screen.findByRole("region", { name: "Verificación de la empresa" });
+    expect(within(section).getByText("El RUT no es legible.")).toBeTruthy();
+    expect(within(section).getByText("Rechazada")).toBeTruthy();
+    expect((within(section).getByRole("button", { name: "Enviar de nuevo" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(within(section).getByRole("button", { name: "Eliminar rut.pdf" })).toBeTruthy();
   });
 });
