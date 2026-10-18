@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { pool } from '../src/config/database.js';
-import { listMigrationFiles } from '../src/config/migrate.js';
+import { pool } from '../src/core/database/database.js';
+import { listMigrationFiles } from '../src/core/database/migrate.js';
 import { api, auth, closeDatabase, createAdmin, registerUser, resetDatabase } from './helpers.js';
 
 before(resetDatabase);
@@ -16,6 +16,15 @@ describe('infraestructura de la API', () => {
     const db = await api().get('/api/db-check');
     assert.equal(db.status, 200);
     assert.equal(db.body.ok, true);
+  });
+
+  it('envía cabeceras de seguridad y oculta el framework', async () => {
+    const response = await api().get('/api/health');
+    assert.equal(response.headers['x-content-type-options'], 'nosniff');
+    assert.equal(response.headers['x-frame-options'], 'DENY');
+    assert.equal(response.headers['referrer-policy'], 'no-referrer');
+    assert.match(response.headers['content-security-policy'], /default-src 'none'/);
+    assert.equal(response.headers['x-powered-by'], undefined);
   });
 
   it('devuelve 404 JSON para rutas desconocidas', async () => {

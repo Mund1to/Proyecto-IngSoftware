@@ -2,8 +2,8 @@
 // administrador, ya que el registro público solo otorga el rol USUARIO.
 //
 // Uso: npm run grant-role -- correo@dominio.com ADMINISTRADOR
-import { pool } from '../config/database.js';
-import { ASSIGNABLE_ROLES } from '../controllers/admin.controller.js';
+import { pool } from '../core/database/database.js';
+import { ASSIGNABLE_ROLES } from '../modules/admin/admin.domain.js';
 
 const [email, rawRole = 'ADMINISTRADOR'] = process.argv.slice(2);
 const role = String(rawRole).trim().toUpperCase();

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import jwt from 'jsonwebtoken';
-import { pool } from '../src/config/database.js';
-import { loginRateLimiter } from '../src/middleware/rateLimit.middleware.js';
+import { pool } from '../src/core/database/database.js';
+import { loginRateLimiter } from '../src/core/middleware/rateLimit.middleware.js';
 import {
   PASSWORD,
   api,

@@ -109,6 +109,7 @@ Toda migración nueva debe ser idempotente (`IF NOT EXISTS`, `UPDATE` con condic
 | `20261010_offer_type_formacion.sql` | Añade `FORMACION` al tipo de oferta (sin transacción explícita). |
 | `20261010_profile_details_files_resets.sql` | Tablas `perfil_educacion`, `perfil_experiencia`, `perfil_habilidades`, `archivos` y `password_resets`, y la columna `usuarios.token_version`. |
 | `20261011_backfill_profile_rows.sql` | Crea la fila de detalle (`perfiles_estudiante`, `perfiles_candidato`, `organizaciones`) que faltaba en perfiles antiguos. |
+| `20261017_verification_requests_documents.sql` | Tabla `documentos_verificacion` y columnas de solicitud en `verificaciones` (Fase 7). |
 
 ## Tablas de la Fase 6
 
@@ -123,3 +124,20 @@ Toda migración nueva debe ser idempotente (`IF NOT EXISTS`, `UPDATE` con condic
 `usuarios.token_version` se incluye en cada JWT; al cambiar o restablecer la contraseña se incrementa y las sesiones anteriores dejan de ser válidas.
 
 La modalidad de una oferta se valida en la API contra esos tres valores; las variantes (`remoto`, `hibrido`) se convierten al valor canónico.
+
+## Verificación documental (Fase 7)
+
+| Tabla o columna | Responsabilidad |
+| --- | --- |
+| `documentos_verificacion` | Documentos de soporte de la organización: `tipo` (`RUT`, `CAMARA_COMERCIO`, `CEDULA_REPRESENTANTE` u `OTRO`), nombre, MIME, tamaño y contenido en `BYTEA`. Se borran en cascada con la organización. |
+| `verificaciones.solicitado_por` | Usuario de la empresa que envió la solicitud. `NULL` indica una decisión directa de un revisor. |
+| `verificaciones.mensaje` | Nota de la empresa para el revisor. |
+| `verificaciones.documentos` | `JSONB` con los metadatos de los documentos enviados (`id`, `tipo`, `nombre`, `mime`, `tamano`), para conservar el historial. |
+| `verificaciones.revisado_at` | Fecha de la decisión. |
+
+Índices y restricciones:
+
+- `verificaciones_solicitud_pendiente_unica_idx` es un índice único parcial sobre `organizacion_id`, con la condición `estado = 'PENDIENTE' AND solicitado_por IS NOT NULL`. Permite una sola solicitud de empresa en revisión por organización.
+- `verificaciones_estado_fecha_idx` (`estado`, `created_at DESC`) sirve a la bandeja paginada del revisor.
+
+Las transacciones de este flujo bloquean primero la fila de `organizaciones` y después la de `verificaciones`, para evitar interbloqueos.

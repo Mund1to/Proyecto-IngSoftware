@@ -306,6 +306,22 @@ export default function App() {
       });
   }, [state.booting, state.token, logout]);
 
+  // El revisor ve en el menú cuántas solicitudes de verificación esperan decisión.
+  const [pendingVerifications, setPendingVerifications] = useState(0);
+  const refreshPendingVerifications = useCallback(() => {
+    if (!state.token || state.role !== "admin") {
+      setPendingVerifications(0);
+      return;
+    }
+    api.getVerificationSummary(state.token)
+      .then((response) => setPendingVerifications(Number(response.pendientes) || 0))
+      .catch((error) => console.error("getVerificationSummary failed:", error));
+  }, [state.token, state.role]);
+
+  useEffect(() => {
+    refreshPendingVerifications();
+  }, [refreshPendingVerifications]);
+
   // Las postulaciones del candidato alimentan las insignias y notificaciones.
   useEffect(() => {
     if (state.token && (state.role === "student" || state.role === "external")) {
@@ -427,8 +443,10 @@ export default function App() {
     currentUser: state.currentUser,
     applications: state.applications,
     jobApplications: state.jobApplications,
+    pendingVerifications,
+    refreshPendingVerifications,
     logout: () => logout(),
-  }), [state.role, state.currentUser, state.applications, state.jobApplications, logout]);
+  }), [state.role, state.currentUser, state.applications, state.jobApplications, pendingVerifications, refreshPendingVerifications, logout]);
 
   if (state.booting) {
     return (

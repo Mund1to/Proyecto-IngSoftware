@@ -3,6 +3,8 @@ import { mapApiApplications, mapUserToSession, resolveRole, toJobApplications } 
 import { api, ApiError, PRODUCTION_API_URL, request, resolveApiBaseUrl, SESSION_EXPIRED_EVENT } from "./api";
 import { validateFile } from "../components/ProfileFiles";
 import { daysUntil, formatDate, mapApplicationStatus, normalizeModality, offerTypeLabel } from "./offers";
+import { formatSize } from "./files";
+import { blockerLabel, documentTypeLabel, statusMeta, validateVerificationFile } from "./verification";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -163,5 +165,34 @@ describe("Fase 6", () => {
     expect(String(url)).toMatch(/\/profile\/files\/cv$/);
     expect(headers.get("Content-Type")).toBe("application/pdf");
     expect(headers.get("X-File-Name")).toBe(encodeURIComponent("hoja ñ.pdf"));
+  });
+});
+
+describe("verificación documental", () => {
+  const requirements = {
+    tipos: [{ tipo: "RUT" as const, etiqueta: "RUT del servidor", obligatorio: true }],
+    formatos: ["application/pdf", "image/png"],
+    maxBytes: 1024,
+    maxDocumentos: 10,
+    maxMensaje: 1000,
+  };
+
+  it("valida formato y tamaño con las reglas del servidor", () => {
+    expect(validateVerificationFile(new File(["x"], "a.txt", { type: "text/plain" }), requirements)).toBe("Selecciona un archivo PDF, PNG.");
+    expect(validateVerificationFile(new File([new Uint8Array(2048)], "a.pdf", { type: "application/pdf" }), requirements)).toContain("no puede superar");
+    expect(validateVerificationFile(new File(["%PDF"], "a.pdf", { type: "application/pdf" }), requirements)).toBeNull();
+  });
+
+  it("usa las etiquetas del servidor y cae en las locales", () => {
+    expect(documentTypeLabel("RUT", requirements)).toBe("RUT del servidor");
+    expect(documentTypeLabel("CAMARA_COMERCIO", requirements)).toBe("Certificado de Cámara de Comercio");
+    expect(blockerLabel("NIT")).toContain("NIT");
+    expect(statusMeta("PENDIENTE").label).toBe("En revisión");
+    expect(statusMeta(null).label).toBe("Sin solicitud");
+  });
+
+  it("formatea tamaños de archivo", () => {
+    expect(formatSize(10)).toBe("1 KB");
+    expect(formatSize(1.5 * 1024 * 1024)).toBe("1.5 MB");
   });
 });

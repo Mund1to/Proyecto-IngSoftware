@@ -24,7 +24,7 @@ const links: Record<Role, { label: string; screen: Screen }[]> = {
   ],
   admin: [
     { label: "Estadísticas", screen: "employment-stats" },
-    { label: "Verificación", screen: "company-verification" },
+    { label: "Solicitudes", screen: "company-verification" },
     { label: "Convocatorias", screen: "convocatorias" },
     { label: "Usuarios", screen: "admin-users" },
   ],
@@ -125,11 +125,22 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
           <UniversityLogo decorative />
         </button>
         <nav className={open ? "main-nav open" : "main-nav"} aria-label="Navegación principal">
-          {links[role].map((link) => (
-            <button key={link.screen} className={activeScreen === link.screen ? "active" : ""} aria-current={activeScreen === link.screen ? "page" : undefined} onClick={() => { navigate(link.screen); setOpen(false); }}>
-              {link.label}
-            </button>
-          ))}
+          {links[role].map((link) => {
+            // Solicitudes de verificación que esperan decisión del revisor.
+            const count = link.screen === "company-verification" ? session.pendingVerifications : 0;
+            return (
+              <button
+                key={link.screen}
+                className={activeScreen === link.screen ? "active" : ""}
+                aria-current={activeScreen === link.screen ? "page" : undefined}
+                aria-label={count > 0 ? `${link.label}, ${count} pendientes` : undefined}
+                onClick={() => { navigate(link.screen); setOpen(false); }}
+              >
+                {link.label}
+                {count > 0 && <span className="nav-count" aria-hidden="true">{count}</span>}
+              </button>
+            );
+          })}
           {/* En el celular el botón circular de salida se oculta; aquí queda accesible. */}
           <button className="nav-menu-logout" onClick={() => { setOpen(false); logout(); }}>
             <IconExit size={18} /> Cerrar sesión

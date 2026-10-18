@@ -1,15 +1,23 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { maxScoreOffer, offerAffinity, scoreOffer } from '../src/controllers/offers.controller.js';
-import { createRateLimiter } from '../src/middleware/rateLimit.middleware.js';
-import { normalizeModality } from '../src/utils/offers.js';
+import { maxScoreOffer, offerAffinity, scoreOffer } from '../src/modules/offers/offers.scoring.js';
+import { cleanFileName, hasValidSignature, normalizeMime } from '../src/core/http/files.js';
+import { parsePagination } from '../src/core/http/pagination.js';
+import { createRateLimiter } from '../src/core/middleware/rateLimit.middleware.js';
+import {
+  documentsLocked,
+  normalizeDocumentType,
+  organizationStatus,
+  submissionBlockers,
+} from '../src/modules/verifications/verifications.rules.js';
+import { normalizeModality } from '../src/modules/offers/offers.domain.js';
 import {
   getBodyValue,
   hasBodyValue,
   normalizeNumber,
   normalizeStringList,
   toNullableString,
-} from '../src/utils/payload.js';
+} from '../src/core/http/payload.js';
 
 describe('utilidades de payload', () => {
   it('getBodyValue toma la primera clave presente y no nula', () => {
@@ -125,5 +133,64 @@ describe('createRateLimiter', () => {
     limiter.reset();
     limiter({}, response, next);
     assert.equal(passed, 3);
+  });
+});
+
+describe('validación de archivos', () => {
+  const PDF = Buffer.from('%PDF-1.7\n');
+  const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+
+  it('normalizeMime quita parámetros y mayúsculas', () => {
+    assert.equal(normalizeMime('Application/PDF; charset=binary'), 'application/pdf');
+    assert.equal(normalizeMime(undefined), '');
+  });
+
+  it('hasValidSignature exige un tipo permitido y la firma real del contenido', () => {
+    assert.equal(hasValidSignature('application/pdf', PDF, ['application/pdf']), true);
+    assert.equal(hasValidSignature('application/pdf', PNG, ['application/pdf']), false);
+    assert.equal(hasValidSignature('image/png', PNG, ['application/pdf']), false);
+    assert.equal(hasValidSignature('text/plain', PDF, ['text/plain']), false);
+  });
+
+  it('cleanFileName decodifica, limita y quita caracteres peligrosos', () => {
+    assert.equal(cleanFileName(encodeURIComponent('RUT 2026.pdf'), 'x.pdf'), 'RUT 2026.pdf');
+    assert.equal(cleanFileName(encodeURIComponent('../a"b\r\n.pdf'), 'x.pdf'), '.._a_b__.pdf');
+    assert.equal(cleanFileName('%E0%A4%A', 'x.pdf'), 'x.pdf');
+    assert.equal(cleanFileName('', 'x.pdf'), 'x.pdf');
+    assert.equal(cleanFileName('a'.repeat(300), 'x.pdf').length, 200);
+  });
+});
+
+describe('paginación', () => {
+  it('usa valores por defecto, acota el límite y calcula el desplazamiento', () => {
+    assert.deepEqual(parsePagination({}), { page: 1, limit: 20, offset: 0 });
+    assert.deepEqual(parsePagination({ page: '3', limit: '10' }), { page: 3, limit: 10, offset: 20 });
+    assert.deepEqual(parsePagination({ page: '0', limit: '999' }), { page: 1, limit: 50, offset: 0 });
+    assert.deepEqual(parsePagination({ page: 'x', limit: '2.5' }), { page: 1, limit: 20, offset: 0 });
+    assert.equal(parsePagination({ page: '1e300' }).page, 100000);
+  });
+});
+
+describe('reglas de verificación documental', () => {
+  it('normaliza el tipo de documento y rechaza los desconocidos', () => {
+    assert.equal(normalizeDocumentType(' camara_comercio '), 'CAMARA_COMERCIO');
+    assert.equal(normalizeDocumentType('PASAPORTE'), null);
+    assert.equal(normalizeDocumentType(undefined), null);
+    assert.equal(normalizeDocumentType('constructor'), null);
+  });
+
+  it('lista lo que falta para enviar la solicitud', () => {
+    assert.deepEqual(submissionBlockers({ identificacionFiscal: '', documents: [] }), ['NIT', 'RUT', 'CAMARA_COMERCIO']);
+    assert.deepEqual(submissionBlockers({ identificacionFiscal: '900', documents: [{ tipo: 'RUT' }, { tipo: 'OTRO' }] }), ['CAMARA_COMERCIO']);
+    assert.deepEqual(submissionBlockers({ identificacionFiscal: '900', documents: [{ tipo: 'CAMARA_COMERCIO' }, { tipo: 'RUT' }] }), []);
+  });
+
+  it('bloquea documentos en revisión o aprobados y resuelve el estado visible', () => {
+    assert.equal(documentsLocked({ verified: false, hasPendingRequest: false }), false);
+    assert.equal(documentsLocked({ verified: false, hasPendingRequest: true }), true);
+    assert.equal(documentsLocked({ verified: true, hasPendingRequest: false }), true);
+    assert.equal(organizationStatus({ verified: false, latestRequest: null }), 'SIN_SOLICITUD');
+    assert.equal(organizationStatus({ verified: false, latestRequest: { estado: 'RECHAZADA' } }), 'RECHAZADA');
+    assert.equal(organizationStatus({ verified: true, latestRequest: { estado: 'RECHAZADA' } }), 'APROBADA');
   });
 });

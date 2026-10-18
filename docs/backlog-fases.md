@@ -104,6 +104,20 @@ El detalle está en [`informe-fase-5-calidad.md`](informe-fase-5-calidad.md).
 
 El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-archivos.md).
 
+## Fase 7 — Verificación documental de organizaciones
+
+**Objetivo:** que la verificación de una empresa se base en documentos y no solo en sus datos declarados.
+
+- La empresa adjunta el RUT, el certificado de Cámara de Comercio y otros soportes desde Mi empresa. ✅ Completada
+- La empresa envía, retira y vuelve a enviar su solicitud, y ve el motivo de un rechazo. ✅ Completada
+- El administrador o funcionario revisa una bandeja de solicitudes con sus documentos y decide con un motivo. ✅ Completada
+- Avisos por correo a los revisores y a la empresa. ✅ Completada
+- Cabeceras de seguridad, cierre ordenado del servidor e integración continua. ✅ Completada
+
+**Criterio de salida:** una empresa obtiene el sello de verificada solo después de que un revisor apruebe sus documentos, y si la rechazan sabe qué corregir.
+
+El detalle está en [`informe-fase-7-verificacion-documental.md`](informe-fase-7-verificacion-documental.md).
+
 ## Orden recomendado
 
 ```text
@@ -131,7 +145,12 @@ El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-
 
 ### Futura
 
-- (Sin historias pendientes: el backlog queda completo.)
+Propuestas del informe de la Fase 7, sin historia asignada todavía:
+
+- Almacenamiento de objetos para los archivos y análisis antivirus de los documentos.
+- Validación del dígito de verificación del NIT y consulta del RUES.
+- Vigencia anual de la verificación y borrado de los documentos rechazados según la Ley 1581.
+- `react-router`, notificaciones dentro de la aplicación para la empresa y paginación en los listados administrativos.
 
 ## Roles del sistema
 
@@ -151,7 +170,8 @@ El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-
 - `Oferta`
 - `Postulación`
 - `Convocatoria`
-- `Verificación`
+- `Verificación` (también es la solicitud de la empresa)
+- `DocumentoVerificación`
 
 ## Reglas de diseño
 

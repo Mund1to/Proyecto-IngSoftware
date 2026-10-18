@@ -20,14 +20,17 @@ El backlog y los criterios de salida están en [`backlog-fases.md`](backlog-fase
 
 ```text
 .
+├── .github/workflows/       # Integración continua (ci.yml)
 ├── backend/                 # API Express y esquema PostgreSQL
-│   ├── database/schema.sql  # Modelo relacional inicial
-│   ├── src/controllers/     # Lógica de endpoints
-│   ├── src/routes/          # Rutas HTTP
+│   ├── database/            # schema.sql y migrations/
+│   ├── src/core/            # Configuración, base de datos, HTTP, correo y middleware compartidos
+│   ├── src/modules/         # Un módulo por funcionalidad (routes → controller → service → repository)
+│   ├── tests/               # Pruebas de la API (node:test + supertest)
 │   └── README.md            # Guía específica del backend
 ├── frontend/                # React + Vite + TypeScript + Tailwind
 │   ├── src/components/      # Componentes reutilizables
-│   ├── src/screens/         # Pantallas del prototipo
+│   ├── src/screens/         # Pantallas por rol
+│   ├── src/lib/             # Cliente de API, sesión y utilidades
 │   └── README.md            # Guía específica del frontend
 ├── docs/                    # Documentación vigente del proyecto
 ├── Proyecto-Archivos/       # Material histórico entregado
@@ -454,7 +457,7 @@ Las prácticas son solo para estudiantes de la universidad. El candidato externo
 - **Backend:**
   - `GET /api/offers/recommended` no devuelve prácticas al candidato externo.
   - `POST /api/applications/offers/:offerId` responde `403` si un externo intenta postularse a una práctica.
-  - Los tipos permitidos están en `EXTERNAL_OFFER_TYPES` (`backend/src/utils/offers.js`).
+  - Los tipos permitidos están en `EXTERNAL_OFFER_TYPES`. Hoy está en `backend/src/modules/offers/offers.domain.js`; antes de la sección 19 estaba en `backend/src/utils/offers.js`.
 - **Frontend:**
   - La bolsa externa filtra con `isExternalOfferType` (`frontend/src/lib/offers.ts`).
   - El formulario de la empresa muestra, bajo "Tipo de oferta", para quién es visible cada tipo.
@@ -462,6 +465,54 @@ Las prácticas son solo para estudiantes de la universidad. El candidato externo
 
 El avance, las decisiones y la verificación están en [`diseno/informe-rediseno-vivo.md`](diseno/informe-rediseno-vivo.md).
 
-## 19. Regla para mantener la documentación
+## 19. Arquitectura modular del backend (11 de octubre de 2026)
 
-Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y `backend/database/schema.sql`. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.
+Rama: `refactor/arquitectura-modular`. Es una reorganización sin cambios de comportamiento: las 102 pruebas pasaron igual en cada commit.
+
+1. **Mover el código** (`c502efc`). El código pasa a `src/core/` (config, database, http, mail y middleware) y a `src/modules/<funcionalidad>/`. Se usó `git mv`, así que el historial de cada archivo se conserva.
+2. **Separar cada módulo en capas** (`701f6eb` a `392b686`). Cada módulo tiene `routes → controller → service → repository`:
+   - `HttpError` y `asyncHandler` (`core/http/errors.js`) reemplazan los `try/catch` repetidos;
+   - `withTransaction` (`core/database/database.js`) reemplaza los `BEGIN`/`COMMIT`/`ROLLBACK` manuales;
+   - solo los `*.repository.js` contienen SQL;
+   - las funciones puras van en archivos propios (`offers.scoring.js`, `offers.validation.js`, `admin.domain.js`).
+3. **Documentar** (`85eb3af`). Las reglas de las capas están en [`backend/README.md`](../backend/README.md).
+
+## 20. Fase 7 — Verificación documental de organizaciones (17 de octubre de 2026)
+
+Rama: `feature/verificacion-documental`, creada sobre `refactor/arquitectura-modular`.
+
+- **Empresa:**
+  - en **Mi empresa**, sube el RUT, el certificado de Cámara de Comercio y otros documentos (PDF, PNG o JPG de hasta 5 MB);
+  - envía la solicitud con un mensaje opcional y puede retirarla mientras está pendiente;
+  - si la rechazan, ve el motivo, corrige y envía de nuevo.
+- **Administrador y funcionario:**
+  - la pantalla **Solicitudes** (antes "Verificación") tiene las pestañas Pendientes, Historial y Organizaciones;
+  - en cada solicitud abre los documentos y aprueba, o rechaza con un motivo obligatorio;
+  - el menú muestra cuántas solicitudes están pendientes.
+- **Correos:** avisan a los revisores de cada solicitud nueva y a la empresa de cada decisión.
+- **Base de datos:** la migración `20261017_verification_requests_documents.sql` crea la tabla `documentos_verificacion` y añade a `verificaciones` las columnas `solicitado_por`, `mensaje`, `documentos` y `revisado_at`, más un índice único parcial que permite una sola solicitud pendiente por organización.
+- **Mejoras transversales:**
+  - validación de archivos compartida (`core/http/files.js`);
+  - paginación (`core/http/pagination.js`);
+  - cabeceras de seguridad;
+  - cierre ordenado con `SIGTERM`;
+  - integración continua en GitHub Actions (`.github/workflows/ci.yml`).
+- **Pruebas:** 123 en el backend (21 nuevas) y 53 en el frontend (8 nuevas). Además se probó el servidor real sobre una base desechable.
+
+Commits de la fase, en orden:
+
+| Commit | Contenido |
+| --- | --- |
+| `974d559` | Refactor: validación de archivos y `escapeHtml` compartidos. |
+| `cd8cd82` | Migración de documentos y solicitudes. |
+| `eb5ede6` | API de la empresa y de la revisión, con pruebas. |
+| `aed59c3` | Sección de verificación en Mi empresa. |
+| `ef6c250` | Bandeja de solicitudes para el revisor. |
+| `6acf777` | Cabeceras de seguridad y cierre ordenado. |
+| `fb9e8f3` | Integración continua. |
+
+El detalle, las decisiones técnicas y las sugerencias para las siguientes fases están en [`informe-fase-7-verificacion-documental.md`](informe-fase-7-verificacion-documental.md).
+
+## 21. Regla para mantener la documentación
+
+Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y añada una migración idempotente en `backend/database/migrations/`. Desde la Fase 5, `backend/database/schema.sql` es solo el esquema inicial. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AppState, Screen } from "../App";
 import ChangePasswordCard from "../components/ChangePasswordCard";
 import NavBar from "../components/NavBar";
+import OrganizationVerificationPanel from "../components/OrganizationVerificationPanel";
 import { ProfileAvatar, findFile } from "../components/ProfileFiles";
 
 type Props = {
@@ -76,10 +77,15 @@ export default function CompanyProfile({ state, navigate, updateOrganizationProf
           </div>
         </div>
 
-        <div className={`rounded-[20px] border p-4 mb-6 text-sm ${verified ? "bg-[#eaf7f0] border-[#b7e4c7] text-[var(--success)]" : "bg-[#fff4df] border-[#f5d9a8] text-[var(--warning)]"}`} role="status">
-          {verified
-            ? "✓ Organización verificada. Tus ofertas muestran el sello de verificación."
-            : "Tu organización aún no está verificada. Completa la identificación fiscal y el sitio web para facilitar la revisión por parte del equipo de SIPU."}
+        <div className={`rounded-[20px] border p-4 mb-6 text-sm flex flex-wrap items-center justify-between gap-3 ${verified ? "bg-[#eaf7f0] border-[#b7e4c7] text-[var(--success)]" : "bg-[#fff4df] border-[#f5d9a8] text-[var(--warning)]"}`} role="status">
+          <span>
+            {verified
+              ? "✓ Organización verificada. Tus ofertas muestran el sello de verificación."
+              : "Tu organización aún no está verificada. Registra el NIT, adjunta el RUT y el certificado de Cámara de Comercio y envía la solicitud."}
+          </span>
+          {!verified && (
+            <a href="#verificacion" className="text-button">Ir a la verificación</a>
+          )}
         </div>
 
         <form onSubmit={save} className="bg-white rounded-[24px] border border-[#d3e0f5] shadow-sm p-7" noValidate>
@@ -120,6 +126,8 @@ export default function CompanyProfile({ state, navigate, updateOrganizationProf
             </button>
           </div>
         </form>
+
+        <OrganizationVerificationPanel token={state.token} nit={user?.identificacionFiscal} />
 
         <ChangePasswordCard onChange={changePassword} />
       </div>

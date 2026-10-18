@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type FileKind, type StoredFile } from "../lib/api";
+import { formatSize } from "../lib/files";
 import { IconFile, IconImage } from "./icons";
 
 // Subida de hoja de vida (PDF) y foto del perfil, guardadas en el servidor.
@@ -15,8 +16,6 @@ export function validateFile(kind: FileKind, file: File): string | null {
   if (file.size > rule.maxMb * 1024 * 1024) return `El archivo no puede superar ${rule.maxMb} MB.`;
   return null;
 }
-
-const formatSize = (bytes: number) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
 type CardProps = {
   token: string | null;

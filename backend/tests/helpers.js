@@ -1,9 +1,9 @@
 import pg from 'pg';
 import request from 'supertest';
 import { app } from '../src/app.js';
-import { pool } from '../src/config/database.js';
-import { initializeDatabaseSchema } from '../src/config/migrate.js';
-import { loginRateLimiter } from '../src/middleware/rateLimit.middleware.js';
+import { pool } from '../src/core/database/database.js';
+import { initializeDatabaseSchema } from '../src/core/database/migrate.js';
+import { loginRateLimiter } from '../src/core/middleware/rateLimit.middleware.js';
 
 export const api = () => request(app);
 

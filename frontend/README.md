@@ -64,15 +64,17 @@ npm run preview
 | Estudiante | Perfil `ESTUDIANTE` | Ofertas, Mis postulaciones, Mi perfil |
 | Empresa | Perfil `ORGANIZACION` | Ofertas, Postulantes, Mi empresa |
 | Profesional | Perfil `CANDIDATO_EXTERNO` | Ofertas, Mis postulaciones, Mi perfil |
-| Administración | Rol `ADMINISTRADOR` o `FUNCIONARIO_PUBLICO` | Estadísticas, Verificación, Convocatorias, Usuarios |
+| Administración | Rol `ADMINISTRADOR` o `FUNCIONARIO_PUBLICO` | Estadísticas, Solicitudes (con el número de pendientes), Convocatorias, Usuarios |
+
+La empresa solicita la verificación desde **Mi empresa** (`OrganizationVerificationPanel`): adjunta sus documentos y envía la solicitud. El revisor la atiende en **Solicitudes** (`CompanyVerification`), con las pestañas Pendientes, Historial y Organizaciones.
 
 ## Estructura relevante
 
 ```text
 src/
-├── components/  # Componentes reutilizables (NavBar, ChangePasswordCard, ProfileSections, ProfileFiles, UniversityLogo, ArdyMark)
-├── screens/     # Pantallas por rol (auth, estudiante, empresa, externo)
-├── lib/         # Cliente de API (api.ts), sesión (session.tsx) y helpers (offers.ts, useStoredList.ts)
+├── components/  # Componentes reutilizables (NavBar, ChangePasswordCard, ProfileSections, ProfileFiles, OrganizationVerificationPanel, VerificationDecisionModal, UniversityLogo, ArdyMark)
+├── screens/     # Pantallas por rol (auth, estudiante, empresa, externo, administración)
+├── lib/         # Cliente de API (api.ts), sesión (session.tsx) y helpers (offers.ts, verification.ts, files.ts, useStoredList.ts)
 ├── imports/     # Recursos gráficos
 ├── App.tsx      # Sesión, navegación por rol y ErrorBoundary
 ├── index.css    # Sistema de estilos global

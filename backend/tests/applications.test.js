@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { pool } from '../src/config/database.js';
+import { pool } from '../src/core/database/database.js';
 import { api, auth, closeDatabase, createOffer, registerUser, resetDatabase } from './helpers.js';
 
 before(resetDatabase);

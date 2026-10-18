@@ -11,6 +11,7 @@ Esta carpeta contiene la documentación funcional, técnica y de proceso del pro
 - [`informe-cierre-fase-4.md`](informe-cierre-fase-4.md): cierre de la Fase 4 con convocatorias públicas y estadísticas de empleo.
 - [`informe-fase-5-calidad.md`](informe-fase-5-calidad.md): auditoría, corrección del inicio de sesión en Vercel, botones sin función, seguridad y pruebas automatizadas.
 - [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-archivos.md): hoja de vida en base de datos, CV y foto, recuperación de contraseña y ofertas de formación.
+- [`informe-fase-7-verificacion-documental.md`](informe-fase-7-verificacion-documental.md): documentos y solicitudes de verificación de empresas, bandeja del revisor, mejoras de seguridad, integración continua y sugerencias.
 - [`diseno/brief-claude-design.md`](diseno/brief-claude-design.md): brief de diseño de todas las pantallas para Claude Design.
 - [`diseno/prompt-implementacion-vivo.md`](diseno/prompt-implementacion-vivo.md) y [`diseno/referencia-vivo/`](diseno/referencia-vivo/): plan por fases y maquetas del rediseño "vivo".
 - [`diseno/informe-rediseno-vivo.md`](diseno/informe-rediseno-vivo.md): avance, decisiones y verificación del rediseño "vivo".
