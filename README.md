@@ -26,7 +26,7 @@ La verificación real devolvió respuestas `ok: true` y confirmación de creaci�
 ├── backend/              # API Express y esquema PostgreSQL
 ├── docs/                 # Documentación técnica y de producto vigente
 ├── Proyecto-Archivos/    # Materiales y entregables de referencia
-└── .env.example          # Variables de entorno de ejemplo para la API
+└── .gitattributes        # Finales de línea LF en todos los sistemas
 ```
 
 ## Requisitos
@@ -43,7 +43,7 @@ Abra dos terminales desde la raíz del repositorio.
 
 ```bash
 cd backend
-copy ..\\.env.example .env
+copy .env.example .env
 npm install
 npm run dev
 ```

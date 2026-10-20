@@ -15,13 +15,13 @@ Expone autenticación JWT, perfiles, ofertas, postulaciones, verificación de or
 Desde la carpeta `backend`, copie las variables de ejemplo a un archivo local `.env` y ajuste sus valores:
 
 ```bash
-copy ..\\.env.example .env
+copy .env.example .env
 ```
 
 En PowerShell también puede utilizar:
 
 ```powershell
-Copy-Item ..\\.env.example .env
+Copy-Item .env.example .env
 ```
 
 Variables disponibles:
