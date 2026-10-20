@@ -39,6 +39,8 @@ const brokenOffer = {
 
 beforeEach(() => {
   localStorage.clear();
+  // La app lee el # de la URL al iniciar sesión; cada prueba empieza sin él.
+  window.history.replaceState(null, "", "/");
 });
 
 afterEach(() => {
