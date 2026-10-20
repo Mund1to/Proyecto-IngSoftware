@@ -1,12 +1,9 @@
 // Reglas de negocio de postulaciones. No conoce Express ni SQL.
 import { badRequest, conflict, forbidden, notFound } from '../../core/http/errors.js';
 import { EXTERNAL_OFFER_TYPES } from '../offers/offers.domain.js';
+import { COMPANY_STATUSES, RESOLVED_STATUSES } from './applications.domain.js';
 import { getOrganizationProfileId } from '../profile/profile.repository.js';
 import * as applicationsRepository from './applications.repository.js';
-
-// Estados que puede asignar la organización. RETIRADA solo la aplica el candidato.
-const COMPANY_STATUSES = ['ENVIADA', 'EN_REVISION', 'PRESELECCIONADA', 'RECHAZADA', 'ACEPTADA'];
-const RESOLVED_STATUSES = ['ACEPTADA', 'RECHAZADA', 'RETIRADA'];
 
 const DUPLICATE_MESSAGE = 'Ya existe una postulación para esta oferta.';
 

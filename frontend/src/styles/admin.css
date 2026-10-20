@@ -1,0 +1,28 @@
+/* Gestión de usuarios. */
+
+/* Usuarios: solicitud de cambio de contraseña y ventana para asignarla. */
+.reset-request { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 0; padding: 4px 10px; border-radius: 99px; color: var(--warning); background: #fff4df; font-size: 12px; font-weight: 700; }
+.modal .field { display: block; margin: 14px 0 0; }
+.password-modal-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.password-modal-show { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; color: var(--muted); font-size: 14px; }
+.password-modal-show input { width: 18px; height: 18px; accent-color: var(--primary); }
+.modal .modal-actions { margin-top: 20px; }
+.modal .form-error { margin: 14px 0 0; }
+.success-icon svg { display: block; }
+@media (max-width: 900px) {
+  .detail-aside { order: -1; max-width: none; flex-basis: 100%; }
+}
+@media (max-width: 767px) {
+  .detail-vivo { padding-top: 12px; }
+  .detail-hero { gap: 18px; padding: 22px 18px; border-radius: 22px; }
+  .detail-mark { width: 64px; height: 64px; border-radius: 18px; font-size: 22px; }
+  .affinity-ring-wrap { width: 100%; }
+  .detail-panel { padding: 20px; }
+  .apply-panel-salary { font-size: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .back-link-icon, .detail-panel, .apply-panel-cta, .apply-panel-cta svg, .apply-panel-ghost { transition: none; }
+  .apply-panel-cta:not(:disabled):hover, .apply-panel-cta:not(:disabled):hover svg { transform: none; }
+  .back-link-icon, .back-link:hover .back-link-icon { transform: rotate(180deg); }
+  .ardy-tip-track > div { animation: none; }
+}

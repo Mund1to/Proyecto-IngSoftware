@@ -3,8 +3,8 @@
 Pega este documento en Claude Design. Adjunta también estas imágenes del repositorio:
 
 - `frontend/src/imports/sipu-logo.png`: logo de SIPU.
-- `frontend/src/imports/ardy.png`: Ardy, la ardilla mascota institucional.
-- `frontend/src/imports/image.png` y `image-1.png`: logo de la Universidad de Ibagué.
+- `docs/diseno/recursos/ardy-original.png`: Ardy, la ardilla mascota institucional.
+- `docs/diseno/recursos/logo-unibague.png` y `logo-unibague-alterno.png`: logo de la Universidad de Ibagué.
 
 ---
 

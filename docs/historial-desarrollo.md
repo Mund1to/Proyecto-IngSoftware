@@ -28,9 +28,10 @@ El backlog y los criterios de salida están en [`backlog-fases.md`](backlog-fase
 │   ├── tests/               # Pruebas de la API (node:test + supertest)
 │   └── README.md            # Guía específica del backend
 ├── frontend/                # React + Vite + TypeScript + Tailwind
-│   ├── src/components/      # Componentes reutilizables
-│   ├── src/screens/         # Pantallas por rol
-│   ├── src/lib/             # Cliente de API, sesión y utilidades
+│   ├── src/app/             # Armazón: estado global, tabla de pantallas, sesión y menú
+│   ├── src/features/        # Una carpeta por funcionalidad (pantallas, <x>.api.ts, <x>.model.ts)
+│   ├── src/shared/          # Cliente HTTP, componentes visuales, utilidades e imágenes
+│   ├── src/styles/          # Estilos por sección
 │   └── README.md            # Guía específica del frontend
 ├── docs/                    # Documentación vigente del proyecto
 ├── Proyecto-Archivos/       # Material histórico entregado
@@ -98,13 +99,13 @@ La guía detallada está en [`../backend/README.md`](../backend/README.md).
 
 ## 6. Variables de entorno
 
-El archivo raíz `.env.example` contiene valores de referencia para `PORT` y `DATABASE_URL`. Cada desarrollador debe crear sus archivos locales `.env`; nunca se deben subir contraseñas, tokens ni cadenas de conexión reales.
+`backend/.env.example` contiene los valores de referencia de la API y `frontend/.env.example` la URL de la API para el frontend (hasta octubre de 2026 el de la API estaba en la raíz). Cada desarrollador debe crear sus archivos locales `.env`; nunca se deben subir contraseñas, tokens ni cadenas de conexión reales.
 
 Ejemplo para el backend:
 
 ```powershell
 cd backend
-Copy-Item ..\.env.example .env
+Copy-Item .env.example .env
 ```
 
 ## 7. Diseño de PostgreSQL
@@ -513,6 +514,48 @@ Commits de la fase, en orden:
 
 El detalle, las decisiones técnicas y las sugerencias para las siguientes fases están en [`informe-fase-7-verificacion-documental.md`](informe-fase-7-verificacion-documental.md).
 
-## 21. Regla para mantener la documentación
+## 21. Revisión de redundancias y estructura escalable (19 de octubre de 2026)
+
+Rama: `refactor/estructura-escalable`, creada desde `main` (`a1ac4f0`).
+
+- **Frontend por funcionalidades:**
+  - `src/` pasa a `app/` (armazón), `features/` (una carpeta por funcionalidad, con los mismos nombres que los módulos del backend), `shared/` (reutilizable), `styles/` y `test/`;
+  - la API se divide en un `<x>.api.ts` por funcionalidad;
+  - los tipos y convertidores salen de `App.tsx` a `app/types.ts`, `app/session.tsx` y los `<x>.model.ts`;
+  - el `switch` de pantallas pasa a una tabla tipada (`app/routes.tsx`).
+- **Redundancias eliminadas:**
+  - archivos sin uso;
+  - la lista duplicada de postulaciones (`JobApplication`, `jobApplications`, `applyToJob`);
+  - las copias de `toUiOffer` y `mapOfferToJob` dentro de las pantallas;
+  - las tres copias de la regla de contraseña;
+  - la capa de compatibilidad del CSS.
+- **Reglas comprobadas por pruebas:**
+  - `test/architecture.test.ts`: dependencias entre capas;
+  - `test/contracts.test.ts`: constantes que comparten frontend y backend;
+  - `noUnusedLocals` y `noUnusedParameters` en `tsconfig.json`.
+- **Backend:** `core/security/password.js` aplica la misma regla de contraseña en registro, recuperación, perfil y administración. Antes, solo la asignación por el administrador exigía mayúscula y número.
+- **Configuración:**
+  - `.gitignore` y `.gitattributes` (LF) en la raíz;
+  - `.env.example` pasa a `backend/`.
+- **Pruebas:** 124 en el backend y 62 en el frontend. La prueba integral con navegador entre los cinco roles pasó 27 de 27.
+
+| Commit | Contenido |
+| --- | --- |
+| `1d863f3` | Archivos sin uso y recursos de diseño a `docs/diseno/recursos/`. |
+| `8e5bc7c` | Frontend en `app/`, `shared/` y `features/`. |
+| `40e1933` | API dividida por funcionalidad. |
+| `c30eed3` | `App` dividido; modelos por funcionalidad; prueba de arquitectura. |
+| `877574f` | Una sola lista de postulaciones. |
+| `6433b4e` | `.gitattributes`. |
+| `7fadf1c` | Regla de contraseña única en el backend. |
+| `36c7936` | Prueba de contrato y regla compartida en el frontend. |
+| `b1c9519` | Fuera la capa de compatibilidad del CSS. |
+| `7992f9e` | Estilos por sección. |
+| `208a3ad` | `.env.example` en `backend/`. |
+| `0097e3c` | `ScreenProps`. |
+
+La guía de la estructura y de cómo cambiar de tecnología está en [`arquitectura.md`](arquitectura.md). El diagnóstico y los pendientes están en [`informe-estructura-escalable.md`](informe-estructura-escalable.md).
+
+## 22. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y añada una migración idempotente en `backend/database/migrations/`. Desde la Fase 5, `backend/database/schema.sql` es solo el esquema inicial. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.

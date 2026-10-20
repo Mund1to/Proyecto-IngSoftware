@@ -1,0 +1,16 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+/* Estilos de la app por sección. El orden importa: cada archivo puede
+   sobrescribir a los anteriores, y responsive.css va al final. */
+@import "./base.css";
+@import "./auth.css";
+@import "./navigation.css";
+@import "./offers.css";
+@import "./vivo.css";
+@import "./catalog.css";
+@import "./offer-detail.css";
+@import "./admin.css";
+@import "./company.css";
+@import "./stats.css";
+@import "./responsive.css";

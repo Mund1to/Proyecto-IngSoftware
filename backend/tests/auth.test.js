@@ -42,11 +42,13 @@ describe('registro', () => {
     assert.equal(response.status, 409);
   });
 
-  it('valida campos obligatorios, formato de email, longitud de contraseña y tipo', async () => {
+  it('valida campos obligatorios, formato de email, regla de contraseña y tipo', async () => {
     const cases = [
       { email: 'a@b.co', password: PASSWORD },
       { email: 'no-es-email', password: PASSWORD, nombreCompleto: 'X' },
       { email: 'c@d.co', password: 'corta', nombreCompleto: 'X' },
+      { email: 'g@h.co', password: 'sinmayuscula1', nombreCompleto: 'X' },
+      { email: 'i@j.co', password: 'SinNumeroAqui', nombreCompleto: 'X' },
       { email: 'e@f.co', password: PASSWORD, nombreCompleto: 'X', profileType: 'ADMINISTRADOR' },
     ];
 

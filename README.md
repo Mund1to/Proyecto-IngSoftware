@@ -4,7 +4,7 @@ SIPU (Sistema de Intermediación de Prácticas Universitarias) es una plataforma
 
 ## Estado del proyecto
 
-La **Fase 0 — Base técnica** está preparada: el monorepo incluye un frontend React/Vite, una API Express, documentación de ejecución local y un esquema inicial de PostgreSQL. La **Fase 1** queda cerrada y verificada con autenticación real, gestión de ofertas y flujo de postulaciones para estudiantes y empresas. La **Fase 2** se inicia con la preparación del perfil de candidato externo y la conexión de sus datos al backend. La **Fase 3** queda completa con la bolsa de empleo general: ofertas de empleo, verificación de organizaciones y recomendación de ofertas según perfil. La **Fase 4** añade convocatorias públicas y estadísticas de empleo. La **Fase 5 — Calidad** corrige el fallo de carga tras iniciar sesión en Vercel, da función a los botones pendientes, endurece la seguridad de la API y añade pruebas automatizadas. La **Fase 6** guarda la hoja de vida en la base de datos, permite subir CV y foto, recuperar la contraseña por correo y publicar ofertas de formación. La **Fase 7** añade la verificación documental de empresas: la empresa adjunta su RUT y su certificado de Cámara de Comercio y envía una solicitud, y el administrador la revisa en una bandeja de solicitudes. También añade cabeceras de seguridad, el cierre ordenado del servidor e integración continua (123 pruebas en el backend y 54 en el frontend).
+La **Fase 0 — Base técnica** está preparada: el monorepo incluye un frontend React/Vite, una API Express, documentación de ejecución local y un esquema inicial de PostgreSQL. La **Fase 1** queda cerrada y verificada con autenticación real, gestión de ofertas y flujo de postulaciones para estudiantes y empresas. La **Fase 2** se inicia con la preparación del perfil de candidato externo y la conexión de sus datos al backend. La **Fase 3** queda completa con la bolsa de empleo general: ofertas de empleo, verificación de organizaciones y recomendación de ofertas según perfil. La **Fase 4** añade convocatorias públicas y estadísticas de empleo. La **Fase 5 — Calidad** corrige el fallo de carga tras iniciar sesión en Vercel, da función a los botones pendientes, endurece la seguridad de la API y añade pruebas automatizadas. La **Fase 6** guarda la hoja de vida en la base de datos, permite subir CV y foto, recuperar la contraseña por correo y publicar ofertas de formación. La **Fase 7** añade la verificación documental de empresas: la empresa adjunta su RUT y su certificado de Cámara de Comercio y envía una solicitud, y el administrador la revisa en una bandeja de solicitudes. También añade cabeceras de seguridad, el cierre ordenado del servidor e integración continua. Después, la revisión de estructura organiza el frontend por funcionalidades, con los mismos nombres que los módulos del backend, y agrega pruebas que vigilan las dependencias entre capas y las constantes que comparten frontend y backend (124 pruebas en el backend y 62 en el frontend). La guía está en [`docs/arquitectura.md`](docs/arquitectura.md).
 
 ## Verificación de cierre de la Fase 1
 
@@ -26,7 +26,7 @@ La verificación real devolvió respuestas `ok: true` y confirmación de creaci�
 ├── backend/              # API Express y esquema PostgreSQL
 ├── docs/                 # Documentación técnica y de producto vigente
 ├── Proyecto-Archivos/    # Materiales y entregables de referencia
-└── .env.example          # Variables de entorno de ejemplo para la API
+└── .gitattributes        # Finales de línea LF en todos los sistemas
 ```
 
 ## Requisitos
@@ -43,7 +43,7 @@ Abra dos terminales desde la raíz del repositorio.
 
 ```bash
 cd backend
-copy ..\\.env.example .env
+copy .env.example .env
 npm install
 npm run dev
 ```
@@ -67,7 +67,7 @@ cd backend
 npm test        # API contra una base PostgreSQL aislada <base>_test
 
 cd ../frontend
-npm test        # Vitest + Testing Library
+npm test        # Vitest + Testing Library, incluidas las pruebas de arquitectura y de contrato
 ```
 
 Las pruebas del backend crean y borran una base cuyo nombre termina en `_test`; nunca tocan la base de desarrollo. GitHub Actions (`.github/workflows/ci.yml`) ejecuta estas pruebas, el typecheck y el build en cada push a `main` o `develop` y en cada pull request.
@@ -97,6 +97,7 @@ Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y l
 
 ## Documentación
 
+- [`docs/arquitectura.md`](docs/arquitectura.md): estructura, reglas entre capas y qué tocar para cambiar de tecnología.
 - [`frontend/README.md`](frontend/README.md): comandos y estructura del cliente web.
 - [`backend/README.md`](backend/README.md): ejecución de la API y endpoint de salud.
 - [`docs/historial-desarrollo.md`](docs/historial-desarrollo.md): guía paso a paso de lo realizado y cómo continuar.
@@ -106,6 +107,7 @@ Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y l
 - [`docs/informe-fase-5-calidad.md`](docs/informe-fase-5-calidad.md): auditoría de calidad, corrección del login en Vercel y pruebas automatizadas.
 - [`docs/informe-fase-6-perfil-archivos.md`](docs/informe-fase-6-perfil-archivos.md): hoja de vida, archivos, recuperación de contraseña y formación.
 - [`docs/informe-fase-7-verificacion-documental.md`](docs/informe-fase-7-verificacion-documental.md): verificación documental de empresas, bandeja de solicitudes y sugerencias.
+- [`docs/informe-estructura-escalable.md`](docs/informe-estructura-escalable.md): archivos redundantes, frontend por funcionalidades y pendientes.
 - [`docs/despliegue-render-vercel.md`](docs/despliegue-render-vercel.md): despliegue de PostgreSQL y API en Render, y frontend en Vercel.
 - [`docs/backlog-fases.md`](docs/backlog-fases.md): fases, historias de usuario y prioridades.
 - [`docs/database-schema.md`](docs/database-schema.md): modelo PostgreSQL inicial.

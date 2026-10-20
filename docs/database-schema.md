@@ -63,7 +63,7 @@ La verificación de una organización se registra en `verificaciones` (historial
 ## Ejecutar el esquema localmente
 
 1. Instale PostgreSQL 15 o superior y cree una base de datos denominada `sipu`.
-2. Cree `backend/.env` a partir de `../.env.example` y ajuste `DATABASE_URL`.
+2. Cree `backend/.env` a partir de `backend/.env.example` y ajuste `DATABASE_URL`.
 3. Ejecute desde la raíz del repositorio:
 
    ```bash

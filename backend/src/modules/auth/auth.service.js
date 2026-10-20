@@ -6,6 +6,7 @@ import { withTransaction } from '../../core/database/database.js';
 import { HttpError, badRequest, conflict, forbidden } from '../../core/http/errors.js';
 import { getBodyValue } from '../../core/http/payload.js';
 import { escapeHtml, sendEmail } from '../../core/mail/mailer.js';
+import { isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../core/security/password.js';
 import * as authRepository from './auth.repository.js';
 import { buildToken } from './auth.tokens.js';
 
@@ -81,8 +82,8 @@ export async function register(payload = {}) {
     throw badRequest('El email no tiene un formato válido.');
   }
 
-  if (String(password).length < 8) {
-    throw badRequest('La contraseña debe tener al menos 8 caracteres.');
+  if (!isStrongPassword(password)) {
+    throw badRequest(PASSWORD_RULE_MESSAGE);
   }
 
   if (!REGISTRABLE_PROFILE_TYPES.includes(profileType)) {
@@ -235,8 +236,8 @@ export async function resetPassword(payload = {}) {
     throw badRequest('El enlace de recuperación no es válido.');
   }
 
-  if (!password || String(password).length < 8) {
-    throw badRequest('La contraseña debe tener al menos 8 caracteres.');
+  if (!isStrongPassword(password)) {
+    throw badRequest(PASSWORD_RULE_MESSAGE);
   }
 
   await withTransaction(async (db) => {

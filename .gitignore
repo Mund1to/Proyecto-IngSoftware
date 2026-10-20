@@ -1,0 +1,12 @@
+# Configuración local del editor y del sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Dependencias, compilados y variables de entorno (también en cada subproyecto)
+node_modules/
+dist/
+.vite/
+.env
+*.log

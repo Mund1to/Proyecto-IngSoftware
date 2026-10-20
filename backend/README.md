@@ -15,13 +15,13 @@ Expone autenticación JWT, perfiles, ofertas, postulaciones, verificación de or
 Desde la carpeta `backend`, copie las variables de ejemplo a un archivo local `.env` y ajuste sus valores:
 
 ```bash
-copy ..\\.env.example .env
+copy .env.example .env
 ```
 
 En PowerShell también puede utilizar:
 
 ```powershell
-Copy-Item ..\\.env.example .env
+Copy-Item .env.example .env
 ```
 
 Variables disponibles:
@@ -77,7 +77,7 @@ La respuesta esperada es:
 | --- | --- |
 | `npm run dev` | Inicia Express con reinicio automático mediante `node --watch`. |
 | `npm start` | Inicia Express sin modo de vigilancia. |
-| `npm test` | Ejecuta las 123 pruebas de la API (`node:test` + `supertest`) sobre una base `<base>_test` que se recrea en cada ejecución. |
+| `npm test` | Ejecuta las 124 pruebas de la API (`node:test` + `supertest`) sobre una base `<base>_test` que se recrea en cada ejecución. |
 | `npm run grant-role -- correo ROL` | Asigna `ADMINISTRADOR` o `FUNCIONARIO_PUBLICO` a una cuenta existente. Sirve para crear el primer administrador. |
 
 ## Seguridad
@@ -143,7 +143,8 @@ src/
 │   ├── database/     # Pool de PostgreSQL, withTransaction y migraciones
 │   ├── http/         # HttpError, asyncHandler, lectura del cuerpo, paginación, validación y envío de archivos
 │   ├── mail/         # Envío de correos (Resend)
-│   └── middleware/   # Autenticación, roles, límite de peticiones y cabeceras de seguridad
+│   ├── middleware/   # Autenticación, roles, límite de peticiones y cabeceras de seguridad
+│   └── security/     # Regla de contraseñas (registro, recuperación, perfil y administración)
 ├── modules/
 │   ├── auth/  profile/  offers/  applications/
 │   ├── convocatorias/  verifications/  admin/  stats/  health/
@@ -171,7 +172,7 @@ database/
   - cualquier otro error responde 500 con el mensaje indicado.
 - **El servicio no conoce Express ni SQL.** Valida, aplica las reglas y lanza `badRequest`, `forbidden`, `notFound` o `conflict`.
 - **Solo el repositorio escribe SQL.** Las funciones que deben ir en una transacción reciben `db`; el servicio las agrupa con `withTransaction(async (db) => …)`.
-- **Las funciones puras van en archivos propios,** por ejemplo `offers.scoring.js`, `offers.validation.js` y `verifications.rules.js`, y se prueban sin base de datos.
+- **Las funciones puras van en archivos propios,** por ejemplo `offers.scoring.js`, `offers.validation.js` y `verifications.rules.js`, y se prueban sin base de datos. Las constantes de cada dominio (tipos, estados) viven en `<modulo>.domain.js`; el frontend comprueba que las suyas coincidan (`frontend/src/test/contracts.test.ts`).
 - **Un módulo puede tener varios controladores y servicios si atiende a actores distintos.** Por ejemplo, en `profile/` están `profile.*` y `profileDetails.*`, y en `verifications/` están `organizationVerification.*` (la empresa) y `verifications.*` (la revisión). Comparten un único repositorio por tabla.
 - **Para agregar una funcionalidad:**
   1. crea `src/modules/<nombre>/` con los cuatro archivos;
