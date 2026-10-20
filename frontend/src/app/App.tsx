@@ -245,11 +245,11 @@ export default function App() {
 
   if (state.booting) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#f0f4f8] p-6" role="status">
+      <main className="min-h-screen flex items-center justify-center bg-[var(--bg)] p-6" role="status">
         <div className="text-center">
           <div className="w-10 h-10 mx-auto mb-4 rounded-full border-4 border-[#0d2240]/15 border-t-[#0d2240] animate-spin" aria-hidden="true" />
-          <p className="font-semibold text-[#0d2240]">Cargando tu sesión...</p>
-          <p className="text-sm text-[#64748b] mt-1">Si el servidor estaba inactivo puede tardar hasta un minuto.</p>
+          <p className="font-semibold text-[var(--primary-dark)]">Cargando tu sesión...</p>
+          <p className="text-sm text-[var(--muted)] mt-1">Si el servidor estaba inactivo puede tardar hasta un minuto.</p>
         </div>
       </main>
     );

@@ -757,14 +757,7 @@ button.user-chip:hover { border-color: #97b4ea; background: var(--selection); }
   .stats-column-bar, .stats-hbar-track > div { animation: none; }
 }
 
-/* Capa de compatibilidad: solo para las clases fijas que aún usa App.tsx (pantalla de carga y
-   ErrorBoundary). Las pantallas ya usan la paleta directamente (rediseño "vivo", Fase 7). */
-body [class*="bg-[#f0f4f8]"] { background: var(--bg) !important; }
-body [class*="text-[#0d2240]"] { color: var(--primary-dark) !important; }
-body [class*="text-[#64748b]"] { color: var(--muted) !important; }
-body [class*="border-[#e8eef4]"] { border-color: var(--border) !important; }
-body [class*="rounded-3xl"] { border-radius: 10px !important; }
-body [class*="rounded-2xl"] { border-radius: 8px !important; }
+/* Controles: altura mínima táctil y transiciones suaves en toda la app. */
 body input:not([type="checkbox"]):not([type="radio"]),
 body select,
 body textarea { min-height: 44px; }
