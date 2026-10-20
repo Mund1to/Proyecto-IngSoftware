@@ -56,6 +56,7 @@ app/       ->  features/<funcionalidad>/  ->  shared/
 - **`app/`:** el armazón de la aplicación.
   - `App.tsx`: estado global y acciones.
   - `routes.tsx`: tabla de pantallas.
+  - `hashRoutes.ts`: el enlace con `#` de cada pantalla (`#ofertas`, `#usuarios`, `#oferta/12`). Permite recargar, compartir y usar el botón Atrás.
   - `types.ts`: `Screen`, `AppState` y `ScreenProps`.
   - `session.tsx`: usuario de la sesión y contexto.
   - `NavBar.tsx` y `ErrorBoundary.tsx`.
@@ -104,7 +105,7 @@ Para agregar un tipo de oferta, un estado o un tipo de documento:
    - las reglas puras van en `tests/unit.test.js`.
 4. **Frontend:**
    1. Crea `src/features/<nombre>/` con `<nombre>.api.ts` (las llamadas), `<nombre>.model.ts` si hace falta convertir datos, y las pantallas.
-   2. Registra cada pantalla nueva en dos sitios: su nombre en `Screen` (`app/types.ts`) y su componente en `SCREENS` (`app/routes.tsx`).
+   2. Registra cada pantalla nueva en tres sitios: su nombre en `Screen` (`app/types.ts`), su componente en `SCREENS` (`app/routes.tsx`) y su enlace en `ROLE_ROUTES` (`app/hashRoutes.ts`). `test/navigation.test.tsx` falla si falta el enlace.
    3. Si el menú la muestra, agrégala a `links` en `app/NavBar.tsx`.
    4. Si la pantalla necesita una acción global nueva, súmala a `ScreenProps` y a `App.tsx`.
 5. **Documentación:**
@@ -123,7 +124,7 @@ Para agregar un tipo de oferta, un estado o un tipo de documento:
 | Compartir el límite de peticiones entre varias instancias (Redis) | `core/middleware/rateLimit.middleware.js` | Las rutas que lo usan |
 | Cambiar `fetch` por axios, o agregar reintentos o cabeceras comunes | `frontend/src/shared/api/client.ts` | Los `*.api.ts` y las pantallas |
 | Agregar caché de datos (TanStack Query) | Las pantallas, usando las funciones de `*.api.ts` como `queryFn` | `client.ts` |
-| Agregar URL propias con `react-router` | `app/routes.tsx` (ya es una tabla), `navigate` en `App.tsx` y un `vercel.json` con *rewrites* hacia `index.html` | Las funcionalidades, salvo las pantallas de detalle que hoy reciben la oferta por estado y tendrían que cargarla por id |
+| Pasar de enlaces con `#` a rutas reales con `react-router` (`/estadisticas` en lugar de `#estadisticas`) | `app/hashRoutes.ts`, los efectos de navegación de `App.tsx` y un `vercel.json` con *rewrites* hacia `index.html` | Las funcionalidades: los detalles ya se cargan por id |
 | Cambiar Tailwind o el sistema de estilos | `frontend/src/styles/` y las clases de las pantallas | Lógica y API |
 | Agregar otra aplicación cliente (móvil, panel aparte) | Nada en el backend: la API ya es independiente del frontend | — |
 

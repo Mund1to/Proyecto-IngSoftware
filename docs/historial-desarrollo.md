@@ -556,6 +556,20 @@ Rama: `refactor/estructura-escalable`, creada desde `main` (`a1ac4f0`).
 
 La guía de la estructura y de cómo cambiar de tecnología está en [`arquitectura.md`](arquitectura.md). El diagnóstico y los pendientes están en [`informe-estructura-escalable.md`](informe-estructura-escalable.md).
 
-## 22. Regla para mantener la documentación
+## 22. Enlaces con # para cada pantalla (20 de octubre de 2026)
+
+Rama: `feature/rutas-con-hash`.
+
+Antes, la URL no cambiaba al moverse por la app. Además, el enlace "Ir a la verificación" de Mi empresa dejaba `#verificacion` en la URL aunque se cambiara de pantalla.
+
+- **Un enlace por pantalla:** cada pantalla tiene su enlace después del `#`. Por ejemplo, `#estadisticas`, `#solicitudes`, `#convocatorias` y `#usuarios` para la administración, y `#ofertas`, `#postulaciones` y `#perfil` para los candidatos. Los detalles llevan el id: `#oferta/12` y `#vacante/12`.
+- **Recargar y compartir:** recargar o abrir un enlace muestra esa pantalla. Un detalle carga la oferta por su id, y un enlace de otro rol lleva al inicio.
+- **Botón Atrás:** el botón Atrás del navegador vuelve a la pantalla anterior.
+- **"Ir a la verificación":** ahora hace scroll sin cambiar el `#`.
+- **Carrera corregida:** la restauración de la sesión ignora una respuesta tardía (en desarrollo, StrictMode ejecuta el efecto dos veces), y un detalle que termina de cargar después de otra navegación se descarta.
+- **Archivos:** `app/hashRoutes.ts` contiene la tabla `ROLE_ROUTES` y sus funciones; los efectos de navegación están en `App.tsx`.
+- **Pruebas:** `test/navigation.test.tsx` (7 nuevas, 69 en total en el frontend). La comprobación en Edge con los cuatro tipos de cuenta pasó 6 de 6, y la prueba integral entre roles 27 de 27.
+
+## 23. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y añada una migración idempotente en `backend/database/migrations/`. Desde la Fase 5, `backend/database/schema.sql` es solo el esquema inicial. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.
