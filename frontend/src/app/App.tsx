@@ -9,7 +9,7 @@ import { mapApiApplications } from "../features/applications/applications.model"
 import ErrorBoundary from "./ErrorBoundary";
 import { SCREENS } from "./routes";
 import { mapUserToSession, resolveRole, SessionContext } from "./session";
-import { HOME_SCREEN, type AppState, type Screen } from "./types";
+import { HOME_SCREEN, type AppState, type Screen, type ScreenProps } from "./types";
 
 // Estado global y acciones de la app. Cada pantalla recibe `state`, `navigate`
 // y las acciones que necesita; la tabla de pantallas está en routes.tsx.
@@ -255,7 +255,7 @@ export default function App() {
     );
   }
 
-  const props = {
+  const props: ScreenProps = {
     state, navigate, applyToOffer, withdrawApplication, reloadApplications, updateCandidateStatus,
     updateExternalProfile, updateStudentProfile, updateOrganizationProfile, changePassword, login, register,
     refreshCurrentUser, clearResetToken,

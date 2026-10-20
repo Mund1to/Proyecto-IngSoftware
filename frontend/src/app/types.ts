@@ -51,3 +51,23 @@ export type AppState = {
 
 // Cambia de pantalla; `extra` permite pasar la oferta o el filtro seleccionado.
 export type Navigate = (screen: Screen, extra?: Partial<AppState>) => void;
+
+// Lo que App entrega a todas las pantallas. Cada pantalla declara en sus Props
+// solo la parte que usa; routes.tsx comprueba que sean compatibles.
+export type ScreenProps = {
+  state: AppState;
+  navigate: Navigate;
+  login: (email: string, password: string) => Promise<void>;
+  register: (payload: Record<string, unknown>) => Promise<void>;
+  clearResetToken: () => void;
+  refreshCurrentUser: () => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  updateStudentProfile: (payload: Record<string, unknown>) => Promise<void>;
+  updateExternalProfile: (payload: Record<string, unknown>) => Promise<void>;
+  updateOrganizationProfile: (payload: Record<string, unknown>) => Promise<void>;
+  // Sirve para la oferta del estudiante (Offer) y la vacante del externo (Job).
+  applyToOffer: (offer: { id: number; title: string }) => Promise<void>;
+  withdrawApplication: (applicationId: number) => Promise<void>;
+  reloadApplications: () => Promise<void>;
+  updateCandidateStatus: (id: number, status: "Aceptada" | "Rechazada") => Promise<void>;
+};
