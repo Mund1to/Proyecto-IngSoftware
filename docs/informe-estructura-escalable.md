@@ -115,9 +115,8 @@ Detalles de la verificación:
 ## 6. Pendientes y sugerencias
 
 1. **Unificar las pantallas por rol.** `StudentDashboard`/`ExternalDashboard`, `OfferDetail`/`ExternalJobDetail`, `StudentApplications`/`ExternalApplications` y `StudentProfile`/`ExternalProfile` comparten la mitad de su lógica, pero siguen diseños y textos distintos. Unificarlas en pantallas configurables cambia lo que ve el usuario y conviene decidirlo con diseño.
-2. **`react-router`.** La tabla `SCREENS` ya está lista. Faltan tres cosas:
+2. **`react-router`.** Hecho en parte el 20 de octubre: cada pantalla ya tiene su enlace con `#` (ver la sección 22 del historial). Para tener rutas sin `#` faltan dos cosas:
    - un `vercel.json` con *rewrites*;
-   - cargar por id las pantallas de detalle, que hoy reciben la oferta por estado;
    - mantener el enlace `/?reset=` de recuperación.
 3. **Llevar la prueba integral al repositorio** (`e2e/` con Playwright) y a CI, con un navegador instalado en el runner.
 4. **Centralizar la regla "qué perfil representa al candidato".** Hoy está repetida en tres consultas SQL.

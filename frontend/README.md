@@ -54,8 +54,19 @@ npm run preview
 | `npm run dev` | Inicia el servidor de desarrollo de Vite. |
 | `npm run build` | Genera la compilación de producción (los tipos se verifican con `npm run typecheck`). |
 | `npm run preview` | Sirve localmente la compilación generada. |
-| `npm test` | Ejecuta las 62 pruebas con Vitest y Testing Library, incluidas las de arquitectura y contrato con el backend. |
+| `npm test` | Ejecuta las 69 pruebas con Vitest y Testing Library, incluidas las de arquitectura y contrato con el backend. |
 | `npm run typecheck` | Verifica los tipos con TypeScript. |
+
+## Enlaces de cada pantalla
+
+La URL muestra la pantalla actual después del `#`. Se puede recargar o compartir, y el botón Atrás del navegador vuelve a la pantalla anterior. Un enlace que no corresponde al rol de la sesión lleva al inicio del rol.
+
+| Rol | Enlaces |
+| --- | --- |
+| Estudiante | `#ofertas`, `#oferta/<id>`, `#postulaciones`, `#perfil` |
+| Empresa | `#ofertas`, `#postulantes`, `#empresa` |
+| Profesional | `#ofertas`, `#vacante/<id>`, `#postulaciones`, `#perfil` |
+| Administración | `#estadisticas`, `#solicitudes`, `#convocatorias`, `#usuarios` |
 
 ## Roles en la interfaz
 
@@ -77,6 +88,7 @@ src/
 ├── app/                 # Armazón de la aplicación
 │   ├── App.tsx          # Estado global y acciones (sesión, postulaciones, perfiles)
 │   ├── routes.tsx       # Tabla de pantallas: Screen -> componente
+│   ├── hashRoutes.ts    # Enlace con # de cada pantalla (#ofertas, #usuarios, #oferta/12...)
 │   ├── types.ts         # Screen, Role, AppState, Navigate, ScreenProps, HOME_SCREEN
 │   ├── session.tsx      # UserSession, contexto de sesión, resolveRole
 │   ├── NavBar.tsx       # Menú por rol y notificaciones
@@ -106,6 +118,7 @@ Reglas:
   1. Créala en su funcionalidad.
   2. Agrega su nombre a `Screen`, en `app/types.ts`.
   3. Regístrala en `SCREENS`, en `app/routes.tsx`.
+  4. Dale un nombre de enlace en `ROLE_ROUTES`, en `app/hashRoutes.ts`. `test/navigation.test.tsx` falla si una pantalla no tiene enlace.
 - **Llamadas a la API:** cada funcionalidad declara las suyas en `<x>.api.ts` con `request` de `shared/api/client.ts`. Las pantallas no llaman a `fetch` directamente.
 - **Imports entre funcionalidades:** una funcionalidad puede usar la API, el modelo o un componente de otra, pero no sus pantallas. `test/architecture.test.ts` lo comprueba.
 - **Constantes compartidas con el backend:** los tipos de oferta, los estados, los documentos y la regla de contraseña deben coincidir con el backend. `test/contracts.test.ts` lo comprueba.

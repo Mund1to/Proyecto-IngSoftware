@@ -84,7 +84,13 @@ export default function CompanyProfile({ state, navigate, updateOrganizationProf
               : "Tu organización aún no está verificada. Registra el NIT, adjunta el RUT y el certificado de Cámara de Comercio y envía la solicitud."}
           </span>
           {!verified && (
-            <a href="#verificacion" className="text-button">Ir a la verificación</a>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => document.getElementById("verificacion")?.scrollIntoView?.({ behavior: "smooth", block: "start" })}
+            >
+              Ir a la verificación
+            </button>
           )}
         </div>
 

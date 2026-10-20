@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SESSION_EXPIRED_EVENT } from "../shared/api/client";
 import type { ApiUser } from "../shared/api/account";
 import { authApi } from "../features/auth/auth.api";
@@ -6,10 +6,13 @@ import { profileApi } from "../features/profile/profile.api";
 import { applicationsApi } from "../features/applications/applications.api";
 import { verificationsApi } from "../features/verifications/verifications.api";
 import { mapApiApplications } from "../features/applications/applications.model";
+import { offersApi } from "../features/offers/offers.api";
+import { mapOfferToJob, toUiOffer } from "../features/offers/offers.model";
 import ErrorBoundary from "./ErrorBoundary";
+import { hashForScreen, routeFromHash, type HashRoute } from "./hashRoutes";
 import { SCREENS } from "./routes";
 import { mapUserToSession, resolveRole, SessionContext } from "./session";
-import { HOME_SCREEN, type AppState, type Screen, type ScreenProps } from "./types";
+import { HOME_SCREEN, type AppState, type Role, type Screen, type ScreenProps } from "./types";
 
 // Estado global y acciones de la app. Cada pantalla recibe `state`, `navigate`
 // y las acciones que necesita; la tabla de pantallas está en routes.tsx.
@@ -80,6 +83,49 @@ export default function App() {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
   }, [logout]);
 
+  // La primera pantalla tras iniciar sesión reemplaza la entrada del historial;
+  // las siguientes agregan una, para que Atrás vuelva a la pantalla anterior.
+  const replaceHashRef = useRef(true);
+
+  // Abre la pantalla de un enlace con #. Un detalle (#oferta/12) carga antes la
+  // oferta; si ya no está publicada, o el enlace no es del rol, va al inicio.
+  // Cuenta las navegaciones: un detalle que termina de cargar después de que el
+  // usuario fue a otra pantalla se descarta.
+  const navigationRef = useRef(0);
+
+  const openRoute = useCallback(async (route: HashRoute | null, role: Role) => {
+    const navigation = ++navigationRef.current;
+    if (!route || route.id === undefined) {
+      setState((current) => current.role === role ? { ...current, screen: route?.screen ?? HOME_SCREEN[role] } : current);
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    const detailId = route.id;
+    try {
+      const { offer } = await offersApi.getOffer(detailId);
+      if (navigation !== navigationRef.current) return;
+      const detail = route.screen === "external-job-detail" ? { selectedJob: mapOfferToJob(offer) } : { selectedOffer: toUiOffer(offer) };
+      setState((current) => current.role === role ? { ...current, ...detail, screen: route.screen } : current);
+    } catch {
+      if (navigation !== navigationRef.current) return;
+      replaceHashRef.current = true;
+      setState((current) => current.role === role ? { ...current, screen: HOME_SCREEN[role] } : current);
+    }
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  // Pantalla con la que empieza la sesión: la del # de la URL si es del rol
+  // (por ejemplo, al recargar), o el inicio del rol. Un detalle se abre después de cargarlo.
+  const startScreen = (role: Role): Screen => {
+    replaceHashRef.current = true;
+    const route = routeFromHash(window.location.hash, role);
+    if (route?.id !== undefined) {
+      void openRoute(route, role);
+      return HOME_SCREEN[role];
+    }
+    return route?.screen ?? HOME_SCREEN[role];
+  };
+
   const reloadApplications = useCallback(async () => {
     if (!state.token) return;
     try {
@@ -95,17 +141,24 @@ export default function App() {
   useEffect(() => {
     if (!state.booting || !state.token) return;
     const token = state.token;
+    // Si el efecto se repite (StrictMode en desarrollo), solo cuenta la última
+    // respuesta; una anterior que llegue tarde no debe volver a elegir la pantalla.
+    let active = true;
 
     profileApi.getCurrentUser(token)
       .then((data) => {
+        if (!active) return;
         const user = mapUserToSession(data.user);
         const role = resolveRole(user);
-        setState((current) => ({ ...current, currentUser: user, role, screen: HOME_SCREEN[role], booting: false }));
+        const screen = startScreen(role);
+        setState((current) => ({ ...current, currentUser: user, role, screen, booting: false }));
       })
       .catch((error) => {
+        if (!active) return;
         const expired = error?.status === 401 || error?.status === 403;
         logout(expired ? "Tu sesión expiró. Inicia sesión nuevamente." : error instanceof Error ? error.message : "");
       });
+    return () => { active = false; };
   }, [state.booting, state.token, logout]);
 
   // El revisor ve en el menú cuántas solicitudes de verificación esperan decisión.
@@ -131,7 +184,36 @@ export default function App() {
     }
   }, [state.token, state.role, reloadApplications]);
 
+  // La pantalla actual se refleja en el # de la URL.
+  useEffect(() => {
+    if (!state.role || state.screen === "auth") return;
+    const detailId = state.screen === "external-job-detail" ? state.selectedJob?.id : state.selectedOffer?.id;
+    const hash = hashForScreen(state.screen, detailId);
+    if (!hash) return;
+    if (window.location.hash !== hash) {
+      const url = `${window.location.pathname}${window.location.search}${hash}`;
+      if (replaceHashRef.current) window.history.replaceState(null, "", url);
+      else window.history.pushState(null, "", url);
+    }
+    replaceHashRef.current = false;
+  }, [state.role, state.screen, state.selectedOffer, state.selectedJob]);
+
+  // Atrás, Adelante o un # escrito a mano cambian de pantalla.
+  useEffect(() => {
+    const role = state.role;
+    if (!role) return;
+    const onHashChange = () => {
+      const route = routeFromHash(window.location.hash, role);
+      // Un enlace que no es del rol se reemplaza por el inicio sin dejarlo en el historial.
+      if (!route) replaceHashRef.current = true;
+      void openRoute(route, role);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [state.role, openRoute]);
+
   const navigate = (screen: Screen, extra?: Partial<AppState>) => {
+    navigationRef.current += 1;
     setState((s) => ({ ...s, screen, ...extra }));
     window.scrollTo({ top: 0 });
   };
@@ -145,9 +227,10 @@ export default function App() {
       token,
       currentUser: user,
       role,
-      screen: HOME_SCREEN[role],
       notice: "",
     }));
+    const screen = startScreen(role);
+    setState((current) => current.token === token ? { ...current, screen } : current);
 
     // Login y registro devuelven la cuenta sin el detalle de los perfiles
     // (universidad, razón social, ubicación...); se completa con /profile/me.
