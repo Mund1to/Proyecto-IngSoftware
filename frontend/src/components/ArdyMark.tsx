@@ -1,4 +1,4 @@
-// Versión de Ardy sobre fondo blanco y centrada, para los círculos (generada a partir de ardy.png).
+// Versión de Ardy sobre fondo blanco y centrada, para los círculos (recortada del arte original de la mascota).
 import ardy from "../imports/ardy-avatar.png";
 
 type Props = {
