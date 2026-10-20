@@ -4,7 +4,8 @@ import { withTransaction } from '../../core/database/database.js';
 import { badRequest, conflict, notFound } from '../../core/http/errors.js';
 import { getBodyValue } from '../../core/http/payload.js';
 import { sendEmail } from '../../core/mail/mailer.js';
-import { ASSIGNABLE_ROLES, isStrongPassword } from './admin.domain.js';
+import { isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../core/security/password.js';
+import { ASSIGNABLE_ROLES } from './admin.domain.js';
 import * as adminRepository from './admin.repository.js';
 
 export function listUsers(search) {
@@ -61,7 +62,7 @@ export async function setUserPassword(actorId, userId, payload = {}) {
   }
 
   if (!isStrongPassword(password)) {
-    throw badRequest('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.');
+    throw badRequest(PASSWORD_RULE_MESSAGE);
   }
 
   const updated = await withTransaction(async (db) => {

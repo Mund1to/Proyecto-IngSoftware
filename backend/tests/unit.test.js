@@ -4,6 +4,7 @@ import { maxScoreOffer, offerAffinity, scoreOffer } from '../src/modules/offers/
 import { cleanFileName, hasValidSignature, normalizeMime } from '../src/core/http/files.js';
 import { parsePagination } from '../src/core/http/pagination.js';
 import { createRateLimiter } from '../src/core/middleware/rateLimit.middleware.js';
+import { isStrongPassword } from '../src/core/security/password.js';
 import {
   documentsLocked,
   normalizeDocumentType,
@@ -192,5 +193,15 @@ describe('reglas de verificación documental', () => {
     assert.equal(organizationStatus({ verified: false, latestRequest: null }), 'SIN_SOLICITUD');
     assert.equal(organizationStatus({ verified: false, latestRequest: { estado: 'RECHAZADA' } }), 'RECHAZADA');
     assert.equal(organizationStatus({ verified: true, latestRequest: { estado: 'RECHAZADA' } }), 'APROBADA');
+  });
+});
+
+describe('isStrongPassword', () => {
+  it('exige 8 caracteres, una mayúscula y un número', () => {
+    assert.equal(isStrongPassword('Clave1234'), true);
+    assert.equal(isStrongPassword('Corta1'), false);
+    assert.equal(isStrongPassword('sinmayuscula1'), false);
+    assert.equal(isStrongPassword('SinNumeroAqui'), false);
+    assert.equal(isStrongPassword(undefined), false);
   });
 });

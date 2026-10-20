@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { withTransaction } from '../../core/database/database.js';
 import { badRequest, conflict, notFound } from '../../core/http/errors.js';
 import { getBodyValue, hasBodyValue, toNullableString } from '../../core/http/payload.js';
+import { isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../core/security/password.js';
 import { buildToken } from '../auth/auth.tokens.js';
 import * as profileRepository from './profile.repository.js';
 
@@ -181,8 +182,8 @@ export async function changePassword(auth, payload = {}) {
     throw badRequest('Debe indicar la contraseña actual y la nueva.');
   }
 
-  if (String(newPassword).length < 8) {
-    throw badRequest('La contraseña debe tener al menos 8 caracteres.');
+  if (!isStrongPassword(newPassword)) {
+    throw badRequest(PASSWORD_RULE_MESSAGE);
   }
 
   const user = await profileRepository.findPasswordData(auth.sub);
