@@ -1,0 +1,54 @@
+/* Tokens de color, estilos base, botones, formularios y Ardy. */
+
+:root {
+  --bg: #f6f9ff;
+  --surface: #ffffff;
+  --text: #1d2939;
+  --muted: #667085;
+  --border: #d0d9e8;
+  --primary: #155eef;
+  --primary-hover: #0b4dd1;
+  --primary-dark: #123b70;
+  --selection: #eaf2ff;
+  --primary-soft: #dce9ff;
+  --primary-bright: #4d87ff;
+  --sky: #dff4ff;
+  --focus: #155eef;
+  --success: #157347;
+  --warning: #a15c00;
+  --danger: #b42318;
+  --navy: #0d2240;
+  --shadow: 0 12px 35px rgba(18, 59, 112, 0.1);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; }
+body { margin: 0; font-family: "DM Sans", sans-serif; color: var(--text); background: var(--bg); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4 { margin: 0; font-family: "DM Sans", sans-serif; line-height: 1.2; letter-spacing: -0.02em; }
+button, input, select, textarea { font: inherit; }
+button { min-height: 44px; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .52; }
+:focus-visible { outline: 2px solid var(--focus) !important; outline-offset: 2px; }
+::selection { color: var(--text); background: var(--selection); }
+.container { width: min(1200px, calc(100% - 32px)); margin-inline: auto; }
+.app-shell { min-height: 100vh; background: var(--bg); }
+.muted { color: var(--muted); }
+.eyebrow { margin: 0 0 8px; color: var(--primary); font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.eyebrow.inverse { color: #c9dcff; }
+
+.button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 6px; border: 1px solid transparent; padding: 10px 18px; font-weight: 700; }
+.button.primary { color: white; background: linear-gradient(135deg, var(--primary), #3478ff); box-shadow: 0 6px 14px rgba(21, 94, 239, .2); transition: transform .18s ease, box-shadow .18s ease, filter .18s ease; }
+.button.primary:hover { background: linear-gradient(135deg, var(--primary-hover), var(--primary)); box-shadow: 0 10px 22px rgba(21, 94, 239, .28); transform: translateY(-2px) scale(1.01); filter: saturate(1.08); }
+.button.secondary { color: var(--primary); border-color: var(--border); background: var(--surface); transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background-color .18s ease; }
+.button.secondary:hover { border-color: var(--primary); background: var(--selection); transform: translateY(-1px); box-shadow: 0 8px 18px rgba(21, 94, 239, .08); }
+.button.full { width: 100%; }
+.text-button { min-height: 32px; padding: 0; border: 0; color: var(--primary); background: transparent; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.icon-button { position: relative; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 6px; color: var(--muted); background: transparent; }
+.icon-button:hover { color: var(--primary); background: var(--selection); }
+.icon-button svg { width: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Ardy, institutional mascot */
+.ardy-mark { display: block; overflow: hidden; background: white; }
+.ardy-mark img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.empty-squirrel { width: 88px; height: 88px; margin: 0 auto 16px; border: 5px solid var(--selection); border-radius: 50%; }
+.empty-squirrel img { width: 84%; max-width: none; height: 84%; margin: 8%; object-fit: contain; transform: none; object-fit: cover; object-position: center; }

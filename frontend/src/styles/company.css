@@ -1,0 +1,91 @@
+/* Panel de la empresa. */
+
+/* Panel de empresa (diseño "vivo") */
+.company-vivo { padding: 24px 0 72px; }
+.company-vivo > .form-error { margin: 20px 0 0; }
+.company-hero-vivo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; padding: 36px 44px; }
+.hero-card > .company-hero-dots { position: absolute; right: 0; bottom: 0; width: 280px; height: 150px; opacity: .45; }
+.company-hero-vivo .eyebrow { margin-bottom: 10px; color: var(--sky); }
+.company-hero-vivo h1 { margin: 0; font-size: clamp(32px, 4vw, 44px); overflow-wrap: anywhere; }
+.company-hero-lead { margin: 10px 0 0; color: var(--primary-soft); font-size: 18px; }
+.company-hero-lead strong { color: #ffffff; }
+.verify-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 6px 12px; border-radius: 99px; font-size: 14px; font-weight: 700; }
+.verify-badge.is-verified { color: var(--success); background: #eaf7f0; }
+.verify-badge.is-pending { color: var(--warning); background: #fff4df; }
+.company-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.hero-button-light { min-height: 52px; display: inline-flex; align-items: center; gap: 10px; padding: 0 22px; border: 0; border-radius: 14px; color: var(--primary); background: #ffffff; box-shadow: 0 10px 22px rgba(13, 34, 64, .25); font-size: 17px; font-weight: 800; transition: transform .18s ease, box-shadow .18s ease; }
+.hero-button-light:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(13, 34, 64, .32); }
+.hero-button-ghost { min-height: 52px; padding: 0 20px; border: 1px solid rgba(255, 255, 255, .4); border-radius: 14px; color: #ffffff; background: rgba(255, 255, 255, .08); font-size: 16px; font-weight: 700; transition: background-color .18s ease, border-color .18s ease; }
+.hero-button-ghost:not(:disabled):hover { border-color: #ffffff; background: rgba(255, 255, 255, .16); }
+.hero-card :focus-visible { outline-color: #ffffff !important; }
+
+.company-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 24px; }
+.company-metric { display: flex; align-items: center; gap: 14px; padding: 20px; color: inherit; text-align: left; }
+.company-metric:disabled { opacity: .7; }
+.company-metric-icon { width: 52px; height: 52px; flex: none; display: grid; place-items: center; border-radius: 16px; }
+.tone-primary { color: var(--primary); background: var(--primary-soft); }
+.tone-navy { color: #ffffff; background: var(--primary-dark); }
+.tone-sky { color: var(--navy); background: var(--sky); }
+.tone-amber { color: var(--warning); background: #fff4df; }
+.company-metric-text { display: grid; line-height: 1.2; }
+.company-metric-text strong { color: var(--navy); font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
+.company-metric-text span { color: var(--muted); font-size: 14px; font-weight: 600; }
+
+.company-list-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin: 34px 0 16px; }
+.company-list-head h2 { margin: 0; color: var(--navy); font-size: 26px; font-weight: 800; letter-spacing: -0.03em; }
+.stage-legend, .stage-counts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; color: #475467; font-size: 13px; font-weight: 600; list-style: none; }
+.stage-legend li, .stage-counts li { display: inline-flex; align-items: center; gap: 6px; }
+.stage-dot { width: 10px; height: 10px; flex: none; border-radius: 3px; }
+.tone-sent { background: #9dbbf3; }
+.tone-review { background: var(--primary-bright); }
+.tone-interview { background: var(--primary); }
+.tone-accepted { background: var(--navy); }
+
+.company-offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 16px; }
+.company-offer-card { display: flex; flex-direction: column; gap: 16px; padding: 22px; border-radius: 22px; animation: offer-card-in .3s ease backwards; }
+.company-offer-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.company-offer-info { min-width: 0; }
+.company-offer-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.offer-status { display: inline-flex; align-items: center; padding: 5px 10px; border-radius: 99px; color: #475467; background: #eef3fc; font-size: 13px; font-weight: 700; }
+.offer-status-publicada { color: var(--success); background: #eaf7f0; }
+.offer-status-cancelada { color: var(--danger); background: #fef3f2; }
+.offer-status-borrador { color: var(--warning); background: #fff4df; }
+.company-offer-card h3 { margin: 10px 0 2px; color: var(--navy); font-size: 20px; font-weight: 800; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.company-offer-card p { margin: 0; color: var(--muted); font-size: 14px; }
+.company-offer-total { display: grid; justify-items: end; line-height: 1.1; }
+.company-offer-total strong { color: var(--primary); font-size: 30px; font-weight: 800; }
+.company-offer-total small { color: var(--muted); font-size: 13px; }
+.stage-bar { display: flex; gap: 3px; height: 12px; overflow: hidden; border-radius: 99px; background: #eef3fc; }
+.stage-bar span { display: block; height: 100%; flex-basis: 0; }
+.stage-counts { margin-top: 8px; font-weight: 500; }
+.stage-counts li { white-space: nowrap; }
+.stage-counts strong { color: var(--navy); }
+.company-offer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px dashed #d3e0f5; }
+.company-offer-actions .button { border-radius: 12px; }
+.danger-link { min-height: 44px; margin-left: auto; padding: 0 14px; border: 0; border-radius: 12px; color: var(--danger); background: transparent; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.danger-link:hover { background: #fef3f2; }
+.new-offer-card { min-height: 240px; display: grid; place-items: center; align-content: center; gap: 10px; padding: 24px; border: 2px dashed #b9cdef; border-radius: 22px; color: var(--primary); background: #f8faff; font-size: 18px; font-weight: 800; transition: border-color .2s ease, background-color .2s ease; }
+.new-offer-card:hover { border-color: var(--primary); background: var(--selection); }
+.new-offer-card small { color: var(--muted); font-size: 14px; font-weight: 500; }
+.new-offer-plus { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; color: #ffffff; background: linear-gradient(135deg, var(--primary), #3478ff); box-shadow: 0 10px 22px rgba(21, 94, 239, .28); }
+.company-empty { margin-bottom: 16px; }
+
+/* Formulario de oferta y modal de cancelar: solo radios y botones. */
+.publish-page .form-section { border-color: #d3e0f5; border-radius: 22px; box-shadow: 0 6px 18px rgba(18, 59, 112, .04); }
+.publish-page .field input, .publish-page .field select, .publish-page .field textarea { border-radius: 12px; }
+.publish-page .publish-actions .button, .modal-actions .button { border-radius: 12px; }
+.preview-card, .publish-success { border-color: #d3e0f5; border-radius: 22px; }
+@media (max-width: 767px) {
+  .company-hero-vivo { padding: 28px 20px; }
+  .company-hero-actions, .company-hero-actions button { width: 100%; justify-content: center; }
+  .company-metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .company-metric { flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; }
+  .company-metric-icon { width: 44px; height: 44px; border-radius: 14px; }
+  .company-metric-text strong { font-size: 26px; }
+  .danger-link { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .company-offer-card { animation: none; }
+  .hero-button-light, .hero-button-ghost, .new-offer-card { transition: none; }
+  .hero-button-light:hover { transform: none; }
+}
