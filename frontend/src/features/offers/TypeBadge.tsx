@@ -1,5 +1,5 @@
-import { OFFER_TYPE_LABELS, OfferType } from "../lib/offers";
-import { IconBook, IconBriefcase, IconGraduation } from "./icons";
+import { OFFER_TYPE_LABELS, type OfferType } from "./offers.model";
+import { IconBook, IconBriefcase, IconGraduation } from "../../shared/ui/icons";
 
 type Kind = "practica" | "empleo" | "formacion";
 

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { AppState, Screen } from "../../app/types";
+import NavBar from "../../app/NavBar";
 import { IconClock } from "../../shared/ui/icons";
 import { adminApi, type AdminUser } from "./admin.api";
-import { formatDate } from "../../shared/lib/offers";
+import { formatDate } from "../../shared/lib/format";
 
 type Props = {
   state: AppState;

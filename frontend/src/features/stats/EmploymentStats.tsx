@@ -1,9 +1,9 @@
 import { ReactNode, useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { AppState, Screen } from "../../app/types";
+import NavBar from "../../app/NavBar";
 import { IconBriefcase, IconBuilding, IconCheck, IconUser } from "../../shared/ui/icons";
 import { statsApi } from "./stats.api";
-import { companyInitials } from "../../shared/lib/offers";
+import { companyInitials } from "../../shared/lib/format";
 
 type Props = {
   state: AppState;

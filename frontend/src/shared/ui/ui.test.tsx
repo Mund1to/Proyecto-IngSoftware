@@ -3,24 +3,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import ArdyBubble from "./ArdyBubble";
 import DueBadge, { dueState } from "./DueBadge";
 import ProgressMeter from "./ProgressMeter";
-import TypeBadge from "./TypeBadge";
 
 afterEach(cleanup);
 
 const inDays = (days: number) => new Date(Date.now() + days * 86400000).toISOString();
-
-describe("TypeBadge", () => {
-  it("usa la etiqueta y el estilo según el código de la API", () => {
-    render(<TypeBadge type="FORMACION" />);
-    const badge = screen.getByText("Formación");
-    expect(badge.className).toContain("type-badge-formacion");
-  });
-
-  it("acepta etiquetas ya traducidas y trata los demás tipos como empleo", () => {
-    render(<TypeBadge type="Tiempo completo" />);
-    expect(screen.getByText("Tiempo completo").className).toContain("type-badge-empleo");
-  });
-});
 
 describe("DueBadge", () => {
   it("indica el estado con texto, no solo con color", () => {

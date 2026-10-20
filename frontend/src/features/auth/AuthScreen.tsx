@@ -1,5 +1,5 @@
 import { KeyboardEvent, ReactNode, useEffect, useRef, useState } from "react";
-import { AppState, Role, Screen } from "../../app/App";
+import { AppState, Role, Screen } from "../../app/types";
 import { authApi } from "./auth.api";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import UniversityLogo from "../../shared/ui/UniversityLogo";

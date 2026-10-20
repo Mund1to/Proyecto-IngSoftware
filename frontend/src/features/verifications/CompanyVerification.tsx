@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { AppState, Screen } from "../../app/types";
+import NavBar from "../../app/NavBar";
 import VerificationDecisionModal from "./VerificationDecisionModal";
 import { IconFile } from "../../shared/ui/icons";
 import { type RequestStatus, type ReviewedOrganization, type VerificationRequest, verificationsApi } from "./verifications.api";
 import { formatSize } from "../../shared/lib/files";
-import { formatDate } from "../../shared/lib/offers";
+import { formatDate } from "../../shared/lib/format";
 import { useSession } from "../../app/session";
 import { TONE_CLASSES, documentTypeLabel, statusMeta } from "./verification";
 

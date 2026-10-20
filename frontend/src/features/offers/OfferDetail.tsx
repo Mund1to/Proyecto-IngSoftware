@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { AppState, Offer, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { AppState, Screen } from "../../app/types";
+import { Offer } from "./offers.model";
+import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import DueBadge from "../../shared/ui/DueBadge";
-import TypeBadge from "../../shared/ui/TypeBadge";
+import TypeBadge from "./TypeBadge";
 import { IconArrowRight, IconBookmark, IconCalendar, IconCheck, IconClock, IconMail, IconMonitor, IconPin, IconPlus, IconVerified } from "../../shared/ui/icons";
 import { profileApi, ProfileDetails } from "../profile/profile.api";
-import { daysUntil, formatDate, isValidDate } from "../../shared/lib/offers";
-import { useSavedOffers } from "../../shared/lib/useStoredList";
+import { daysUntil, formatDate, isValidDate } from "../../shared/lib/format";
+import { useSavedOffers } from "./useSavedOffers";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void; applyToOffer: (offer: Offer) => Promise<void> };
 

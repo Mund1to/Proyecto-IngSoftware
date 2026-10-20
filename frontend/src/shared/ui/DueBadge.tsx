@@ -1,4 +1,4 @@
-import { daysUntil, isValidDate } from "../lib/offers";
+import { daysUntil, isValidDate } from "../lib/format";
 import { IconCheck, IconClock, IconClose } from "./icons";
 
 // Estado de cierre de una oferta. El texto siempre dice el estado; el color solo lo refuerza.

@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mapApiApplications, mapUserToSession, resolveRole, toJobApplications } from "../app/App";
+import { mapApiApplications, toJobApplications } from "../features/applications/applications.model";
+import { mapUserToSession, resolveRole } from "../app/session";
 import { ApiError, PRODUCTION_API_URL, request, resolveApiBaseUrl, SESSION_EXPIRED_EVENT } from "../shared/api/client";
 import { authApi } from "../features/auth/auth.api";
 import { profileApi } from "../features/profile/profile.api";
 import { validateFile } from "../features/profile/ProfileFiles";
-import { daysUntil, formatDate, mapApplicationStatus, normalizeModality, offerTypeLabel } from "../shared/lib/offers";
+import { daysUntil, formatDate } from "../shared/lib/format";
+import { mapApplicationStatus } from "../features/applications/applications.model";
+import { normalizeModality, offerTypeLabel } from "../features/offers/offers.model";
 import { formatSize } from "../shared/lib/files";
 import { blockerLabel, documentTypeLabel, statusMeta, validateVerificationFile } from "../features/verifications/verification";
 

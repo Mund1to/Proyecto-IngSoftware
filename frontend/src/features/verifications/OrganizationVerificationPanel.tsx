@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type OrganizationVerification, type VerificationDocumentType, verificationsApi } from "./verifications.api";
 import { formatSize } from "../../shared/lib/files";
-import { formatDate } from "../../shared/lib/offers";
+import { formatDate } from "../../shared/lib/format";
 import {
   TONE_CLASSES,
   blockerLabel,

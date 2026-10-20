@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { AppState, Offer, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { AppState, Screen } from "../../app/types";
+import { Offer } from "./offers.model";
+import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
-import TypeBadge from "../../shared/ui/TypeBadge";
+import TypeBadge from "./TypeBadge";
 import { IconArrowRight, IconBriefcase, IconCheck, IconClock, IconPlus, IconSearch, IconUser } from "../../shared/ui/icons";
 import { offersApi } from "./offers.api";
 import { applicationsApi } from "../applications/applications.api";
-import { formatDate } from "../../shared/lib/offers";
-import { companyInitials, daysUntil, formatSalary, normalizeModality, OFFER_AUDIENCE, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero, type OfferType } from "../../shared/lib/offers";
+import { formatDate } from "../../shared/lib/format";
+import { companyInitials, daysUntil, formatSalary, toNumberOrZero } from "../../shared/lib/format";
+import { normalizeModality, OFFER_AUDIENCE, OFFER_TYPE_LABELS, offerTypeLabel, type OfferType } from "./offers.model";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Draft = {

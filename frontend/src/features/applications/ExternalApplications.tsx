@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/App";
+import { AppState, Screen } from "../../app/types";
 import { offersApi } from "../offers/offers.api";
-import { mapOfferToJob } from "../offers/ExternalDashboard";
-import NavBar from "../../shared/ui/NavBar";
+import { mapOfferToJob } from "../offers/offers.model";
+import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import { IconCheck } from "../../shared/ui/icons";
 

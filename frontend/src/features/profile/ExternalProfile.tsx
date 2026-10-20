@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { AppState, Screen } from "../../app/App";
+import { AppState, Screen } from "../../app/types";
 import ChangePasswordCard from "./ChangePasswordCard";
-import NavBar from "../../shared/ui/NavBar";
+import NavBar from "../../app/NavBar";
 import { FileCard, ProfileAvatar, findFile } from "./ProfileFiles";
 import ProfileSections from "./ProfileSections";
 

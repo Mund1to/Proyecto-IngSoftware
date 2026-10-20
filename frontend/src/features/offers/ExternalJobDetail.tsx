@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { daysUntil, formatDate } from "../../shared/lib/offers";
-import { AppState, Job, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { daysUntil, formatDate } from "../../shared/lib/format";
+import { AppState, Screen } from "../../app/types";
+import { Job } from "./offers.model";
+import NavBar from "../../app/NavBar";
 import { IconBriefcase, IconCalendar, IconMonitor, IconPin, IconUser } from "../../shared/ui/icons";
 
 type Props = {

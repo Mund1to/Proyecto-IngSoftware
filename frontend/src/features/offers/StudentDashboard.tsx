@@ -1,22 +1,21 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { AppState, Offer, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { AppState, Screen } from "../../app/types";
+import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import ArdyBubble from "../../shared/ui/ArdyBubble";
 import DueBadge from "../../shared/ui/DueBadge";
 import FilterDropdown, { FilterOption } from "../../shared/ui/FilterDropdown";
 import ProgressMeter from "../../shared/ui/ProgressMeter";
-import TypeBadge from "../../shared/ui/TypeBadge";
+import TypeBadge from "./TypeBadge";
 import { IconArrowRight, IconBook, IconBookmark, IconBriefcase, IconCheck, IconClose, IconGraduation, IconGrid, IconMonitor, IconPin, IconSearch, IconVerified } from "../../shared/ui/icons";
 import { offersApi } from "./offers.api";
-import { companyInitials, daysUntil, formatSalary, isValidDate, normalizeModality, OFFER_TYPE_LABELS, toNumberOrZero } from "../../shared/lib/offers";
-import { useSavedOffers } from "../../shared/lib/useStoredList";
+import { daysUntil, isValidDate } from "../../shared/lib/format";
+import { OFFER_TYPE_LABELS, toUiOffer, type CatalogOffer, type Offer } from "./offers.model";
+import { useSavedOffers } from "./useSavedOffers";
 
 type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
 type Sort = "recent" | "closing" | "salary";
 type FilterKey = "city" | "area" | "modality" | "offerType";
-// Las recomendaciones traen `affinity` (0 a 100); el catálogo público no.
-type CatalogOffer = Offer & { affinity?: number };
 
 const FILTER_KEYS: FilterKey[] = ["city", "area", "modality", "offerType"];
 const SORT_OPTIONS: FilterOption[] = [
@@ -36,29 +35,6 @@ const TYPE_TILES = [
   { value: "FORMACION", label: "Formación", icon: IconBook, tone: "formacion" },
   { value: "EMPLEO_PUBLICO", label: "Empleo público", icon: IconBriefcase, tone: "empleo" },
 ] as const;
-
-export const toUiOffer = (offer: any): CatalogOffer => ({
-  id: Number(offer.id),
-  title: offer.titulo ?? offer.title ?? "Oferta",
-  company: offer.empresa ?? offer.company ?? "Empresa",
-  logo: companyInitials(offer.empresa ?? offer.company ?? "E"),
-  city: offer.ubicacion ?? offer.city ?? "Bogotá",
-  area: offer.area ?? "General",
-  modality: normalizeModality(offer.modalidad ?? offer.modality),
-  closeDate: offer.fecha_cierre ?? offer.closeDate ?? "",
-  salary: formatSalary(offer.remuneracion),
-  description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
-  requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
-  applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
-  offerType: offer.tipo,
-  verified: Boolean(offer.verificada),
-  duration: offer.duracion,
-  schedule: offer.horario,
-  contactEmail: offer.contacto_email,
-  salaryMin: offer.remuneracion === null ? null : toNumberOrZero(offer.remuneracion),
-  salaryMax: offer.remuneracion_maxima === null ? null : toNumberOrZero(offer.remuneracion_maxima),
-  ...(Number.isFinite(Number(offer.affinity)) && offer.affinity !== null && offer.affinity !== undefined ? { affinity: Number(offer.affinity) } : {}),
-});
 
 export default function StudentDashboard({ state, navigate }: Props) {
   const [city, setCity] = useState("Todas");

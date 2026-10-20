@@ -1,5 +1,7 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 
+// Lista guardada en localStorage con la clave indicada. Si el navegador bloquea
+// el almacenamiento, la lista funciona igual pero solo en memoria.
 export default function useStoredList<T>(key: string, initialValue: T[]): [T[], Dispatch<SetStateAction<T[]>>] {
   const [value, setValue] = useState<T[]>(() => {
     try {
@@ -19,9 +21,4 @@ export default function useStoredList<T>(key: string, initialValue: T[]): [T[], 
   }, [key, value]);
 
   return [value, setValue];
-}
-
-// Ofertas guardadas por el usuario, compartidas entre el catálogo y el detalle.
-export function useSavedOffers(userId: number | string | undefined) {
-  return useStoredList<number>(`sipu-saved-offers-${userId ?? "anon"}`, []);
 }

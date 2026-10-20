@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import App, { type AppState } from "../app/App";
+import App from "../app/App";
+import { type AppState } from "../app/types";
 import AdminUsers from "../features/admin/AdminUsers";
 import AuthScreen from "../features/auth/AuthScreen";
 import CompanyApplicants from "../features/applications/CompanyApplicants";

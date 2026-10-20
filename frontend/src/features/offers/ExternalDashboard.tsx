@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { AppState, Job, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { AppState, Screen } from "../../app/types";
+import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
-import TypeBadge from "../../shared/ui/TypeBadge";
+import TypeBadge from "./TypeBadge";
 import { IconMonitor } from "../../shared/ui/icons";
 import FilterDropdown, { FilterOption } from "../../shared/ui/FilterDropdown";
 import { offersApi } from "./offers.api";
-import { companyInitials, daysUntil, isExternalOfferType, normalizeModality, toNumberOrZero } from "../../shared/lib/offers";
+import { daysUntil } from "../../shared/lib/format";
+import { isExternalOfferType, mapOfferToJob, type Job } from "./offers.model";
 
 type Props = {
   state: AppState;
@@ -30,25 +31,6 @@ const SORT_OPTIONS: FilterOption[] = [
 
 const fmt = (n: number) =>
   "$" + (n >= 1000000 ? (n / 1000000).toFixed(1).replace(".0", "") + "M" : (n / 1000) + "K");
-
-export const mapOfferToJob = (offer: any): Job => ({
-  id: Number(offer.id),
-  title: offer.titulo ?? offer.title ?? "Oferta",
-  company: offer.empresa ?? offer.company ?? "Empresa",
-  logo: companyInitials(offer.empresa ?? offer.company ?? "E"),
-  city: offer.ubicacion ?? offer.city ?? "Bogotá",
-  area: offer.area ?? "General",
-  modality: normalizeModality(offer.modalidad ?? offer.modality),
-  type: offer.tipo === "PRACTICA" ? "Práctica" : offer.tipo === "FORMACION" ? "Formación" : offer.tipo === "EMPLEO_PUBLICO" ? "Contrato" : "Tiempo completo",
-  closeDate: offer.fecha_cierre ?? offer.closeDate ?? "",
-  salaryMin: toNumberOrZero(offer.remuneracion ?? offer.salaryMin),
-  salaryMax: toNumberOrZero(offer.remuneracion_maxima ?? offer.remuneracionMaxima ?? offer.salaryMax ?? offer.remuneracion),
-  experience: offer.experiencia ?? offer.duracion ?? "No especificada",
-  description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
-  requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
-  benefits: Array.isArray(offer.benefits) ? offer.benefits : [],
-  applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
-});
 
 export default function ExternalDashboard({ state, navigate }: Props) {
   const [jobs, setJobs] = useState<Job[]>([]);

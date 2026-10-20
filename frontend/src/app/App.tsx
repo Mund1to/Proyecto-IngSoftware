@@ -1,220 +1,19 @@
-import { Component, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SESSION_EXPIRED_EVENT } from "../shared/api/client";
-import { type ApiUser, type StoredFile } from "../shared/api/account";
-import { applicationsApi } from "../features/applications/applications.api";
-import { profileApi } from "../features/profile/profile.api";
-import { verificationsApi } from "../features/verifications/verifications.api";
+import type { ApiUser } from "../shared/api/account";
 import { authApi } from "../features/auth/auth.api";
-import { mapApplicationStatus, type ApplicationStatus, type OfferType } from "../shared/lib/offers";
-import { isAdminUser, SessionContext } from "./session";
-import AuthScreen from "../features/auth/AuthScreen";
-import StudentDashboard from "../features/offers/StudentDashboard";
-import OfferDetail from "../features/offers/OfferDetail";
-import StudentProfile from "../features/profile/StudentProfile";
-import StudentApplications from "../features/applications/StudentApplications";
-import CompanyDashboard from "../features/offers/CompanyDashboard";
-import CompanyApplicants from "../features/applications/CompanyApplicants";
-import CompanyProfile from "../features/profile/CompanyProfile";
-import CompanyVerification from "../features/verifications/CompanyVerification";
-import Convocatorias from "../features/convocatorias/Convocatorias";
-import EmploymentStats from "../features/stats/EmploymentStats";
-import AdminUsers from "../features/admin/AdminUsers";
-import ExternalDashboard from "../features/offers/ExternalDashboard";
-import ExternalJobDetail from "../features/offers/ExternalJobDetail";
-import ExternalProfile from "../features/profile/ExternalProfile";
-import ExternalApplications from "../features/applications/ExternalApplications";
+import { profileApi } from "../features/profile/profile.api";
+import { applicationsApi } from "../features/applications/applications.api";
+import { verificationsApi } from "../features/verifications/verifications.api";
+import { mapApiApplications, toJobApplications } from "../features/applications/applications.model";
+import type { Job, Offer } from "../features/offers/offers.model";
+import ErrorBoundary from "./ErrorBoundary";
+import { SCREENS } from "./routes";
+import { mapUserToSession, resolveRole, SessionContext } from "./session";
+import { HOME_SCREEN, type AppState, type Screen } from "./types";
 
-export type Role = "student" | "company" | "external" | "admin";
-
-export type Screen =
-  | "auth"
-  | "student-dashboard"
-  | "offer-detail"
-  | "student-profile"
-  | "student-applications"
-  | "company-dashboard"
-  | "company-applicants"
-  | "company-profile"
-  | "company-verification"
-  | "convocatorias"
-  | "employment-stats"
-  | "admin-users"
-  | "external-dashboard"
-  | "external-job-detail"
-  | "external-profile"
-  | "external-applications";
-
-export type UserSession = {
-  id: number;
-  email: string;
-  nombreCompleto: string;
-  telefono?: string | null;
-  universidad?: string | null;
-  programaAcademico?: string | null;
-  semestre?: number | string | null;
-  codigoEstudiante?: string | null;
-  fechaGraduacionEstimada?: string | null;
-  resumen?: string | null;
-  ubicacion?: string | null;
-  disponibilidad?: string | null;
-  cvUrl?: string | null;
-  organizacionNombre?: string | null;
-  organizacionVerificada?: boolean;
-  identificacionFiscal?: string | null;
-  sitioWeb?: string | null;
-  descripcionOrganizacion?: string | null;
-  profileTypes: string[];
-  roles: string[];
-  archivos?: StoredFile[];
-};
-
-export type Offer = {
-  id: number;
-  title: string;
-  company: string;
-  logo: string;
-  city: string;
-  area: string;
-  modality: "Presencial" | "Remota" | "Híbrida";
-  closeDate: string;
-  salary: string;
-  description: string;
-  requirements: string[];
-  applicants?: number;
-  offerType?: OfferType;
-  status?: string;
-  verified?: boolean;
-  duration?: string | null;
-  schedule?: string | null;
-  contactEmail?: string | null;
-  salaryMin?: number | null;
-  salaryMax?: number | null;
-};
-
-export type JobType = "Práctica" | "Tiempo completo" | "Medio tiempo" | "Contrato" | "Freelance" | "Formación";
-
-export type Job = {
-  id: number;
-  title: string;
-  company: string;
-  logo: string;
-  city: string;
-  area: string;
-  modality: "Presencial" | "Remota" | "Híbrida";
-  type: JobType;
-  closeDate: string;
-  salaryMin: number;
-  salaryMax: number;
-  experience: string;
-  description: string;
-  requirements: string[];
-  benefits: string[];
-  applicants: number;
-};
-
-export type Application = {
-  id: number;
-  offerId: number;
-  offerTitle: string;
-  company: string;
-  appliedDate: string;
-  status: ApplicationStatus;
-};
-
-export type JobApplication = {
-  id: number;
-  jobId: number;
-  jobTitle: string;
-  company: string;
-  appliedDate: string;
-  status: ApplicationStatus | "Entrevista";
-};
-
-export const HOME_SCREEN: Record<Role, Screen> = {
-  student: "student-dashboard",
-  company: "company-dashboard",
-  external: "external-dashboard",
-  admin: "employment-stats",
-};
-
-// Los roles institucionales tienen prioridad: un administrador ve el panel de
-// administración aunque su cuenta se haya creado como estudiante.
-export const resolveRole = (user: Pick<UserSession, "profileTypes" | "roles">): Role => {
-  if (isAdminUser(user.roles)) return "admin";
-  if (user.profileTypes.includes("ORGANIZACION")) return "company";
-  if (user.profileTypes.includes("CANDIDATO_EXTERNO")) return "external";
-  return "student";
-};
-
-export const mapUserToSession = (user: ApiUser): UserSession => {
-  const studentProfile = user.perfiles?.find((profile) => profile.tipo === "ESTUDIANTE");
-  const externalProfile = user.perfiles?.find((profile) => profile.tipo === "CANDIDATO_EXTERNO");
-  const organizationProfile = user.perfiles?.find((profile) => profile.tipo === "ORGANIZACION");
-  const profileTypes = user.profileTypes?.length
-    ? user.profileTypes
-    : (user.perfiles ?? []).map((profile) => profile.tipo).filter((tipo): tipo is string => Boolean(tipo));
-
-  return {
-    id: Number(user.id),
-    email: user.email,
-    nombreCompleto: user.nombreCompleto,
-    telefono: user.telefono,
-    universidad: studentProfile?.universidad,
-    programaAcademico: studentProfile?.programaAcademico,
-    semestre: studentProfile?.semestre,
-    codigoEstudiante: studentProfile?.codigoEstudiante,
-    fechaGraduacionEstimada: studentProfile?.fechaGraduacionEstimada,
-    resumen: externalProfile?.resumen,
-    ubicacion: externalProfile?.ubicacion,
-    disponibilidad: externalProfile?.disponibilidad,
-    cvUrl: externalProfile?.cvUrl,
-    organizacionNombre: organizationProfile?.razonSocial,
-    organizacionVerificada: organizationProfile?.verificada,
-    identificacionFiscal: organizationProfile?.identificacionFiscal,
-    sitioWeb: organizationProfile?.sitioWeb,
-    descripcionOrganizacion: organizationProfile?.descripcion,
-    profileTypes: profileTypes.length ? profileTypes : ["ESTUDIANTE"],
-    roles: user.roles ?? ["USUARIO"],
-    archivos: user.archivos ?? [],
-  };
-};
-
-// Todas las postulaciones del candidato, sin importar el tipo de oferta: un
-// estudiante puede postularse a un empleo y un externo a una práctica.
-export const mapApiApplications = (items: any[]): Application[] => items.map((item) => ({
-  id: Number(item.id),
-  offerId: Number(item.oferta_id),
-  offerTitle: item.oferta_titulo ?? "Oferta",
-  company: item.empresa ?? "Empresa",
-  appliedDate: String(item.created_at ?? new Date().toISOString()).slice(0, 10),
-  status: mapApplicationStatus(item.estado),
-}));
-
-export const toJobApplications = (applications: Application[]): JobApplication[] => applications.map((item) => ({
-  id: item.id,
-  jobId: item.offerId,
-  jobTitle: item.offerTitle,
-  company: item.company,
-  appliedDate: item.appliedDate,
-  status: item.status,
-}));
-
-export type AppState = {
-  screen: Screen;
-  role: Role | null;
-  token: string | null;
-  booting: boolean;
-  notice: string;
-  // Token de recuperación recibido en el enlace del correo (?reset=...).
-  resetToken: string | null;
-  currentUser: UserSession | null;
-  selectedOffer: Offer | null;
-  selectedJob: Job | null;
-  selectedCompanyOffer: Offer | null;
-  applicantFilter?: "Todos" | "En revisión" | "Aceptada" | "Rechazada";
-  applications: Application[];
-  jobApplications: JobApplication[];
-};
+// Estado global y acciones de la app. Cada pantalla recibe `state`, `navigate`
+// y las acciones que necesita; la tabla de pantallas está en routes.tsx.
 
 function readResetToken(): string | null {
   const token = new URLSearchParams(window.location.search).get("reset");
@@ -471,65 +270,15 @@ export default function App() {
     refreshCurrentUser, clearResetToken,
   };
 
-  // Una pantalla que pide un rol distinto al de la sesión vuelve al inicio del rol.
+  // Sin sesión iniciada, cualquier pantalla distinta del acceso muestra el acceso.
   const screen = state.screen !== "auth" && !state.currentUser ? "auth" : state.screen;
+  const CurrentScreen = SCREENS[screen] ?? SCREENS.auth;
 
   return (
     <SessionContext.Provider value={session}>
       <ErrorBoundary key={screen} onReset={() => navigate(state.role ? HOME_SCREEN[state.role] : "auth")}>
-        {renderScreen(screen, props)}
+        <CurrentScreen {...props} />
       </ErrorBoundary>
     </SessionContext.Provider>
   );
-}
-
-function renderScreen(screen: Screen, props: any) {
-  switch (screen) {
-    case "auth":                  return <AuthScreen {...props} />;
-    case "student-dashboard":     return <StudentDashboard {...props} />;
-    case "offer-detail":          return <OfferDetail {...props} />;
-    case "student-profile":       return <StudentProfile {...props} />;
-    case "student-applications":  return <StudentApplications {...props} />;
-    case "company-dashboard":     return <CompanyDashboard {...props} />;
-    case "company-applicants":    return <CompanyApplicants {...props} />;
-    case "company-profile":       return <CompanyProfile {...props} />;
-    case "company-verification":  return <CompanyVerification {...props} />;
-    case "convocatorias":         return <Convocatorias {...props} />;
-    case "employment-stats":      return <EmploymentStats {...props} />;
-    case "admin-users":           return <AdminUsers {...props} />;
-    case "external-dashboard":    return <ExternalDashboard {...props} />;
-    case "external-job-detail":   return <ExternalJobDetail {...props} />;
-    case "external-profile":      return <ExternalProfile {...props} />;
-    case "external-applications": return <ExternalApplications {...props} />;
-    default:                      return <AuthScreen {...props} />;
-  }
-}
-
-// Evita la pantalla en blanco: si una vista falla al renderizar se muestra un
-// aviso con la opción de volver al inicio.
-class ErrorBoundary extends Component<{ children: ReactNode; onReset: () => void }, { error: Error | null }> {
-  state = { error: null as Error | null };
-
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-
-  componentDidCatch(error: Error) {
-    console.error("Screen crashed:", error);
-  }
-
-  render() {
-    if (!this.state.error) return this.props.children;
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-[#f0f4f8] p-6">
-        <div className="bg-white rounded-2xl border border-[#e8eef4] shadow-sm p-8 max-w-md text-center" role="alert">
-          <h1 className="text-lg font-bold text-[#0d2240] mb-2">Algo salió mal al mostrar esta pantalla</h1>
-          <p className="text-sm text-[#64748b] mb-6">Puedes volver al inicio e intentarlo de nuevo.</p>
-          <button className="button primary" onClick={() => { this.setState({ error: null }); this.props.onReset(); }}>
-            Volver al inicio
-          </button>
-        </div>
-      </main>
-    );
-  }
 }

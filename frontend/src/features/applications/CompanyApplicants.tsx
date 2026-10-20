@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { AppState, Offer, Screen } from "../../app/App";
-import NavBar from "../../shared/ui/NavBar";
+import { AppState, Screen } from "../../app/types";
+import { Offer } from "../offers/offers.model";
+import NavBar from "../../app/NavBar";
 import { IconPin } from "../../shared/ui/icons";
 import { offersApi } from "../offers/offers.api";
 import { applicationsApi } from "./applications.api";
-import { formatDate } from "../../shared/lib/offers";
-import { toUiOffer } from "../offers/StudentDashboard";
+import { formatDate } from "../../shared/lib/format";
+import { toUiOffer } from "../offers/offers.model";
 
 type Props = {
   state: AppState;

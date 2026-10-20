@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { HOME_SCREEN, Role, Screen } from "../../app/App";
-import { useSession } from "../../app/session";
-import UniversityLogo from "./UniversityLogo";
-import { IconBell, IconExit, IconMenu } from "./icons";
+import { HOME_SCREEN, type Role, type Screen } from "./types";
+import { useSession } from "./session";
+import UniversityLogo from "../shared/ui/UniversityLogo";
+import { IconBell, IconExit, IconMenu } from "../shared/ui/icons";
 
 type Props = { role: Role; navigate: (screen: Screen) => void; activeScreen: Screen; userName?: string; onLogout?: () => void };
 
