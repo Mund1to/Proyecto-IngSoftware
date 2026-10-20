@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mapApiApplications, mapUserToSession, resolveRole, toJobApplications } from "../app/App";
-import { api, ApiError, PRODUCTION_API_URL, request, resolveApiBaseUrl, SESSION_EXPIRED_EVENT } from "../shared/api/client";
+import { ApiError, PRODUCTION_API_URL, request, resolveApiBaseUrl, SESSION_EXPIRED_EVENT } from "../shared/api/client";
+import { authApi } from "../features/auth/auth.api";
+import { profileApi } from "../features/profile/profile.api";
 import { validateFile } from "../features/profile/ProfileFiles";
 import { daysUntil, formatDate, mapApplicationStatus, normalizeModality, offerTypeLabel } from "../shared/lib/offers";
 import { formatSize } from "../shared/lib/files";
@@ -59,7 +61,7 @@ describe("request", () => {
     const listener = vi.fn();
     window.addEventListener(SESSION_EXPIRED_EVENT, listener);
 
-    await expect(api.login({ email: "a@b.co", password: "x" })).rejects.toThrow("Credenciales inválidas.");
+    await expect(authApi.login({ email: "a@b.co", password: "x" })).rejects.toThrow("Credenciales inválidas.");
     expect(listener).not.toHaveBeenCalled();
     window.removeEventListener(SESSION_EXPIRED_EVENT, listener);
   });
@@ -159,7 +161,7 @@ describe("Fase 6", () => {
   it("sube archivos con su tipo MIME y nombre codificado", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true, file: {} }), { status: 201, headers: { "content-type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
-    await api.uploadFile("cv", new File(["%PDF-"], "hoja ñ.pdf", { type: "application/pdf" }), "tok");
+    await profileApi.uploadFile("cv", new File(["%PDF-"], "hoja ñ.pdf", { type: "application/pdf" }), "tok");
     const [url, init] = fetchMock.mock.calls[0];
     const headers = init.headers as Headers;
     expect(String(url)).toMatch(/\/profile\/files\/cv$/);

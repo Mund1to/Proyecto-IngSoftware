@@ -4,7 +4,8 @@ import NavBar from "../../shared/ui/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import TypeBadge from "../../shared/ui/TypeBadge";
 import { IconArrowRight, IconBriefcase, IconCheck, IconClock, IconPlus, IconSearch, IconUser } from "../../shared/ui/icons";
-import { api } from "../../shared/api/client";
+import { offersApi } from "./offers.api";
+import { applicationsApi } from "../applications/applications.api";
 import { formatDate } from "../../shared/lib/offers";
 import { companyInitials, daysUntil, formatSalary, normalizeModality, OFFER_AUDIENCE, OFFER_TYPE_LABELS, offerTypeLabel, toNumberOrZero, type OfferType } from "../../shared/lib/offers";
 
@@ -90,13 +91,13 @@ export default function CompanyDashboard({ state, navigate }: Props) {
   useEffect(() => {
     if (!state.token) return;
 
-    api.getMyOffers(state.token)
+    offersApi.getMyOffers(state.token)
       .then(async (response) => {
         const mapped = (response.offers ?? []).map((offer: any) => toUiOffer(offer));
         setOffers(mapped);
         setOffersError("");
         const applicationLists = await Promise.all(mapped.map((offer) =>
-          api.getApplicationsForOffer(offer.id, state.token!).catch(() => ({ applications: [] })),
+          applicationsApi.getApplicationsForOffer(offer.id, state.token!).catch(() => ({ applications: [] })),
         ));
         const applications = applicationLists.flatMap((item) => item.applications ?? []);
         setOffers(mapped.map((offer, index) => ({ ...offer, applicants: applicationLists[index].applications?.length ?? offer.applicants ?? 0 })));
@@ -177,7 +178,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
   const confirmDelete = async () => {
     if (!deletingId || !state.token) return;
     try {
-      await api.deleteOffer(deletingId, state.token);
+      await offersApi.deleteOffer(deletingId, state.token);
       setOffers((current) => current.map((o) => o.id === deletingId ? { ...o, status: "CANCELADA" } : o));
       setDeletingId(null);
     } catch (err) {
@@ -207,11 +208,11 @@ export default function CompanyDashboard({ state, navigate }: Props) {
 
     try {
       if (editingId) {
-        const response = await api.updateOffer(editingId, payload, state.token);
+        const response = await offersApi.updateOffer(editingId, payload, state.token);
         const updated = toUiOffer(response.offer, state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto, state.currentUser?.organizacionVerificada);
         setOffers((current) => current.map((o) => (o.id === editingId ? { ...updated, applicants: o.applicants, stageCounts: o.stageCounts, newThisWeek: o.newThisWeek } : o)));
       } else {
-        const response = await api.createOffer(payload, state.token);
+        const response = await offersApi.createOffer(payload, state.token);
         const created = toUiOffer(response.offer, state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto, state.currentUser?.organizacionVerificada);
         setOffers((current) => [created, ...current]);
         localStorage.removeItem(draftStorageKey);

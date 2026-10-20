@@ -5,7 +5,7 @@ import ArdyMark from "../../shared/ui/ArdyMark";
 import TypeBadge from "../../shared/ui/TypeBadge";
 import { IconMonitor } from "../../shared/ui/icons";
 import FilterDropdown, { FilterOption } from "../../shared/ui/FilterDropdown";
-import { api } from "../../shared/api/client";
+import { offersApi } from "./offers.api";
 import { companyInitials, daysUntil, isExternalOfferType, normalizeModality, toNumberOrZero } from "../../shared/lib/offers";
 
 type Props = {
@@ -64,7 +64,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
   useEffect(() => {
     let active = true;
     const refreshOffers = () => {
-      api.getOffers()
+      offersApi.getOffers()
         .then((response) => {
           if (!active) return;
           // Las prácticas son solo para estudiantes: la bolsa externa muestra empleos y formación.

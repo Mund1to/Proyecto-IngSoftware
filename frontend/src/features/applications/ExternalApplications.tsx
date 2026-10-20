@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AppState, Screen } from "../../app/App";
-import { api } from "../../shared/api/client";
+import { offersApi } from "../offers/offers.api";
 import { mapOfferToJob } from "../offers/ExternalDashboard";
 import NavBar from "../../shared/ui/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
@@ -48,7 +48,7 @@ export default function ExternalApplications({ state, navigate, reloadApplicatio
   const openJob = async (jobId: number) => {
     setError("");
     try {
-      const response = await api.getOffer(jobId);
+      const response = await offersApi.getOffer(jobId);
       navigate("external-job-detail", { selectedJob: mapOfferToJob(response.offer) });
     } catch {
       setError("Esta vacante ya no está publicada, por eso no se puede abrir su detalle.");

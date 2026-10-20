@@ -5,7 +5,7 @@ import ArdyMark from "../../shared/ui/ArdyMark";
 import DueBadge from "../../shared/ui/DueBadge";
 import TypeBadge from "../../shared/ui/TypeBadge";
 import { IconArrowRight, IconBookmark, IconCalendar, IconCheck, IconClock, IconMail, IconMonitor, IconPin, IconPlus, IconVerified } from "../../shared/ui/icons";
-import { api, ProfileDetails } from "../../shared/api/client";
+import { profileApi, ProfileDetails } from "../profile/profile.api";
 import { daysUntil, formatDate, isValidDate } from "../../shared/lib/offers";
 import { useSavedOffers } from "../../shared/lib/useStoredList";
 
@@ -48,7 +48,7 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
   useEffect(() => {
     if (!state.token) return;
     let active = true;
-    api.getProfileDetails(state.token)
+    profileApi.getProfileDetails(state.token)
       .then((response) => { if (active) setDetails(response.details); })
       .catch(() => { if (active) setDetails(null); });
     return () => { active = false; };

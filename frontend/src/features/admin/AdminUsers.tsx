@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppState, Screen } from "../../app/App";
 import NavBar from "../../shared/ui/NavBar";
 import { IconClock } from "../../shared/ui/icons";
-import { api, type AdminUser } from "../../shared/api/client";
+import { adminApi, type AdminUser } from "./admin.api";
 import { formatDate } from "../../shared/lib/offers";
 
 type Props = {
@@ -38,7 +38,7 @@ export default function AdminUsers({ state, navigate }: Props) {
       return;
     }
     setLoading(true);
-    api.getUsers(state.token, query)
+    adminApi.getUsers(state.token, query)
       .then((response) => {
         setUsers(response.users ?? []);
         setError("");
@@ -59,7 +59,7 @@ export default function AdminUsers({ state, navigate }: Props) {
     setBusyId(String(user.id));
     setError("");
     try {
-      const response = await api.updateUserRoles(user.id, roles, state.token);
+      const response = await adminApi.updateUserRoles(user.id, roles, state.token);
       replaceUser(response.user);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron actualizar los roles.");
@@ -73,7 +73,7 @@ export default function AdminUsers({ state, navigate }: Props) {
     setBusyId(String(user.id));
     setError("");
     try {
-      const response = await api.updateUserActive(user.id, !user.activo, state.token);
+      const response = await adminApi.updateUserActive(user.id, !user.activo, state.token);
       replaceUser(response.user);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo actualizar la cuenta.");
@@ -232,7 +232,7 @@ function PasswordModal({ user, token, onClose, onDone }: { user: AdminUser; toke
     if (password !== confirm) return setError("Las contraseñas no coinciden.");
     setSaving(true);
     try {
-      const response = await api.setUserPassword(user.id, password, token);
+      const response = await adminApi.setUserPassword(user.id, password, token);
       onDone(response.user);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo cambiar la contraseña.");

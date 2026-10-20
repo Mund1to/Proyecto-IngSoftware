@@ -8,7 +8,7 @@ import FilterDropdown, { FilterOption } from "../../shared/ui/FilterDropdown";
 import ProgressMeter from "../../shared/ui/ProgressMeter";
 import TypeBadge from "../../shared/ui/TypeBadge";
 import { IconArrowRight, IconBook, IconBookmark, IconBriefcase, IconCheck, IconClose, IconGraduation, IconGrid, IconMonitor, IconPin, IconSearch, IconVerified } from "../../shared/ui/icons";
-import { api } from "../../shared/api/client";
+import { offersApi } from "./offers.api";
 import { companyInitials, daysUntil, formatSalary, isValidDate, normalizeModality, OFFER_TYPE_LABELS, toNumberOrZero } from "../../shared/lib/offers";
 import { useSavedOffers } from "../../shared/lib/useStoredList";
 
@@ -80,10 +80,10 @@ export default function StudentDashboard({ state, navigate }: Props) {
     // #20 HU-16: con sesión se usa el orden por afinidad al perfil; sin sesión,
     // el catálogo público. Si la recomendación falla, se cae al catálogo público.
     const fetchOffers = () => (state.token
-      ? api.getRecommendedOffers(state.token)
+      ? offersApi.getRecommendedOffers(state.token)
         .then((response) => ({ response, recommended: true }))
-        .catch(() => api.getOffers().then((response) => ({ response, recommended: false })))
-      : api.getOffers().then((response) => ({ response, recommended: false })));
+        .catch(() => offersApi.getOffers().then((response) => ({ response, recommended: false })))
+      : offersApi.getOffers().then((response) => ({ response, recommended: false })));
 
     const refreshOffers = () => {
       fetchOffers()

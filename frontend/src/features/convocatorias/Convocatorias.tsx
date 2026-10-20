@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { AppState, Screen } from "../../app/App";
 import NavBar from "../../shared/ui/NavBar";
-import { api } from "../../shared/api/client";
+import { convocatoriasApi } from "./convocatorias.api";
+import { offersApi } from "../offers/offers.api";
 
 type Props = {
   state: AppState;
@@ -34,7 +35,7 @@ export default function Convocatorias({ state, navigate }: Props) {
   const [selectedOffer, setSelectedOffer] = useState("");
 
   const loadOffers = async (id: number) => {
-    const [current, all] = await Promise.all([api.getConvocatoriaOffers(id), api.getOffers()]);
+    const [current, all] = await Promise.all([convocatoriasApi.getConvocatoriaOffers(id), offersApi.getOffers()]);
     setLinked(current.offers ?? []);
     setCatalog(all.offers ?? []);
     setSelectedOffer("");
@@ -58,8 +59,8 @@ export default function Convocatorias({ state, navigate }: Props) {
     if (!state.token) return;
     setError("");
     try {
-      if (action === "add") await api.assignOfferToConvocatoria(id, offerId, state.token);
-      else await api.unassignOfferFromConvocatoria(id, offerId, state.token);
+      if (action === "add") await convocatoriasApi.assignOfferToConvocatoria(id, offerId, state.token);
+      else await convocatoriasApi.unassignOfferFromConvocatoria(id, offerId, state.token);
       await loadOffers(id);
       load();
     } catch (err) {
@@ -68,7 +69,7 @@ export default function Convocatorias({ state, navigate }: Props) {
   };
 
   const load = () => {
-    api.getConvocatorias()
+    convocatoriasApi.getConvocatorias()
       .then((response) => {
         setConvocatorias(response.convocatorias ?? []);
         setError("");
@@ -94,9 +95,9 @@ export default function Convocatorias({ state, navigate }: Props) {
     setError("");
     try {
       if (editingId === null) {
-        await api.createConvocatoria(draft, state.token);
+        await convocatoriasApi.createConvocatoria(draft, state.token);
       } else {
-        await api.updateConvocatoria(editingId, draft, state.token);
+        await convocatoriasApi.updateConvocatoria(editingId, draft, state.token);
       }
       reset();
       load();
@@ -122,7 +123,7 @@ export default function Convocatorias({ state, navigate }: Props) {
     if (!window.confirm("¿Eliminar esta convocatoria? Las ofertas asociadas quedarán sin convocatoria.")) return;
     setError("");
     try {
-      await api.deleteConvocatoria(id, state.token);
+      await convocatoriasApi.deleteConvocatoria(id, state.token);
       if (editingId === id) reset();
       if (openId === id) setOpenId(null);
       load();

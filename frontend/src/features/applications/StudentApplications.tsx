@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AppState, Screen } from "../../app/App";
 import NavBar from "../../shared/ui/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
-import { api } from "../../shared/api/client";
+import { offersApi } from "../offers/offers.api";
 import { toUiOffer } from "../offers/StudentDashboard";
 
 type Props = {
@@ -87,7 +87,7 @@ export default function StudentApplications({ state, navigate, reloadApplication
   const openOffer = async (offerId: number) => {
     setLoadError("");
     try {
-      const response = await api.getOffer(offerId);
+      const response = await offersApi.getOffer(offerId);
       navigate("offer-detail", { selectedOffer: toUiOffer(response.offer) });
     } catch {
       setLoadError("Esta oferta ya no está publicada, por eso no se puede abrir su detalle.");

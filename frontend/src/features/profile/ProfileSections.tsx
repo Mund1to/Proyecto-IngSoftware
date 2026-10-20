@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type EducationItem, type ExperienceItem, type ProfileDetails, type SkillItem } from "../../shared/api/client";
+import { type EducationItem, type ExperienceItem, profileApi, type ProfileDetails, type SkillItem } from "./profile.api";
 
 // Educación, experiencia y habilidades guardadas en el servidor (Fase 6).
 // Reemplaza las listas que antes solo vivían en localStorage.
@@ -57,7 +57,7 @@ export default function ProfileSections({ token, section, skillCategories, legac
 
   useEffect(() => {
     if (!token) return;
-    api.getProfileDetails(token)
+    profileApi.getProfileDetails(token)
       .then((response) => {
         setDetails(response.details);
         const empty = !response.details.education.length && !response.details.experience.length && !response.details.skills.length;
@@ -84,9 +84,9 @@ export default function ProfileSections({ token, section, skillCategories, legac
 
   const importLegacy = async () => {
     if (!legacy || !token) return;
-    const ok = await save(api.saveEducation, legacy.education)
-      && await save(api.saveExperience, legacy.experience)
-      && await save(api.saveSkills, legacy.skills);
+    const ok = await save(profileApi.saveEducation, legacy.education)
+      && await save(profileApi.saveExperience, legacy.experience)
+      && await save(profileApi.saveSkills, legacy.skills);
     if (ok) {
       clearLegacy(legacyPrefix, profileId);
       setLegacy(null);
@@ -118,7 +118,7 @@ export default function ProfileSections({ token, section, skillCategories, legac
             { key: "periodo", label: "Periodo", placeholder: "2022 - actual" },
           ]}
           render={(item) => <><h4 className="font-bold text-[var(--navy)] text-sm">{item.titulo}</h4><p className="text-[var(--muted)] text-sm">{item.institucion}</p><p className="text-[var(--muted)] text-xs mt-1">{item.periodo}</p></>}
-          onSave={(items) => save(api.saveEducation, items)}
+          onSave={(items) => save(profileApi.saveEducation, items)}
         />
       )}
       {section === "experience" && (
@@ -134,7 +134,7 @@ export default function ProfileSections({ token, section, skillCategories, legac
             { key: "descripcion", label: "Descripción", multiline: true, optional: true },
           ]}
           render={(item) => <><h4 className="font-bold text-[var(--navy)] text-sm">{item.cargo}</h4><p className="text-[var(--muted)] text-sm font-medium">{item.empresa}</p><p className="text-[var(--muted)] text-xs mt-0.5">{item.periodo}</p>{item.descripcion && <p className="text-[#475467] text-sm mt-2 leading-relaxed">{item.descripcion}</p>}</>}
-          onSave={(items) => save(api.saveExperience, items)}
+          onSave={(items) => save(profileApi.saveExperience, items)}
         />
       )}
       {section === "skills" && (
@@ -142,7 +142,7 @@ export default function ProfileSections({ token, section, skillCategories, legac
           skills={details.skills}
           categories={skillCategories}
           saving={saving}
-          onSave={(items) => save(api.saveSkills, items)}
+          onSave={(items) => save(profileApi.saveSkills, items)}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 // Textos, estilos y validaciones de la verificación documental (Fase 7),
 // compartidos por la sección de la empresa y la bandeja del revisor.
-import type { VerificationDocumentType, VerificationRequirements, VerificationStatus } from "../../shared/api/client";
+import type { VerificationDocumentType, VerificationRequirements, VerificationStatus } from "./verifications.api";
 
 type Tone = "neutral" | "warning" | "success" | "danger";
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type OrganizationVerification, type VerificationDocumentType } from "../../shared/api/client";
+import { type OrganizationVerification, type VerificationDocumentType, verificationsApi } from "./verifications.api";
 import { formatSize } from "../../shared/lib/files";
 import { formatDate } from "../../shared/lib/offers";
 import {
@@ -44,7 +44,7 @@ export default function OrganizationVerificationPanel({ token, nit }: Props) {
     if (!token) return;
     let active = true;
     setLoading(true);
-    api.getMyVerification(token)
+    verificationsApi.getMyVerification(token)
       .then((response) => { if (active) { apply(response.verification); setError(""); } })
       .catch((err) => { if (active) setError(err instanceof Error ? err.message : "No se pudo cargar la verificación."); })
       .finally(() => { if (active) setLoading(false); });
@@ -90,19 +90,19 @@ export default function OrganizationVerificationPanel({ token, nit }: Props) {
       return setError(problem);
     }
     void run(
-      async () => (await api.uploadVerificationDocument(documentType, file, token)).verification,
+      async () => (await verificationsApi.uploadVerificationDocument(documentType, file, token)).verification,
       `${documentTypeLabel(documentType, requisitos)} adjuntado.`,
     );
   };
 
   const remove = (id: number, name: string) => {
     if (!window.confirm(`¿Eliminar el documento "${name}"?`)) return;
-    void run(async () => (await api.deleteVerificationDocument(id, token)).verification, "Documento eliminado.");
+    void run(async () => (await verificationsApi.deleteVerificationDocument(id, token)).verification, "Documento eliminado.");
   };
 
   const submit = () => {
     void run(async () => {
-      const response = await api.submitVerificationRequest(message, token);
+      const response = await verificationsApi.submitVerificationRequest(message, token);
       setMessage("");
       return response.verification;
     }, "Solicitud enviada. Te avisaremos por correo cuando el equipo de SIPU la revise.");
@@ -110,7 +110,7 @@ export default function OrganizationVerificationPanel({ token, nit }: Props) {
 
   const withdraw = () => {
     if (!window.confirm("¿Retirar la solicitud? Podrás corregir los documentos y enviarla de nuevo.")) return;
-    void run(async () => (await api.withdrawVerificationRequest(token)).verification, "Solicitud retirada. Ya puedes modificar los documentos.");
+    void run(async () => (await verificationsApi.withdrawVerificationRequest(token)).verification, "Solicitud retirada. Ya puedes modificar los documentos.");
   };
 
   const intro = {
@@ -162,7 +162,7 @@ export default function OrganizationVerificationPanel({ token, nit }: Props) {
                 <p className="text-xs text-[var(--muted)]">{documentTypeLabel(document.tipo, requisitos)} · {formatSize(document.tamano)} · {formatDate(document.createdAt)}</p>
               </div>
               <div className="flex gap-3 text-xs font-semibold">
-                <button type="button" className="text-[var(--navy)] hover:underline" aria-label={`Ver ${document.nombre}`} onClick={() => void api.openMyVerificationDocument(document.id, token).catch((err) => setError(err.message))}>Ver</button>
+                <button type="button" className="text-[var(--navy)] hover:underline" aria-label={`Ver ${document.nombre}`} onClick={() => void verificationsApi.openMyVerificationDocument(document.id, token).catch((err) => setError(err.message))}>Ver</button>
                 {!bloqueada && (
                   <button type="button" disabled={busy} className="text-[var(--danger)] hover:underline disabled:opacity-40" aria-label={`Eliminar ${document.nombre}`} onClick={() => remove(document.id, document.nombre)}>Eliminar</button>
                 )}

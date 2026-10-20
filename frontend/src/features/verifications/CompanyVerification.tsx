@@ -3,12 +3,7 @@ import { AppState, Screen } from "../../app/App";
 import NavBar from "../../shared/ui/NavBar";
 import VerificationDecisionModal from "./VerificationDecisionModal";
 import { IconFile } from "../../shared/ui/icons";
-import {
-  api,
-  type RequestStatus,
-  type ReviewedOrganization,
-  type VerificationRequest,
-} from "../../shared/api/client";
+import { type RequestStatus, type ReviewedOrganization, type VerificationRequest, verificationsApi } from "./verifications.api";
 import { formatSize } from "../../shared/lib/files";
 import { formatDate } from "../../shared/lib/offers";
 import { useSession } from "../../app/session";
@@ -58,9 +53,9 @@ export default function CompanyVerification({ state, navigate }: Props) {
     setError("");
     try {
       if (tab === "ORGANIZACIONES") {
-        setOrganizations((await api.getOrganizations(state.token)).organizations ?? []);
+        setOrganizations((await verificationsApi.getOrganizations(state.token)).organizations ?? []);
       } else {
-        const response = await api.getVerificationRequests(state.token, { estado: status, page: 1, limit: PAGE_SIZE });
+        const response = await verificationsApi.getVerificationRequests(state.token, { estado: status, page: 1, limit: PAGE_SIZE });
         setRequests(response.requests ?? []);
         setTotal(response.total ?? 0);
         setPage(1);
@@ -79,7 +74,7 @@ export default function CompanyVerification({ state, navigate }: Props) {
     if (!state.token) return;
     setLoadingMore(true);
     try {
-      const response = await api.getVerificationRequests(state.token, { estado: status, page: page + 1, limit: PAGE_SIZE });
+      const response = await verificationsApi.getVerificationRequests(state.token, { estado: status, page: page + 1, limit: PAGE_SIZE });
       setRequests((current) => [...current, ...(response.requests ?? [])]);
       setTotal(response.total ?? total);
       setPage(page + 1);
@@ -92,7 +87,7 @@ export default function CompanyVerification({ state, navigate }: Props) {
 
   const openDocument = (documentId: number) => {
     if (!state.token) return;
-    void api.openVerificationDocument(documentId, state.token).catch((err) => setError(err instanceof Error ? err.message : "No se pudo abrir el documento."));
+    void verificationsApi.openVerificationDocument(documentId, state.token).catch((err) => setError(err instanceof Error ? err.message : "No se pudo abrir el documento."));
   };
 
   const decideRequest = (request: VerificationRequest, estado: "APROBADA" | "RECHAZADA") => {
@@ -101,7 +96,7 @@ export default function CompanyVerification({ state, navigate }: Props) {
       estado,
       organizationName: request.organizacion.razonSocial,
       confirm: async (observaciones) => {
-        await api.decideVerificationRequest(request.id, estado, observaciones, state.token ?? "");
+        await verificationsApi.decideVerificationRequest(request.id, estado, observaciones, state.token ?? "");
         setDecision(null);
         setNotice(`${request.organizacion.razonSocial}: solicitud ${estado === "APROBADA" ? "aprobada" : "rechazada"}. Se avisó a la empresa por correo.`);
         await load();
@@ -117,7 +112,7 @@ export default function CompanyVerification({ state, navigate }: Props) {
       revoke: organization.verificada && estado === "RECHAZADA",
       organizationName: organization.razon_social,
       confirm: async (observaciones) => {
-        await api.updateOrganizationVerification(organization.organizacion_id, estado, state.token ?? "", observaciones || undefined);
+        await verificationsApi.updateOrganizationVerification(organization.organizacion_id, estado, state.token ?? "", observaciones || undefined);
         setDecision(null);
         setNotice(`${organization.razon_social}: verificación ${estado === "APROBADA" ? "aprobada" : "retirada"}.`);
         await load();

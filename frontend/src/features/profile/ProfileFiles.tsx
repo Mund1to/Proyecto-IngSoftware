@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type FileKind, type StoredFile } from "../../shared/api/client";
+import { type FileKind, type StoredFile } from "../../shared/api/account";
+import { profileApi } from "./profile.api";
 import { formatSize } from "../../shared/lib/files";
 import { IconFile, IconImage } from "../../shared/ui/icons";
 
@@ -48,7 +49,7 @@ export function FileCard({ token, kind, current, onChanged }: CardProps) {
     if (!file || !token) return;
     const problem = validateFile(kind, file);
     if (problem) return setError(problem);
-    void run(() => api.uploadFile(kind, file, token));
+    void run(() => profileApi.uploadFile(kind, file, token));
   };
 
   return (
@@ -60,9 +61,9 @@ export function FileCard({ token, kind, current, onChanged }: CardProps) {
           <p className="text-xs font-bold text-[var(--success)] break-all">{current.nombre}</p>
           <p className="text-[10px] text-[var(--muted)] mt-0.5">{formatSize(current.tamano)} · guardado en tu cuenta</p>
           <div className="mt-2 flex justify-center gap-3 text-[11px] font-semibold">
-            <button disabled={busy || !token} onClick={() => token && void api.openMyFile(kind, token).catch((err) => setError(err.message))} className="text-[var(--navy)] hover:underline">Ver</button>
+            <button disabled={busy || !token} onClick={() => token && void profileApi.openMyFile(kind, token).catch((err) => setError(err.message))} className="text-[var(--navy)] hover:underline">Ver</button>
             <button disabled={busy} onClick={() => input.current?.click()} className="text-[var(--navy)] hover:underline">Reemplazar</button>
-            <button disabled={busy || !token} onClick={() => token && window.confirm(`¿Eliminar ${rule.label.toLowerCase()}?`) && void run(() => api.deleteFile(kind, token))} className="text-[var(--danger)] hover:underline">Eliminar</button>
+            <button disabled={busy || !token} onClick={() => token && window.confirm(`¿Eliminar ${rule.label.toLowerCase()}?`) && void run(() => profileApi.deleteFile(kind, token))} className="text-[var(--danger)] hover:underline">Eliminar</button>
           </div>
         </>
       ) : (
@@ -88,7 +89,7 @@ export function useProfilePhoto(token: string | null, photo?: StoredFile) {
     }
     let objectUrl = "";
     let active = true;
-    api.getFile("foto", token)
+    profileApi.getFile("foto", token)
       .then((blob) => {
         if (!active) return;
         objectUrl = URL.createObjectURL(blob);
@@ -122,7 +123,7 @@ export function ProfileAvatar({ token, photo, initials, onChanged, gradient }: {
     if (problem) return setError(problem);
     setError("");
     try {
-      await api.uploadFile("foto", file, token);
+      await profileApi.uploadFile("foto", file, token);
       await onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo subir la foto.");

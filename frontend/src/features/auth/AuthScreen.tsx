@@ -1,6 +1,6 @@
 import { KeyboardEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { AppState, Role, Screen } from "../../app/App";
-import { api } from "../../shared/api/client";
+import { authApi } from "./auth.api";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import UniversityLogo from "../../shared/ui/UniversityLogo";
 import { IconArrowRight, IconBriefcase, IconBuilding, IconCheck, IconEye, IconEyeOff, IconGraduation, IconLock, IconMail, IconUser } from "../../shared/ui/icons";
@@ -47,7 +47,7 @@ export default function AuthScreen({ state, login, register, clearResetToken }: 
 
   // Despierta la API (Render en plan gratuito se suspende) mientras el usuario escribe.
   useEffect(() => {
-    api.health().catch(() => undefined);
+    authApi.health().catch(() => undefined);
     return () => window.clearTimeout(slowTimer.current);
   }, []);
 
@@ -86,7 +86,7 @@ export default function AuthScreen({ state, login, register, clearResetToken }: 
       const token = state?.resetToken;
       if (!token) return setError("El enlace de recuperación no es válido. Solicita uno nuevo.");
       await runRequest(async () => {
-        const response = await api.resetPassword(token, password);
+        const response = await authApi.resetPassword(token, password);
         clearResetToken?.();
         changeView("login");
         setInfo(response.message);
@@ -98,7 +98,7 @@ export default function AuthScreen({ state, login, register, clearResetToken }: 
 
     if (view === "forgot") {
       await runRequest(async () => {
-        const response = await api.forgotPassword(email.trim());
+        const response = await authApi.forgotPassword(email.trim());
         setInfo(response.message);
       }, "No se pudo enviar el enlace.");
       return;

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { AppState, Offer, Screen } from "../../app/App";
 import NavBar from "../../shared/ui/NavBar";
 import { IconPin } from "../../shared/ui/icons";
-import { api } from "../../shared/api/client";
+import { offersApi } from "../offers/offers.api";
+import { applicationsApi } from "./applications.api";
 import { formatDate } from "../../shared/lib/offers";
 import { toUiOffer } from "../offers/StudentDashboard";
 
@@ -68,7 +69,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
   // Sin oferta seleccionada (entrada desde el menú) se listan las ofertas propias.
   useEffect(() => {
     if (offer || !state.token) return;
-    api.getMyOffers(state.token)
+    offersApi.getMyOffers(state.token)
       .then((response) => setMyOffers((response.offers ?? []).map(toUiOffer)))
       .catch((error) => {
         setMyOffers([]);
@@ -79,7 +80,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
   useEffect(() => {
     if (!offer || !state.token) return;
 
-    api.getApplicationsForOffer(String(offer.id), state.token)
+    applicationsApi.getApplicationsForOffer(String(offer.id), state.token)
       .then((response) => {
         const mapped = (response.applications ?? []).map((item) => ({
           id: Number(item.id),
@@ -112,7 +113,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
     try {
       // Aceptar y rechazar pasan por App; revisión y entrevista usan el mismo endpoint directamente.
       if (status === "Aceptada" || status === "Rechazada") await updateCandidateStatus(id, status);
-      else await api.updateApplicationStatus(id, API_STATUS[status] ?? "EN_REVISION", state.token ?? "");
+      else await applicationsApi.updateApplicationStatus(id, API_STATUS[status] ?? "EN_REVISION", state.token ?? "");
       setCandidates((current) => current.map((candidate) => candidate.id === id ? { ...candidate, status } : candidate));
       setSelected((current) => current?.id === id ? { ...current, status } : current);
       return true;
@@ -427,7 +428,7 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
                   {selected.hasCv && (
                     <button
                       className="text-sm font-semibold text-[var(--primary)] underline"
-                      onClick={() => state.token && void api.openApplicationCv(selected.id, state.token).catch((error) => setActionError(error instanceof Error ? error.message : "No se pudo abrir la hoja de vida."))}
+                      onClick={() => state.token && void applicationsApi.openApplicationCv(selected.id, state.token).catch((error) => setActionError(error instanceof Error ? error.message : "No se pudo abrir la hoja de vida."))}
                     >
                       Descargar hoja de vida (PDF)
                     </button>

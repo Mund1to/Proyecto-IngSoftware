@@ -1,5 +1,10 @@
 import { Component, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, SESSION_EXPIRED_EVENT, type ApiUser, type StoredFile } from "../shared/api/client";
+import { SESSION_EXPIRED_EVENT } from "../shared/api/client";
+import { type ApiUser, type StoredFile } from "../shared/api/account";
+import { applicationsApi } from "../features/applications/applications.api";
+import { profileApi } from "../features/profile/profile.api";
+import { verificationsApi } from "../features/verifications/verifications.api";
+import { authApi } from "../features/auth/auth.api";
 import { mapApplicationStatus, type ApplicationStatus, type OfferType } from "../shared/lib/offers";
 import { isAdminUser, SessionContext } from "./session";
 import AuthScreen from "../features/auth/AuthScreen";
@@ -281,7 +286,7 @@ export default function App() {
   const reloadApplications = useCallback(async () => {
     if (!state.token) return;
     try {
-      const response = await api.getMyApplications(state.token);
+      const response = await applicationsApi.getMyApplications(state.token);
       const applications = mapApiApplications(response.applications ?? []);
       setState((current) => ({ ...current, applications, jobApplications: toJobApplications(applications) }));
     } catch (error) {
@@ -294,7 +299,7 @@ export default function App() {
     if (!state.booting || !state.token) return;
     const token = state.token;
 
-    api.getCurrentUser(token)
+    profileApi.getCurrentUser(token)
       .then((data) => {
         const user = mapUserToSession(data.user);
         const role = resolveRole(user);
@@ -313,7 +318,7 @@ export default function App() {
       setPendingVerifications(0);
       return;
     }
-    api.getVerificationSummary(state.token)
+    verificationsApi.getVerificationSummary(state.token)
       .then((response) => setPendingVerifications(Number(response.pendientes) || 0))
       .catch((error) => console.error("getVerificationSummary failed:", error));
   }, [state.token, state.role]);
@@ -349,18 +354,18 @@ export default function App() {
 
     // Login y registro devuelven la cuenta sin el detalle de los perfiles
     // (universidad, razón social, ubicación...); se completa con /profile/me.
-    api.getCurrentUser(token)
+    profileApi.getCurrentUser(token)
       .then((data) => setState((current) => current.token === token ? { ...current, currentUser: mapUserToSession(data.user) } : current))
       .catch((error) => console.error("getCurrentUser failed:", error));
   };
 
   const login = async (email: string, password: string) => {
-    const response = await api.login({ email, password });
+    const response = await authApi.login({ email, password });
     startSession(response.token, response.user);
   };
 
   const register = async (payload: Record<string, unknown>) => {
-    const response = await api.register(payload);
+    const response = await authApi.register(payload);
     startSession(response.token, response.user);
   };
 
@@ -374,14 +379,14 @@ export default function App() {
   };
 
   const updateExternalProfile = async (payload: Record<string, unknown>) => {
-    const response = await api.updateExternalProfile(payload, requireToken());
+    const response = await profileApi.updateExternalProfile(payload, requireToken());
     setCurrentUser(response.user);
   };
 
   const updateStudentProfile = async (payload: Record<string, unknown>) => {
     const token = requireToken();
-    await api.updateCurrentUser({ nombreCompleto: payload.nombreCompleto, telefono: payload.telefono }, token);
-    const response = await api.updateStudentProfile({
+    await profileApi.updateCurrentUser({ nombreCompleto: payload.nombreCompleto, telefono: payload.telefono }, token);
+    const response = await profileApi.updateStudentProfile({
       universidad: payload.universidad,
       programaAcademico: payload.programaAcademico,
       semestre: payload.semestre,
@@ -393,8 +398,8 @@ export default function App() {
 
   const updateOrganizationProfile = async (payload: Record<string, unknown>) => {
     const token = requireToken();
-    await api.updateCurrentUser({ nombreCompleto: payload.nombreCompleto, telefono: payload.telefono }, token);
-    const response = await api.updateOrganizationProfile({
+    await profileApi.updateCurrentUser({ nombreCompleto: payload.nombreCompleto, telefono: payload.telefono }, token);
+    const response = await profileApi.updateOrganizationProfile({
       razonSocial: payload.razonSocial,
       identificacionFiscal: payload.identificacionFiscal,
       sitioWeb: payload.sitioWeb,
@@ -405,37 +410,37 @@ export default function App() {
 
   // El cambio de contraseña cierra las demás sesiones y entrega un token nuevo.
   const changePassword = async (currentPassword: string, newPassword: string) => {
-    const response = await api.changePassword(currentPassword, newPassword, requireToken());
+    const response = await profileApi.changePassword(currentPassword, newPassword, requireToken());
     if (response.token) setState((current) => ({ ...current, token: response.token }));
   };
 
   // Recarga la cuenta tras cambios que el servidor calcula (por ejemplo, archivos).
   const refreshCurrentUser = async () => {
-    const response = await api.getCurrentUser(requireToken());
+    const response = await profileApi.getCurrentUser(requireToken());
     setCurrentUser(response.user);
   };
 
   const applyToOffer = async (offer: Offer) => {
     const token = requireToken();
     if (state.applications.some((a) => a.offerId === offer.id)) return;
-    await api.applyToOffer(String(offer.id), token, { cartaPresentacion: `Postulación a ${offer.title}` });
+    await applicationsApi.applyToOffer(String(offer.id), token, { cartaPresentacion: `Postulación a ${offer.title}` });
     await reloadApplications();
   };
 
   const applyToJob = async (job: Job) => {
     const token = requireToken();
     if (state.jobApplications.some((a) => a.jobId === job.id)) return;
-    await api.applyToOffer(String(job.id), token, { cartaPresentacion: `Postulación a ${job.title}` });
+    await applicationsApi.applyToOffer(String(job.id), token, { cartaPresentacion: `Postulación a ${job.title}` });
     await reloadApplications();
   };
 
   const withdrawApplication = async (applicationId: number) => {
-    await api.withdrawApplication(applicationId, requireToken());
+    await applicationsApi.withdrawApplication(applicationId, requireToken());
     await reloadApplications();
   };
 
   const updateCandidateStatus = async (id: number, status: "Aceptada" | "Rechazada") => {
-    await api.updateApplicationStatus(id, status === "Aceptada" ? "ACEPTADA" : "RECHAZADA", requireToken());
+    await applicationsApi.updateApplicationStatus(id, status === "Aceptada" ? "ACEPTADA" : "RECHAZADA", requireToken());
   };
 
   const session = useMemo(() => ({

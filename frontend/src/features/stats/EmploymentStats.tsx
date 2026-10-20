@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { AppState, Screen } from "../../app/App";
 import NavBar from "../../shared/ui/NavBar";
 import { IconBriefcase, IconBuilding, IconCheck, IconUser } from "../../shared/ui/icons";
-import { api } from "../../shared/api/client";
+import { statsApi } from "./stats.api";
 import { companyInitials } from "../../shared/lib/offers";
 
 type Props = {
@@ -73,7 +73,7 @@ export default function EmploymentStats({ state, navigate }: Props) {
       setLoading(false);
       return;
     }
-    api.getEmploymentStats(state.token)
+    statsApi.getEmploymentStats(state.token)
       .then((response) => {
         setStats(response.stats);
         setError("");
