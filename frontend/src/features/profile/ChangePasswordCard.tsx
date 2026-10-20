@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isStrongPassword } from "../../shared/lib/password";
 
 type Props = { onChange: (currentPassword: string, newPassword: string) => Promise<void> };
 
@@ -16,7 +17,7 @@ export default function ChangePasswordCard({ onChange }: Props) {
     event.preventDefault();
     setMessage(null);
     if (!current) return setMessage({ ok: false, text: "Ingresa tu contraseña actual." });
-    if (next.length < 8 || !/[A-Z]/.test(next) || !/\d/.test(next)) {
+    if (!isStrongPassword(next)) {
       return setMessage({ ok: false, text: "La nueva contraseña necesita 8 caracteres, una mayúscula y un número." });
     }
     if (next !== confirm) return setMessage({ ok: false, text: "Las contraseñas nuevas no coinciden." });

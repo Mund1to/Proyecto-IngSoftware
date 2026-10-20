@@ -2,6 +2,8 @@ import { KeyboardEvent, ReactNode, useEffect, useRef, useState } from "react";
 import type { AppState, Navigate, Role } from "../../app/types";
 import { authApi } from "./auth.api";
 import ArdyMark from "../../shared/ui/ArdyMark";
+import PasswordRules from "../../shared/ui/PasswordRules";
+import { isStrongPassword } from "../../shared/lib/password";
 import UniversityLogo from "../../shared/ui/UniversityLogo";
 import { IconArrowRight, IconBriefcase, IconBuilding, IconCheck, IconEye, IconEyeOff, IconGraduation, IconLock, IconMail, IconUser } from "../../shared/ui/icons";
 
@@ -29,7 +31,6 @@ const copy: Record<View, { eyebrow: string; title: string; intro: string }> = {
   reset: { eyebrow: "Recupera tu acceso", title: "Crea una nueva contraseña", intro: "El enlace es válido durante 60 minutos y se usa una sola vez." },
 };
 
-const isStrongPassword = (value: string) => value.length >= 8 && /[A-Z]/.test(value) && /\d/.test(value);
 
 export default function AuthScreen({ state, login, register, clearResetToken }: Props) {
   const [view, setView] = useState<View>(state?.resetToken ? "reset" : "login");
@@ -269,11 +270,7 @@ export default function AuthScreen({ state, login, register, clearResetToken }: 
               {needsConfirm && (
                 <>
                   <Field label="Confirmar contraseña" icon={<IconLock />} value={confirm} onChange={setConfirm} type={passwordType} autoComplete="new-password" />
-                  <ul className="password-rules" aria-label="Requisitos de contraseña">
-                    <li className={password.length >= 8 ? "valid" : ""}>Mínimo 8 caracteres</li>
-                    <li className={/[A-Z]/.test(password) ? "valid" : ""}>Una mayúscula</li>
-                    <li className={/\d/.test(password) ? "valid" : ""}>Un número</li>
-                  </ul>
+                  <PasswordRules password={password} />
                 </>
               )}
               {error && <div className="form-error" role="alert">{error}</div>}

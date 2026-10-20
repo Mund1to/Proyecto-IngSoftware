@@ -4,6 +4,8 @@ import NavBar from "../../app/NavBar";
 import { IconClock } from "../../shared/ui/icons";
 import { adminApi, type AdminUser } from "./admin.api";
 import { formatDate } from "../../shared/lib/format";
+import { isStrongPassword } from "../../shared/lib/password";
+import PasswordRules from "../../shared/ui/PasswordRules";
 
 type Props = {
   state: AppState;
@@ -216,8 +218,6 @@ function generatePassword() {
   return chars.join("");
 }
 
-const isStrongPassword = (value: string) => value.length >= 8 && /[A-Z]/.test(value) && /\d/.test(value);
-
 function PasswordModal({ user, token, onClose, onDone }: { user: AdminUser; token: string; onClose: () => void; onDone: (user: AdminUser) => void }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -268,11 +268,7 @@ function PasswordModal({ user, token, onClose, onDone }: { user: AdminUser; toke
           <label className="password-modal-show"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Mostrar</label>
           <button type="button" className="text-button" onClick={generate}>Generar una segura</button>
         </div>
-        <ul className="password-rules" aria-label="Requisitos de contraseña">
-          <li className={password.length >= 8 ? "valid" : ""}>Mínimo 8 caracteres</li>
-          <li className={/[A-Z]/.test(password) ? "valid" : ""}>Una mayúscula</li>
-          <li className={/\d/.test(password) ? "valid" : ""}>Un número</li>
-        </ul>
+        <PasswordRules password={password} />
         {error && <div className="form-error" role="alert">{error}</div>}
         <div className="modal-actions">
           <button type="button" className="button secondary" onClick={onClose}>Cancelar</button>
