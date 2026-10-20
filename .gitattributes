@@ -1,0 +1,11 @@
+# El repositorio guarda los archivos de texto con LF y así se escriben también
+# en Windows, para que las ediciones no mezclen finales de línea.
+* text=auto eol=lf
+
+# Binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary
+*.docx binary
