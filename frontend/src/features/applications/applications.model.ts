@@ -30,16 +30,6 @@ export type Application = {
   status: ApplicationStatus;
 };
 
-// La misma postulación con los nombres que usan las pantallas del profesional externo.
-export type JobApplication = {
-  id: number;
-  jobId: number;
-  jobTitle: string;
-  company: string;
-  appliedDate: string;
-  status: ApplicationStatus | "Entrevista";
-};
-
 // Todas las postulaciones del candidato, sin importar el tipo de oferta: un
 // estudiante puede postularse a un empleo y un externo a una práctica.
 export const mapApiApplications = (items: any[]): Application[] => items.map((item) => ({
@@ -49,13 +39,4 @@ export const mapApiApplications = (items: any[]): Application[] => items.map((it
   company: item.empresa ?? "Empresa",
   appliedDate: String(item.created_at ?? new Date().toISOString()).slice(0, 10),
   status: mapApplicationStatus(item.estado),
-}));
-
-export const toJobApplications = (applications: Application[]): JobApplication[] => applications.map((item) => ({
-  id: item.id,
-  jobId: item.offerId,
-  jobTitle: item.offerTitle,
-  company: item.company,
-  appliedDate: item.appliedDate,
-  status: item.status,
 }));

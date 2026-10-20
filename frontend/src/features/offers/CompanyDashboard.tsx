@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import { Offer } from "./offers.model";
 import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
@@ -11,7 +11,7 @@ import { formatDate } from "../../shared/lib/format";
 import { companyInitials, daysUntil, formatSalary, toNumberOrZero } from "../../shared/lib/format";
 import { normalizeModality, OFFER_AUDIENCE, OFFER_TYPE_LABELS, offerTypeLabel, type OfferType } from "./offers.model";
 
-type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
+type Props = { state: AppState; navigate: Navigate };
 type Draft = {
   title: string; area: string; description: string; program: string; semester: string; skills: string;
   experience: string; languages: string; city: string; modality: Offer["modality"]; duration: string;

@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { ApiUser, StoredFile } from "../shared/api/account";
-import type { Application, JobApplication } from "../features/applications/applications.model";
+import type { Application } from "../features/applications/applications.model";
 import type { Role } from "./types";
 
 // Usuario de la sesión: la cuenta con los datos de sus perfiles aplanados.
@@ -34,7 +34,6 @@ export type SessionContextValue = {
   role: Role | null;
   currentUser: UserSession | null;
   applications: Application[];
-  jobApplications: JobApplication[];
   // Solicitudes de verificación pendientes (solo para administradores y funcionarios).
   pendingVerifications: number;
   refreshPendingVerifications: () => void;
@@ -45,7 +44,6 @@ export const SessionContext = createContext<SessionContextValue>({
   role: null,
   currentUser: null,
   applications: [],
-  jobApplications: [],
   pendingVerifications: 0,
   refreshPendingVerifications: () => undefined,
   logout: () => undefined,

@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import ArdyBubble from "../../shared/ui/ArdyBubble";
@@ -13,7 +13,7 @@ import { daysUntil, isValidDate } from "../../shared/lib/format";
 import { OFFER_TYPE_LABELS, toUiOffer, type CatalogOffer, type Offer } from "./offers.model";
 import { useSavedOffers } from "./useSavedOffers";
 
-type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void };
+type Props = { state: AppState; navigate: Navigate };
 type Sort = "recent" | "closing" | "salary";
 type FilterKey = "city" | "area" | "modality" | "offerType";
 

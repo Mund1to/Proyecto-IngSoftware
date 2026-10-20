@@ -28,7 +28,6 @@ const baseState: AppState = {
   selectedJob: null,
   selectedCompanyOffer: null,
   applications: [],
-  jobApplications: [],
 };
 
 // Oferta tal como existe en producción: modalidad y ciudad con codificación dañada.

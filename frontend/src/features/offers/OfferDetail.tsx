@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import { Offer } from "./offers.model";
 import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
@@ -10,7 +10,7 @@ import { profileApi, ProfileDetails } from "../profile/profile.api";
 import { daysUntil, formatDate, isValidDate } from "../../shared/lib/format";
 import { useSavedOffers } from "./useSavedOffers";
 
-type Props = { state: AppState; navigate: (screen: Screen, extra?: Partial<AppState>) => void; applyToOffer: (offer: Offer) => Promise<void> };
+type Props = { state: AppState; navigate: Navigate; applyToOffer: (offer: Offer) => Promise<void> };
 
 const STEPS = [
   { title: "Enviada", text: "La empresa recibe tu perfil" },

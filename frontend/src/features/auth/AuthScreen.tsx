@@ -1,5 +1,5 @@
 import { KeyboardEvent, ReactNode, useEffect, useRef, useState } from "react";
-import { AppState, Role, Screen } from "../../app/types";
+import type { AppState, Navigate, Role } from "../../app/types";
 import { authApi } from "./auth.api";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import UniversityLogo from "../../shared/ui/UniversityLogo";
@@ -7,7 +7,7 @@ import { IconArrowRight, IconBriefcase, IconBuilding, IconCheck, IconEye, IconEy
 
 type Props = {
   state?: AppState;
-  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  navigate: Navigate;
   login?: (email: string, password: string) => Promise<void>;
   register?: (payload: Record<string, unknown>) => Promise<void>;
   clearResetToken?: () => void;

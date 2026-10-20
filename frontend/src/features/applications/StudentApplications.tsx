@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import { offersApi } from "../offers/offers.api";
@@ -7,7 +7,7 @@ import { toUiOffer } from "../offers/offers.model";
 
 type Props = {
   state: AppState;
-  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  navigate: Navigate;
   reloadApplications: () => Promise<void>;
   withdrawApplication: (applicationId: number) => Promise<void>;
 };

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import NavBar from "../../app/NavBar";
 import { convocatoriasApi } from "./convocatorias.api";
 import { offersApi } from "../offers/offers.api";
 
 type Props = {
   state: AppState;
-  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  navigate: Navigate;
 };
 
 type Convocatoria = {

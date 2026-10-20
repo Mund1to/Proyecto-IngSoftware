@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import { offersApi } from "../offers/offers.api";
 import { mapOfferToJob } from "../offers/offers.model";
 import NavBar from "../../app/NavBar";
@@ -8,7 +8,7 @@ import { IconCheck } from "../../shared/ui/icons";
 
 type Props = {
   state: AppState;
-  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  navigate: Navigate;
   reloadApplications: () => Promise<void>;
   withdrawApplication: (applicationId: number) => Promise<void>;
 };
@@ -37,7 +37,7 @@ const logoStyle: Record<string, string> = {
 const steps = ["Enviada", "En revisión", "Entrevista", "Aceptada"] as const;
 
 export default function ExternalApplications({ state, navigate, reloadApplications, withdrawApplication }: Props) {
-  const apps = state.jobApplications;
+  const apps = state.applications;
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
 
@@ -150,7 +150,7 @@ export default function ExternalApplications({ state, navigate, reloadApplicatio
                         <span className="text-white font-bold text-sm">{logo}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-[var(--navy)] text-sm leading-snug">{app.jobTitle}</h3>
+                        <h3 className="font-bold text-[var(--navy)] text-sm leading-snug">{app.offerTitle}</h3>
                         <p className="text-[var(--muted)] text-sm font-medium">{app.company}</p>
                         <p className="text-[var(--muted)] text-xs mt-1">
                           Aplicado el {new Date(app.appliedDate).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
@@ -232,7 +232,7 @@ export default function ExternalApplications({ state, navigate, reloadApplicatio
                         </button>
                       )}
                       <button
-                        onClick={() => void openJob(app.jobId)}
+                        onClick={() => void openJob(app.offerId)}
                         className="text-xs font-semibold text-[var(--navy)]/60 hover:text-[var(--navy)] flex items-center gap-1"
                       >
                         Ver vacante

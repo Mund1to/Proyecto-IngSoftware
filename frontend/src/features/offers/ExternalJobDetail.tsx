@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { daysUntil, formatDate } from "../../shared/lib/format";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import { Job } from "./offers.model";
 import NavBar from "../../app/NavBar";
 import { IconBriefcase, IconCalendar, IconMonitor, IconPin, IconUser } from "../../shared/ui/icons";
 
 type Props = {
   state: AppState;
-  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
-  applyToJob: (job: Job) => Promise<void>;
+  navigate: Navigate;
+  applyToOffer: (job: Job) => Promise<void>;
 };
 
 const logoStyle: Record<string, string> = {
@@ -26,10 +26,10 @@ const fmt = (n: number) =>
   "$" + (n >= 1000000 ? (n / 1000000).toFixed(1).replace(".0", "") + "M" : n / 1000 + "K");
 
 
-export default function ExternalJobDetail({ state, navigate, applyToJob }: Props) {
+export default function ExternalJobDetail({ state, navigate, applyToOffer }: Props) {
   const job = state.selectedJob;
   const [applied, setApplied] = useState(
-    job ? state.jobApplications.some((a) => a.jobId === job.id) : false
+    job ? state.applications.some((a) => a.offerId === job.id) : false
   );
   const [showModal, setShowModal] = useState(false);
   const [applyError, setApplyError] = useState("");
@@ -49,7 +49,7 @@ export default function ExternalJobDetail({ state, navigate, applyToJob }: Props
     setApplying(true);
     setApplyError("");
     try {
-      await applyToJob(job);
+      await applyToOffer(job);
       setApplied(true);
       setShowModal(true);
     } catch (error) {

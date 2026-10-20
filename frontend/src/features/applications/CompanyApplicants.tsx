@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import { Offer } from "../offers/offers.model";
 import NavBar from "../../app/NavBar";
 import { IconPin } from "../../shared/ui/icons";
@@ -10,7 +10,7 @@ import { toUiOffer } from "../offers/offers.model";
 
 type Props = {
   state: AppState;
-  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  navigate: Navigate;
   updateCandidateStatus: (id: number, status: "Aceptada" | "Rechazada") => Promise<void>;
 };
 

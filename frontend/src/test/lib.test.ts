@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mapApiApplications, toJobApplications } from "../features/applications/applications.model";
+import { mapApiApplications } from "../features/applications/applications.model";
 import { mapUserToSession, resolveRole } from "../app/session";
 import { ApiError, PRODUCTION_API_URL, request, resolveApiBaseUrl, SESSION_EXPIRED_EVENT } from "../shared/api/client";
 import { authApi } from "../features/auth/auth.api";
@@ -139,8 +139,8 @@ describe("sesión", () => {
       { id: 2, oferta_id: 11, oferta_tipo: "EMPLEO", estado: "RETIRADA", created_at: "2026-10-02T10:00:00Z" },
     ]);
     expect(applications[0]).toEqual({ id: 1, offerId: 10, offerTitle: "Oferta", company: "Empresa", appliedDate: "2026-10-01", status: "Aceptada" });
-    expect(toJobApplications(applications)).toHaveLength(2);
-    expect(toJobApplications(applications)[1]).toMatchObject({ jobId: 11, status: "Retirada" });
+    expect(applications).toHaveLength(2);
+    expect(applications[1]).toMatchObject({ offerId: 11, status: "Retirada" });
   });
 });
 

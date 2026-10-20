@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import TypeBadge from "./TypeBadge";
@@ -11,7 +11,7 @@ import { isExternalOfferType, mapOfferToJob, type Job } from "./offers.model";
 
 type Props = {
   state: AppState;
-  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  navigate: Navigate;
 };
 
 const AREAS = ["Todas", "Tecnología", "Marketing", "Contabilidad", "Recursos Humanos", "Producción", "Jurídica", "Diseño"];
@@ -69,7 +69,7 @@ export default function ExternalDashboard({ state, navigate }: Props) {
     };
   }, []);
 
-  const applied = state.jobApplications.map((a) => a.jobId);
+  const applied = state.applications.map((a) => a.offerId);
 
   const values: Record<JobFilterKey, string> = { area, modality, city, type };
   // Cumple los filtros activos salvo `except`; el contador de cada opción no

@@ -2,7 +2,7 @@
 // importan solo como tipos; este archivo no depende de ninguna pantalla.
 import type { UserSession } from "./session";
 import type { Job, Offer } from "../features/offers/offers.model";
-import type { Application, JobApplication } from "../features/applications/applications.model";
+import type { Application } from "../features/applications/applications.model";
 
 export type Role = "student" | "company" | "external" | "admin";
 
@@ -45,8 +45,8 @@ export type AppState = {
   selectedJob: Job | null;
   selectedCompanyOffer: Offer | null;
   applicantFilter?: "Todos" | "En revisión" | "Aceptada" | "Rechazada";
+  // Postulaciones del candidato (estudiante o profesional externo).
   applications: Application[];
-  jobApplications: JobApplication[];
 };
 
 // Cambia de pantalla; `extra` permite pasar la oferta o el filtro seleccionado.

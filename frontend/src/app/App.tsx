@@ -5,8 +5,7 @@ import { authApi } from "../features/auth/auth.api";
 import { profileApi } from "../features/profile/profile.api";
 import { applicationsApi } from "../features/applications/applications.api";
 import { verificationsApi } from "../features/verifications/verifications.api";
-import { mapApiApplications, toJobApplications } from "../features/applications/applications.model";
-import type { Job, Offer } from "../features/offers/offers.model";
+import { mapApiApplications } from "../features/applications/applications.model";
 import ErrorBoundary from "./ErrorBoundary";
 import { SCREENS } from "./routes";
 import { mapUserToSession, resolveRole, SessionContext } from "./session";
@@ -35,7 +34,6 @@ const signedOutState = {
   screen: "auth" as Screen,
   booting: false,
   applications: [],
-  jobApplications: [],
   selectedOffer: null,
   selectedJob: null,
   selectedCompanyOffer: null,
@@ -87,7 +85,7 @@ export default function App() {
     try {
       const response = await applicationsApi.getMyApplications(state.token);
       const applications = mapApiApplications(response.applications ?? []);
-      setState((current) => ({ ...current, applications, jobApplications: toJobApplications(applications) }));
+      setState((current) => ({ ...current, applications }));
     } catch (error) {
       console.error("getMyApplications failed:", error);
     }
@@ -219,17 +217,11 @@ export default function App() {
     setCurrentUser(response.user);
   };
 
-  const applyToOffer = async (offer: Offer) => {
+  // Sirve para la oferta del estudiante (Offer) y la vacante del externo (Job).
+  const applyToOffer = async (offer: { id: number; title: string }) => {
     const token = requireToken();
     if (state.applications.some((a) => a.offerId === offer.id)) return;
     await applicationsApi.applyToOffer(String(offer.id), token, { cartaPresentacion: `Postulación a ${offer.title}` });
-    await reloadApplications();
-  };
-
-  const applyToJob = async (job: Job) => {
-    const token = requireToken();
-    if (state.jobApplications.some((a) => a.jobId === job.id)) return;
-    await applicationsApi.applyToOffer(String(job.id), token, { cartaPresentacion: `Postulación a ${job.title}` });
     await reloadApplications();
   };
 
@@ -246,11 +238,10 @@ export default function App() {
     role: state.role,
     currentUser: state.currentUser,
     applications: state.applications,
-    jobApplications: state.jobApplications,
     pendingVerifications,
     refreshPendingVerifications,
     logout: () => logout(),
-  }), [state.role, state.currentUser, state.applications, state.jobApplications, pendingVerifications, refreshPendingVerifications, logout]);
+  }), [state.role, state.currentUser, state.applications, pendingVerifications, refreshPendingVerifications, logout]);
 
   if (state.booting) {
     return (
@@ -265,7 +256,7 @@ export default function App() {
   }
 
   const props = {
-    state, navigate, applyToOffer, applyToJob, withdrawApplication, reloadApplications, updateCandidateStatus,
+    state, navigate, applyToOffer, withdrawApplication, reloadApplications, updateCandidateStatus,
     updateExternalProfile, updateStudentProfile, updateOrganizationProfile, changePassword, login, register,
     refreshCurrentUser, clearResetToken,
   };

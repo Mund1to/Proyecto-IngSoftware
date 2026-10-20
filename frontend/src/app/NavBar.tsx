@@ -91,19 +91,15 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
   // Notificaciones reales: cambios de estado en las postulaciones del candidato.
   const notifications = useMemo<NotificationItem[]>(() => {
     const target: Screen = role === "external" ? "external-applications" : "student-applications";
-    const items = role === "external"
-      ? session.jobApplications.map((app) => ({ id: app.id, title: app.jobTitle, company: app.company, status: app.status }))
-      : session.applications.map((app) => ({ id: app.id, title: app.offerTitle, company: app.company, status: app.status }));
-
-    return items
+    return session.applications
       .filter((app) => statusText[app.status])
       .map((app) => ({
         id: `${app.id}-${app.status}`,
         title: `Tu postulación ${statusText[app.status]}`,
-        detail: `${app.title} · ${app.company}`,
+        detail: `${app.offerTitle} · ${app.company}`,
         screen: target,
       }));
-  }, [role, session.applications, session.jobApplications]);
+  }, [role, session.applications]);
 
   const unreadCount = notifications.filter((item) => !readNotifications.includes(item.id)).length;
 

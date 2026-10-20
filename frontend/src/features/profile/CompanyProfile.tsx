@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Screen } from "../../app/types";
+import type { AppState, Navigate } from "../../app/types";
 import ChangePasswordCard from "./ChangePasswordCard";
 import NavBar from "../../app/NavBar";
 import OrganizationVerificationPanel from "../verifications/OrganizationVerificationPanel";
@@ -7,7 +7,7 @@ import { ProfileAvatar, findFile } from "./ProfileFiles";
 
 type Props = {
   state: AppState;
-  navigate: (screen: Screen, extra?: Partial<AppState>) => void;
+  navigate: Navigate;
   updateOrganizationProfile: (payload: Record<string, unknown>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   refreshCurrentUser: () => Promise<void>;
