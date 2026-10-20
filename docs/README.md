@@ -2,6 +2,7 @@
 
 Esta carpeta contiene la documentación funcional, técnica y de proceso del proyecto.
 
+- [`arquitectura.md`](arquitectura.md): estructura del backend y del frontend, reglas entre capas, contrato entre ambos, cómo agregar una funcionalidad y qué archivos tocar para cambiar de tecnología.
 - [`historial-desarrollo.md`](historial-desarrollo.md): guía paso a paso de lo realizado, estructura, ramas, commits y procedimiento para continuar.
 - [`backlog-fases.md`](backlog-fases.md): fases, historias de usuario, criterios de salida y entidades principales.
 - [`database-schema.md`](database-schema.md): modelo relacional inicial de PostgreSQL y decisiones de diseño.
@@ -12,9 +13,11 @@ Esta carpeta contiene la documentación funcional, técnica y de proceso del pro
 - [`informe-fase-5-calidad.md`](informe-fase-5-calidad.md): auditoría, corrección del inicio de sesión en Vercel, botones sin función, seguridad y pruebas automatizadas.
 - [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-archivos.md): hoja de vida en base de datos, CV y foto, recuperación de contraseña y ofertas de formación.
 - [`informe-fase-7-verificacion-documental.md`](informe-fase-7-verificacion-documental.md): documentos y solicitudes de verificación de empresas, bandeja del revisor, mejoras de seguridad, integración continua y sugerencias.
+- [`informe-estructura-escalable.md`](informe-estructura-escalable.md): revisión de archivos redundantes, frontend por funcionalidades, pruebas de arquitectura y de contrato, y pendientes.
 - [`diseno/brief-claude-design.md`](diseno/brief-claude-design.md): brief de diseño de todas las pantallas para Claude Design.
 - [`diseno/prompt-implementacion-vivo.md`](diseno/prompt-implementacion-vivo.md) y [`diseno/referencia-vivo/`](diseno/referencia-vivo/): plan por fases y maquetas del rediseño "vivo".
 - [`diseno/informe-rediseno-vivo.md`](diseno/informe-rediseno-vivo.md): avance, decisiones y verificación del rediseño "vivo".
+- [`diseno/recursos/`](diseno/recursos/): ilustración original de Ardy y logos de la universidad, usados en el brief de diseño.
 - [`despliegue-render-vercel.md`](despliegue-render-vercel.md): despliegue de PostgreSQL y la API en Render, y del frontend en Vercel.
 
 Los documentos de referencia entregados para el proyecto se conservan en `Proyecto-Archivos/docs/`.
