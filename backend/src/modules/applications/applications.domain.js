@@ -6,3 +6,6 @@ export const COMPANY_STATUSES = ['ENVIADA', 'EN_REVISION', 'PRESELECCIONADA', 'R
 
 // Estados finales: la postulación ya no se puede retirar.
 export const RESOLVED_STATUSES = ['ACEPTADA', 'RECHAZADA', 'RETIRADA'];
+
+// Mensaje opcional del candidato para la empresa al postularse.
+export const MAX_COVER_LETTER_LENGTH = 1500;

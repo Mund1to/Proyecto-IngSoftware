@@ -32,3 +32,12 @@ export const getApplicationCvController = asyncHandler(async function getApplica
   const file = await applicationsService.getApplicationCv(request.auth.sub, request.params.id);
   return sendStoredFile(response, file);
 }, 'No se pudo obtener la hoja de vida.');
+
+export const replaceApplicationCvController = asyncHandler(async function replaceApplicationCvController(request, response) {
+  const cv = await applicationsService.replaceApplicationCv(request.auth.sub, request.params.id, {
+    buffer: Buffer.isBuffer(request.body) ? request.body : null,
+    contentType: request.get('content-type'),
+    rawName: request.get('x-file-name'),
+  });
+  return response.json({ ok: true, cv });
+}, 'No se pudo guardar la hoja de vida de la postulación.');
