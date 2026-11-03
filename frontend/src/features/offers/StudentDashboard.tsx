@@ -99,7 +99,7 @@ export default function StudentDashboard({ state, navigate }: Props) {
   const filtered = useMemo(() => offers.filter((offer) => matches(offer)).sort((a, b) => sort === "closing"
     ? daysUntil(a.closeDate) - daysUntil(b.closeDate)
     : sort === "salary"
-      ? salaryNumber(b.salary) - salaryNumber(a.salary)
+      ? (b.salaryMin ?? 0) - (a.salaryMin ?? 0)
       : b.id - a.id), [area, city, modality, offerType, search, sort, offers, onlySaved, saved]);
 
   const applied = new Set(state.applications.map((item) => item.offerId));
@@ -301,5 +301,3 @@ function OfferCard({ offer, applied, saved, onSave, onOpen }: { offer: CatalogOf
     </article>
   );
 }
-
-function salaryNumber(value: string) { return Number(value.replace(/\D/g, "")); }

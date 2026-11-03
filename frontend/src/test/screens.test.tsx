@@ -318,6 +318,81 @@ describe("CompanyDashboard", () => {
     expect(screen.getByRole("img", { name: "Postulaciones por etapa: 2 enviadas, 0 en revisión, 1 entrevista, 0 aceptadas" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Publicar una nueva oferta/ })).toBeTruthy();
   });
+
+  it("crea una oferta por pasos con opciones, valida cada paso y publica datos estructurados", async () => {
+    const created = { ...brokenOffer, id: "40", titulo: "Analista de datos", tipo: "EMPLEO", estado: "PUBLICADA", conteo_estados: {}, nuevos_semana: 0 };
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => Promise.resolve(init?.method === "POST"
+      ? jsonResponse(201, { ok: true, offer: created })
+      : jsonResponse(200, { ok: true, offers: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CompanyDashboard state={companyState} navigate={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Crear oferta/ }));
+    expect(screen.getByRole("heading", { name: "Nueva oferta de práctica" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /^Empleo Vacante laboral/ }));
+    expect(screen.getByRole("heading", { name: "Nueva oferta de empleo" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+
+    // Paso 2: sin datos no avanza y explica qué falta.
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    expect(screen.getByText(/Escribe un título que describa el cargo/)).toBeTruthy();
+    expect(screen.getByText(/1 por revisar|3 por revisar/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: "Tecnología" }));
+    fireEvent.click(screen.getByRole("button", { name: "Analista de tecnología" }));
+    fireEvent.change(screen.getByLabelText(/^Descripción/), { target: { value: "sasadasd" } });
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    expect(screen.getByText(/mínimo 10 palabras/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/^Descripción/), {
+      target: { value: "Analizarás datos de ventas, construirás tableros en Power BI y apoyarás al equipo comercial con informes semanales." },
+    });
+    expect(screen.getByRole("article", { name: "Vista previa de la oferta" }).textContent).toContain("Analista de tecnología");
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+
+    // Paso 3: habilidades desde sugerencias.
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    expect(screen.getByText("Agrega al menos una habilidad que buscas.")).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("group", { name: /Sugerencias para habilidades/ })).getByRole("button", { name: "SQL" }));
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+
+    // Paso 4: jornada y salario obligatorios en un empleo.
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    expect(screen.getByText("Elige la jornada del empleo.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: "Tiempo completo" }));
+    fireEvent.change(screen.getByLabelText(/Salario mensual desde/), { target: { value: "2.500.000" } });
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+
+    // Paso 5: el correo de la cuenta ya viene escrito.
+    expect((screen.getByLabelText(/Correo de contacto/) as HTMLInputElement).value).toBe("rrhh@ts.co");
+    expect(screen.getByText("Todo listo para publicar.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Publicar oferta" }));
+
+    expect(await screen.findByRole("heading", { name: "Oferta publicada" })).toBeTruthy();
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+    expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({
+      tipo: "EMPLEO", estado: "PUBLICADA", titulo: "Analista de tecnología", area: "Tecnología", habilidades: ["SQL"],
+      jornada: "TIEMPO_COMPLETO", remuneracion: 2500000, contactoEmail: "rrhh@ts.co",
+    });
+  });
+
+  it("lleva al paso del error cuando la API rechaza la oferta", async () => {
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => Promise.resolve(init?.method === "POST"
+      ? jsonResponse(400, { ok: false, message: "Describe mejor la oferta.", errors: { descripcion: "Describe mejor la oferta." } })
+      : jsonResponse(200, { ok: true, offers: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem("sipu-offer-draft-5", JSON.stringify({
+      offerType: "FORMACION", title: "Curso de SQL", area: "Tecnología", skills: ["SQL"], contact: "rrhh@ts.co",
+      description: "Aprenderás a consultar bases de datos relacionales con ejemplos prácticos y ejercicios guiados cada semana.",
+    }));
+    render(<CompanyDashboard state={companyState} navigate={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Crear oferta/ }));
+    expect(screen.getByText("Guardado en este navegador")).toBeTruthy();
+    for (let step = 0; step < 4; step += 1) fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Publicar oferta" }));
+
+    expect(await screen.findByRole("heading", { name: "2. La oferta" })).toBeTruthy();
+    expect(screen.getAllByText("Describe mejor la oferta.").length).toBeGreaterThan(0);
+  });
 });
 
 describe("App: inicio de sesión", () => {
