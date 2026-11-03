@@ -12,6 +12,7 @@ import {
   submissionBlockers,
 } from '../src/modules/verifications/verifications.rules.js';
 import { normalizeModality } from '../src/modules/offers/offers.domain.js';
+import { allowedTransitions, parseInterview, transitionError } from '../src/modules/applications/applications.domain.js';
 import {
   getBodyValue,
   hasBodyValue,
@@ -203,5 +204,40 @@ describe('isStrongPassword', () => {
     assert.equal(isStrongPassword('sinmayuscula1'), false);
     assert.equal(isStrongPassword('SinNumeroAqui'), false);
     assert.equal(isStrongPassword(undefined), false);
+  });
+});
+
+describe('proceso de selección (reglas puras)', () => {
+  it('las prácticas y empleos pasan por entrevista antes de aceptar', () => {
+    assert.deepEqual(allowedTransitions('ENVIADA', 'PRACTICA'), ['EN_REVISION', 'PRESELECCIONADA', 'RECHAZADA']);
+    assert.equal(transitionError('EN_REVISION', 'PRESELECCIONADA', 'EMPLEO'), null);
+    assert.match(transitionError('EN_REVISION', 'ACEPTADA', 'EMPLEO'), /entrevista/);
+    assert.equal(transitionError('PRESELECCIONADA', 'PRESELECCIONADA', 'EMPLEO'), null, 'reprogramar');
+    assert.equal(transitionError('RECHAZADA', 'EN_REVISION', 'EMPLEO'), null, 'reabrir');
+    assert.match(transitionError('RECHAZADA', 'ACEPTADA', 'EMPLEO'), /decisión/);
+    assert.match(transitionError('RETIRADA', 'EN_REVISION', 'EMPLEO'), /retiró/);
+    assert.match(transitionError('EN_REVISION', 'EN_REVISION', 'EMPLEO'), /ya está/);
+  });
+
+  it('la formación acepta inscripciones sin entrevista', () => {
+    assert.equal(transitionError('ENVIADA', 'ACEPTADA', 'FORMACION'), null);
+    assert.match(transitionError('EN_REVISION', 'PRESELECCIONADA', 'FORMACION'), /formación/);
+  });
+
+  it('valida la entrevista según su modalidad', () => {
+    const now = new Date('2026-11-02T12:00:00Z');
+    const tomorrow = '2026-11-03T15:00:00-05:00';
+    assert.deepEqual(parseInterview({ fecha: tomorrow, modalidad: 'virtual', lugar: 'https://meet.test/x' }, now).value, {
+      fecha: '2026-11-03T20:00:00.000Z', modalidad: 'VIRTUAL', lugar: 'https://meet.test/x', duracionMinutos: null,
+    });
+    assert.equal(parseInterview({ fecha: tomorrow, modalidad: 'Telefónica' }, now).value.modalidad, 'TELEFONICA');
+    assert.ok(parseInterview(null, now).error);
+    assert.ok(parseInterview({ fecha: 'mañana', modalidad: 'VIRTUAL' }, now).error);
+    assert.ok(parseInterview({ fecha: '2026-11-01T10:00:00Z', modalidad: 'VIRTUAL', lugar: 'https://x.test' }, now).error, 'pasada');
+    assert.ok(parseInterview({ fecha: '2027-08-01T10:00:00Z', modalidad: 'VIRTUAL', lugar: 'https://x.test' }, now).error, 'más de seis meses');
+    assert.ok(parseInterview({ fecha: tomorrow, modalidad: 'VIRTUAL', lugar: 'ftp://x.test' }, now).error);
+    assert.ok(parseInterview({ fecha: tomorrow, modalidad: 'PRESENCIAL', lugar: 'Ofi' }, now).error);
+    assert.ok(parseInterview({ fecha: tomorrow, modalidad: 'CAFE', lugar: 'Centro' }, now).error);
+    assert.ok(parseInterview({ fecha: tomorrow, modalidad: 'TELEFONICA', duracionMinutos: 500 }, now).error);
   });
 });

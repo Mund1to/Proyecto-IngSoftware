@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { after, before, describe, it } from 'node:test';
 import { pool } from '../src/core/database/database.js';
+import { sentEmails } from '../src/core/mail/mailer.js';
 import { api, auth, closeDatabase, createOffer, registerUser, resetDatabase } from './helpers.js';
 
 before(resetDatabase);
@@ -230,12 +231,170 @@ describe('gestión por la organización', () => {
     const apply = await api().post(`/api/applications/offers/${offer.id}`).set(auth(student.token));
     const id = apply.body.application.id;
 
-    const accepted = await api().patch(`/api/applications/${id}/status`).set(auth(company.token)).send({ estado: 'aceptada' });
-    assert.equal(accepted.status, 200);
-    assert.equal(accepted.body.application.estado, 'ACEPTADA');
+    const review = await api().patch(`/api/applications/${id}/status`).set(auth(company.token)).send({ estado: 'en_revision' });
+    assert.equal(review.status, 200);
+    assert.equal(review.body.application.estado, 'EN_REVISION');
 
     assert.equal((await api().patch(`/api/applications/${id}/status`).set(auth(company.token)).send({ estado: 'RETIRADA' })).status, 400);
     assert.equal((await api().patch(`/api/applications/${id}/status`).set(auth(company.token)).send({ estado: 'X' })).status, 400);
-    assert.equal((await api().patch('/api/applications/999999/status').set(auth(company.token)).send({ estado: 'ACEPTADA' })).status, 404);
+    assert.equal((await api().patch('/api/applications/999999/status').set(auth(company.token)).send({ estado: 'EN_REVISION' })).status, 404);
+  });
+});
+
+// Entrevista válida dentro de `days` días.
+const interview = (overrides = {}, days = 3) => ({
+  fecha: new Date(Date.now() + days * 86400000).toISOString(),
+  modalidad: 'VIRTUAL',
+  lugar: 'https://meet.sipu.test/entrevista',
+  duracionMinutos: 45,
+  ...overrides,
+});
+
+const move = (company, id, body) => api().patch(`/api/applications/${id}/status`).set(auth(company.token)).send(body);
+
+describe('proceso de selección', () => {
+  it('recorre revisión, entrevista, reprogramación y aceptación con historial y avisos', async () => {
+    const { company, offer, student } = await setup();
+    const apply = await api().post(`/api/applications/offers/${offer.id}`).set(auth(student.token)).send({ cartaPresentacion: 'Hola, me interesa.' });
+    const id = apply.body.application.id;
+
+    assert.equal((await move(company, id, { estado: 'EN_REVISION', mensaje: 'Estamos revisando tu perfil.' })).status, 200);
+
+    sentEmails.length = 0;
+    const cited = await move(company, id, { estado: 'PRESELECCIONADA', entrevista: interview(), mensaje: 'Prepárate para una prueba técnica.' });
+    assert.equal(cited.status, 200);
+    assert.equal(cited.body.application.estado, 'PRESELECCIONADA');
+    assert.equal(cited.body.application.entrevista.modalidad, 'VIRTUAL');
+    const invitation = sentEmails.find((mail) => mail.to === student.email);
+    assert.ok(invitation?.subject.includes('te citó a entrevista'), 'avisa la entrevista por correo');
+    assert.ok(invitation.text.includes('https://meet.sipu.test/entrevista'));
+    assert.ok(invitation.text.includes('Prepárate para una prueba técnica.'));
+
+    const moved = await move(company, id, { estado: 'PRESELECCIONADA', entrevista: interview({ modalidad: 'presencial', lugar: 'Calle 67 # 22-31, Ibagué' }, 5) });
+    assert.equal(moved.status, 200);
+    assert.equal(moved.body.application.entrevista.modalidad, 'PRESENCIAL');
+    assert.ok(sentEmails.some((mail) => mail.to === student.email && mail.subject.includes('reprogramó')));
+
+    const accepted = await move(company, id, { estado: 'ACEPTADA', mensaje: 'Te escribiremos para firmar el convenio.' });
+    assert.equal(accepted.status, 200);
+    // La decisión conserva la última entrevista como registro.
+    assert.equal(accepted.body.application.entrevista.modalidad, 'PRESENCIAL');
+    assert.ok(sentEmails.some((mail) => mail.to === student.email && mail.subject.includes('Fuiste seleccionado')));
+
+    const mine = await api().get('/api/applications/me').set(auth(student.token));
+    const events = mine.body.applications[0].eventos;
+    assert.deepEqual(events.map((event) => event.tipo), ['POSTULACION', 'ESTADO', 'ENTREVISTA', 'ENTREVISTA', 'ESTADO']);
+    assert.equal(events[0].mensaje, 'Hola, me interesa.');
+    assert.equal(events[0].autorRol, 'CANDIDATO');
+    assert.equal(events[4].autorRol, 'EMPRESA');
+    assert.equal(events[4].mensaje, 'Te escribiremos para firmar el convenio.');
+    assert.equal(events[1].autor, undefined, 'el candidato no ve nombres de usuarios de la empresa');
+  });
+
+  it('aplica las reglas de cada etapa', async () => {
+    const { company, offer, student } = await setup();
+    const apply = await api().post(`/api/applications/offers/${offer.id}`).set(auth(student.token));
+    const id = apply.body.application.id;
+
+    const skip = await move(company, id, { estado: 'ACEPTADA' });
+    assert.equal(skip.status, 409);
+    assert.match(skip.body.message, /citarlo a entrevista/);
+
+    assert.equal((await move(company, id, { estado: 'PRESELECCIONADA' })).status, 400, 'citar exige la entrevista');
+    assert.equal((await move(company, id, { estado: 'PRESELECCIONADA', entrevista: interview({ lugar: 'meet.sipu.test' }) })).status, 400, 'el enlace virtual debe ser https');
+    assert.equal((await move(company, id, { estado: 'PRESELECCIONADA', entrevista: interview({}, -1) })).status, 400, 'fecha pasada');
+    assert.equal((await move(company, id, { estado: 'PRESELECCIONADA', entrevista: interview({ modalidad: 'PRESENCIAL', lugar: '' }) })).status, 400, 'presencial sin lugar');
+    assert.equal((await move(company, id, { estado: 'PRESELECCIONADA', entrevista: interview({ duracionMinutos: 5 }) })).status, 400, 'duración mínima');
+    assert.equal((await move(company, id, { estado: 'EN_REVISION', mensaje: 'x'.repeat(1001) })).status, 400, 'mensaje largo');
+
+    // Citar directamente desde recibida está permitido (la empresa puede saltarse la revisión).
+    assert.equal((await move(company, id, { estado: 'PRESELECCIONADA', entrevista: interview({ modalidad: 'Telefónica', lugar: '' }) })).status, 200);
+    assert.equal((await move(company, id, { estado: 'RECHAZADA', mensaje: 'Buscamos otro perfil.' })).status, 200);
+    assert.equal((await move(company, id, { estado: 'ACEPTADA' })).status, 409, 'una decisión se reabre antes de cambiarla');
+
+    const reopened = await move(company, id, { estado: 'EN_REVISION' });
+    assert.equal(reopened.status, 200);
+    assert.equal(reopened.body.application.entrevista, null, 'volver a revisión borra la entrevista vigente');
+    assert.equal((await move(company, id, { estado: 'ENVIADA' })).status, 409);
+  });
+
+  it('la formación no tiene entrevista: la inscripción se acepta directamente', async () => {
+    const { company, student } = await setup();
+    const course = await createOffer(company.token, { tipo: 'FORMACION', titulo: 'Curso de analítica de datos', remuneracion: null });
+    const apply = await api().post(`/api/applications/offers/${course.id}`).set(auth(student.token));
+    const id = apply.body.application.id;
+
+    assert.equal((await move(company, id, { estado: 'PRESELECCIONADA', entrevista: interview() })).status, 409);
+    assert.equal((await move(company, id, { estado: 'ACEPTADA' })).status, 200);
+  });
+
+  it('las notas internas solo las ve la empresa', async () => {
+    const { company, offer, student } = await setup();
+    const apply = await api().post(`/api/applications/offers/${offer.id}`).set(auth(student.token));
+    const id = apply.body.application.id;
+
+    const note = await api().post(`/api/applications/${id}/notes`).set(auth(company.token)).send({ texto: '  Buen nivel de inglés.  ' });
+    assert.equal(note.status, 201);
+    assert.equal(note.body.event.privado, true);
+    assert.equal(note.body.event.mensaje, 'Buen nivel de inglés.');
+    assert.equal((await api().post(`/api/applications/${id}/notes`).set(auth(company.token)).send({ texto: ' ' })).status, 400);
+
+    const other = await registerUser('ORGANIZACION', { razonSocial: 'Fisgona SAS' });
+    assert.equal((await api().post(`/api/applications/${id}/notes`).set(auth(other.token)).send({ texto: 'Hola' })).status, 403);
+    assert.equal((await api().post(`/api/applications/${id}/notes`).set(auth(student.token)).send({ texto: 'Hola' })).status, 403);
+
+    const listed = await api().get(`/api/applications/offers/${offer.id}`).set(auth(company.token));
+    const companyNote = listed.body.applications[0].eventos.find((event) => event.tipo === 'NOTA');
+    assert.equal(companyNote.autor, 'Usuario ORGANIZACION');
+
+    const mine = await api().get('/api/applications/me').set(auth(student.token));
+    assert.ok(!mine.body.applications[0].eventos.some((event) => event.tipo === 'NOTA'));
+  });
+
+  it('califica de 1 a 5 y la calificación no llega al candidato', async () => {
+    const { company, offer, student } = await setup();
+    const apply = await api().post(`/api/applications/offers/${offer.id}`).set(auth(student.token));
+    const id = apply.body.application.id;
+    const rate = (token, calificacion) => api().patch(`/api/applications/${id}/rating`).set(auth(token)).send({ calificacion });
+
+    assert.equal((await rate(company.token, 4)).body.application.calificacion, 4);
+    assert.equal((await rate(company.token, 6)).status, 400);
+    assert.equal((await rate(company.token, 2.5)).status, 400);
+    assert.equal((await rate(student.token, 5)).status, 403);
+
+    const listed = await api().get(`/api/applications/offers/${offer.id}`).set(auth(company.token));
+    assert.equal(listed.body.applications[0].calificacion, 4);
+    const mine = await api().get('/api/applications/me').set(auth(student.token));
+    assert.equal(mine.body.applications[0].calificacion, undefined);
+
+    assert.equal((await rate(company.token, null)).body.application.calificacion, null);
+  });
+
+  it('el retiro guarda el motivo en el historial', async () => {
+    const { company, offer, student } = await setup();
+    const apply = await api().post(`/api/applications/offers/${offer.id}`).set(auth(student.token));
+    const id = apply.body.application.id;
+
+    await api().patch(`/api/applications/${id}/withdraw`).set(auth(student.token)).send({ motivo: 'Acepté otra oferta.' });
+    const listed = await api().get(`/api/applications/offers/${offer.id}`).set(auth(company.token));
+    const withdrawal = listed.body.applications[0].eventos.find((event) => event.tipo === 'RETIRO');
+    assert.equal(withdrawal.mensaje, 'Acepté otra oferta.');
+    assert.equal(withdrawal.autorRol, 'CANDIDATO');
+  });
+
+  it('la migración reconstruye el historial de las postulaciones anteriores', async () => {
+    const { offer, student } = await setup();
+    const apply = await api().post(`/api/applications/offers/${offer.id}`).set(auth(student.token)).send({ cartaPresentacion: 'Postulación a Practicante' });
+    const id = apply.body.application.id;
+    await pool.query(`UPDATE postulaciones SET estado = 'ACEPTADA' WHERE id = $1`, [id]);
+    await pool.query('DELETE FROM postulacion_eventos WHERE postulacion_id = $1', [id]);
+
+    const file = new URL('../database/migrations/20261102_application_pipeline.sql', import.meta.url);
+    await pool.query(fs.readFileSync(file, 'utf8'));
+    await pool.query(fs.readFileSync(file, 'utf8'));
+
+    const events = await pool.query('SELECT tipo, estado_nuevo, mensaje FROM postulacion_eventos WHERE postulacion_id = $1 ORDER BY id', [id]);
+    assert.deepEqual(events.rows.map((row) => [row.tipo, row.estado_nuevo]), [['POSTULACION', 'ENVIADA'], ['ESTADO', 'ACEPTADA']]);
+    assert.equal(events.rows[0].mensaje, null, 'el texto automático anterior no se muestra como mensaje');
   });
 });

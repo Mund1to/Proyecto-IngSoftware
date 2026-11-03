@@ -24,9 +24,19 @@ export const updateApplicationStatusController = asyncHandler(async function upd
 }, 'No se pudo actualizar la postulación.');
 
 export const withdrawApplicationController = asyncHandler(async function withdrawApplicationController(request, response) {
-  const application = await applicationsService.withdrawApplication(request.auth.sub, request.params.id);
+  const application = await applicationsService.withdrawApplication(request.auth.sub, request.params.id, request.body ?? {});
   return response.json({ ok: true, application });
 }, 'No se pudo retirar la postulación.');
+
+export const addApplicationNoteController = asyncHandler(async function addApplicationNoteController(request, response) {
+  const event = await applicationsService.addApplicationNote(request.auth.sub, request.params.id, request.body ?? {});
+  return response.status(201).json({ ok: true, event });
+}, 'No se pudo guardar la nota.');
+
+export const rateApplicationController = asyncHandler(async function rateApplicationController(request, response) {
+  const application = await applicationsService.rateApplication(request.auth.sub, request.params.id, request.body ?? {});
+  return response.json({ ok: true, application });
+}, 'No se pudo guardar la calificación.');
 
 export const getApplicationCvController = asyncHandler(async function getApplicationCvController(request, response) {
   const file = await applicationsService.getApplicationCv(request.auth.sub, request.params.id);

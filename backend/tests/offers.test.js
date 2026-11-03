@@ -124,7 +124,12 @@ describe('consulta de ofertas', () => {
     const second = await registerUser('ESTUDIANTE');
     const applied = await api().post(`/api/applications/offers/${offer.id}`).set(auth(first.token));
     await api().post(`/api/applications/offers/${offer.id}`).set(auth(second.token));
-    await api().patch(`/api/applications/${applied.body.application.id}/status`).set(auth(company.token)).send({ estado: 'PRESELECCIONADA' });
+    // Fase 8: citar a entrevista exige fecha, modalidad y lugar o enlace.
+    const cited = await api().patch(`/api/applications/${applied.body.application.id}/status`).set(auth(company.token)).send({
+      estado: 'PRESELECCIONADA',
+      entrevista: { fecha: futureDate(2), modalidad: 'VIRTUAL', lugar: 'https://meet.conteo.test/sala' },
+    });
+    assert.equal(cited.status, 200);
 
     const response = await api().get('/api/offers/mine').set(auth(company.token));
     assert.equal(response.status, 200);
