@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { pool } from '../src/core/database/database.js';
 import {
   api,
   auth,
@@ -55,7 +56,8 @@ describe('creación de ofertas', () => {
       { estado: 'ARCHIVADA' },
       { remuneracion: -5 },
       { remuneracion: 'mucho' },
-      { remuneracion: 2000000, remuneracionMaxima: 1000000 },
+      // El rango salarial aplica al empleo; la práctica usa un solo valor.
+      { tipo: 'EMPLEO', remuneracion: 2000000, remuneracionMaxima: 1000000 },
       { contactoEmail: 'no-es-correo' },
       { fechaCierre: '2000-01-01' },
       { fechaCierre: 'mañana' },
@@ -215,5 +217,127 @@ describe('edición y cancelación', () => {
     const response = await api().patch(`/api/offers/${offer.id}`).set(auth(company.token)).send({ fechaCierre: newDate });
     assert.equal(response.status, 200);
     assert.equal(new Date(response.body.offer.fecha_cierre).toISOString(), newDate);
+  });
+});
+
+describe('requisitos estructurados y reglas de publicación (Fase 8)', () => {
+  const post = (token, overrides) => api().post('/api/offers').set(auth(token)).send(offerPayload(overrides));
+
+  it('guarda programas, habilidades, experiencia, idiomas, jornada, beneficios y vacantes', async () => {
+    const company = await registerUser('ORGANIZACION', { razonSocial: 'Estructura SAS' });
+    const offer = await createOffer(company.token, {
+      programas: ['Ingeniería de Sistemas', 'ingeniería de sistemas', 'Ingeniería Electrónica'],
+      semestreMinimo: 7,
+      habilidades: [' React ', 'react', 'SQL'],
+      experiencia: 'ninguna',
+      idiomas: [{ idioma: 'Inglés', nivel: 'b1' }],
+      jornada: 'medio_tiempo',
+      beneficios: ['Horario flexible', 'Capacitación'],
+      vacantes: 2,
+      requisitos: [],
+    });
+
+    assert.deepEqual(offer.programas, ['Ingeniería de Sistemas', 'Ingeniería Electrónica']);
+    assert.deepEqual(offer.habilidades, ['React', 'SQL']);
+    assert.equal(offer.semestre_minimo, 7);
+    assert.equal(offer.experiencia, 'NINGUNA');
+    assert.deepEqual(offer.idiomas, [{ idioma: 'Inglés', nivel: 'B1' }]);
+    assert.equal(offer.jornada, 'MEDIO_TIEMPO');
+    assert.deepEqual(offer.beneficios, ['Horario flexible', 'Capacitación']);
+    assert.equal(offer.vacantes, 2);
+
+    const published = await api().get(`/api/offers/${offer.id}`);
+    assert.deepEqual(published.body.offer.habilidades, ['React', 'SQL']);
+  });
+
+  it('no publica ofertas con texto sin sentido o incompletas e informa cada campo', async () => {
+    const company = await registerUser('ORGANIZACION', { razonSocial: 'Calidad SAS' });
+
+    const gibberish = await post(company.token, { descripcion: 'sasadasd' });
+    assert.equal(gibberish.status, 400);
+    assert.ok(gibberish.body.errors.descripcion);
+
+    const several = await post(company.token, { titulo: 'X1', descripcion: 'corta', habilidades: [] });
+    assert.equal(several.status, 400);
+    assert.deepEqual(Object.keys(several.body.errors).sort(), ['descripcion', 'habilidades', 'titulo']);
+    assert.match(several.body.message, /Completa la oferta/);
+
+    const cases = [
+      [{ experiencia: 'DE_3_A_5' }, 'experiencia'],
+      [{ remuneracion: 0 }, 'remuneracion'],
+      [{ tipo: 'EMPLEO', remuneracion: null }, 'remuneracion'],
+      [{ ubicacion: '' }, 'ubicacion'],
+      [{ contactoEmail: '' }, 'contacto_email'],
+      [{ fechaCierre: null }, 'fecha_cierre'],
+    ];
+    for (const [override, field] of cases) {
+      const response = await post(company.token, override);
+      assert.equal(response.status, 400, JSON.stringify(override));
+      assert.ok(response.body.errors?.[field], `${field}: ${JSON.stringify(response.body)}`);
+    }
+
+    const invalid = [
+      { experiencia: 'MUCHA' },
+      { jornada: 'NOCTURNA' },
+      { idiomas: [{ idioma: 'Inglés', nivel: 'Avanzado' }] },
+      { idiomas: 'Inglés' },
+      { habilidades: Array.from({ length: 16 }, (_, index) => `Habilidad ${index}`) },
+      { habilidades: ['x'] },
+      { vacantes: 0 },
+      { semestreMinimo: 15 },
+      { fechaCierre: futureDate(400) },
+      { remuneracion: 1e10 },
+    ];
+    for (const override of invalid) {
+      assert.equal((await post(company.token, override)).status, 400, JSON.stringify(override));
+    }
+  });
+
+  it('una práctica puede no tener apoyo económico; la formación nunca lleva salario', async () => {
+    const company = await registerUser('ORGANIZACION', { razonSocial: 'Tipos SAS' });
+    const unpaid = await createOffer(company.token, { remuneracion: null, remuneracionMaxima: 2000000 });
+    assert.equal(unpaid.remuneracion, null);
+    assert.equal(unpaid.remuneracion_maxima, null, 'la práctica usa un solo valor');
+
+    const course = await createOffer(company.token, { tipo: 'FORMACION', remuneracion: 900000, experiencia: 'MAS_5', semestreMinimo: 4 });
+    assert.equal(course.remuneracion, null);
+    assert.equal(course.experiencia, null);
+    assert.equal(course.semestre_minimo, null);
+
+    const job = await createOffer(company.token, { tipo: 'EMPLEO', remuneracion: 2500000, semestreMinimo: 6, experiencia: 'DE_1_A_2' });
+    assert.equal(job.semestre_minimo, null, 'solo la práctica pide semestre');
+    assert.equal(job.experiencia, 'DE_1_A_2');
+  });
+
+  it('un borrador puede estar incompleto, pero se revisa completo al publicarlo', async () => {
+    const company = await registerUser('ORGANIZACION', { razonSocial: 'Borrador Fase 8 SAS' });
+    const draft = await createOffer(company.token, { estado: 'BORRADOR', descripcion: 'Pendiente de redactar.', habilidades: [] });
+    assert.equal(draft.estado, 'BORRADOR');
+
+    const publish = await api().patch(`/api/offers/${draft.id}`).set(auth(company.token)).send({ estado: 'PUBLICADA' });
+    assert.equal(publish.status, 400);
+    assert.deepEqual(Object.keys(publish.body.errors).sort(), ['descripcion', 'habilidades']);
+  });
+
+  it('una oferta publicada antes de las reglas puede editar otros campos', async () => {
+    const company = await registerUser('ORGANIZACION', { razonSocial: 'Antigua SAS' });
+    const offer = await createOffer(company.token);
+    await pool.query(`UPDATE ofertas SET habilidades = '{}', descripcion = 'Texto antiguo' WHERE id = $1`, [offer.id]);
+
+    assert.equal((await api().patch(`/api/offers/${offer.id}`).set(auth(company.token)).send({ fechaCierre: futureDate(45) })).status, 200);
+    assert.equal((await api().patch(`/api/offers/${offer.id}`).set(auth(company.token)).send({ descripcion: 'Sigue corta' })).status, 400);
+  });
+
+  it('las habilidades y los programas estructurados cuentan en la afinidad', async () => {
+    const company = await registerUser('ORGANIZACION', { razonSocial: 'Afinidad Fase 8 SAS' });
+    const match = await createOffer(company.token, { titulo: 'Analista de datos', tipo: 'EMPLEO', area: 'Finanzas', programas: ['Ingeniería Industrial'], habilidades: ['Python', 'Power BI'], requisitos: [] });
+    await createOffer(company.token, { titulo: 'Auxiliar de cocina', tipo: 'EMPLEO', area: 'Hotelería', habilidades: ['Cocina'], requisitos: [] });
+
+    const student = await registerUser('ESTUDIANTE', { programaAcademico: 'Ingeniería Industrial' });
+    await api().put('/api/profile/skills').set(auth(student.token)).send({ items: [{ categoria: 'Datos', nombre: 'Python' }] });
+
+    const response = await api().get('/api/offers/recommended').set(auth(student.token));
+    assert.equal(response.body.offers[0].id, match.id);
+    assert.ok(response.body.offers[0].affinity > response.body.offers[1].affinity);
   });
 });

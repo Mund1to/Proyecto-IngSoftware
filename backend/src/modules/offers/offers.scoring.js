@@ -3,15 +3,32 @@
 
 const normalize = (value) => String(value ?? '').trim().toLowerCase();
 
+// Términos que el candidato puede cumplir: habilidades estructuradas (Fase 8) y
+// requisitos adicionales, sin repetir.
+function requirementTerms(offer) {
+  const list = (value) => (Array.isArray(value) ? value : []);
+  return [...new Set([...list(offer.habilidades), ...list(offer.requisitos)].map(normalize).filter(Boolean))];
+}
+
+const programs = (offer) => (Array.isArray(offer.programas) ? offer.programas.map(normalize).filter(Boolean) : []);
+
+// Coincidencia del programa del candidato con el área o los programas de la oferta.
+function areaScore(offer, profileArea) {
+  if (!profileArea) return 0;
+  const candidates = [normalize(offer.area), ...programs(offer)].filter(Boolean);
+  if (candidates.some((value) => value === profileArea)) return 40;
+  if (candidates.some((value) => value.includes(profileArea) || profileArea.includes(value))) return 25;
+  return 0;
+}
+
 // La puntuación combina área, ubicación, requisitos y tipo de oferta. No excluye
 // ofertas: las ordena, para que el candidato siempre vea todo el catálogo.
 export function scoreOffer(offer, profile) {
   let score = 0;
 
-  const area = normalize(offer.area);
   const city = normalize(offer.ubicacion);
   const offerType = normalize(offer.tipo);
-  const requirements = Array.isArray(offer.requisitos) ? offer.requisitos.map(normalize) : [];
+  const requirements = requirementTerms(offer);
 
   const profileArea = normalize(profile.programa_academico ?? profile.resumen);
   const profileCity = normalize(profile.ubicacion);
@@ -22,11 +39,8 @@ export function scoreOffer(offer, profile) {
     .map(normalize)
     .filter(Boolean);
 
-  // Coincidencia exacta de área vale más que coincidencia parcial.
-  if (area && profileArea) {
-    if (area === profileArea) score += 40;
-    else if (area.includes(profileArea) || profileArea.includes(area)) score += 25;
-  }
+  // Coincidencia exacta de área o programa vale más que coincidencia parcial.
+  score += areaScore(offer, profileArea);
 
   // Ubicación: misma ciudad suma.
   if (city && profileCity && city === profileCity) score += 25;
@@ -52,9 +66,9 @@ export function maxScoreOffer(offer, profile) {
   const isStudent = profile.tipo === 'ESTUDIANTE';
   let max = 0;
 
-  if (normalize(offer.area)) max += 40;
+  if (normalize(offer.area) || programs(offer).length > 0) max += 40;
   if (!isStudent && normalize(offer.ubicacion)) max += 25;
-  max += (Array.isArray(offer.requisitos) ? offer.requisitos.filter((req) => normalize(req)).length : 0) * 15;
+  max += requirementTerms(offer).length * 15;
   if (isStudent && offerType === 'practica') max += 20;
   if (!isStudent && (offerType === 'empleo' || offerType === 'empleo_publico')) max += 20;
   if (offerType === 'formacion') max += 10;
