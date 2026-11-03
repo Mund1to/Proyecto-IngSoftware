@@ -12,7 +12,8 @@ import ErrorBoundary from "./ErrorBoundary";
 import { hashForScreen, routeFromHash, type HashRoute } from "./hashRoutes";
 import { SCREENS } from "./routes";
 import { mapUserToSession, resolveRole, SessionContext } from "./session";
-import { HOME_SCREEN, type AppState, type Role, type Screen, type ScreenProps } from "./types";
+import { HOME_SCREEN, type AppState, type ApplyResult, type Role, type Screen, type ScreenProps } from "./types";
+import type { ApplyOptions } from "../features/applications/ApplyDialog";
 
 // Estado global y acciones de la app. Cada pantalla recibe `state`, `navigate`
 // y las acciones que necesita; la tabla de pantallas está en routes.tsx.
@@ -301,20 +302,30 @@ export default function App() {
   };
 
   // Sirve para la oferta del estudiante (Offer) y la vacante del externo (Job).
-  const applyToOffer = async (offer: { id: number; title: string }) => {
+  // La hoja de vida del perfil se copia en la postulación; con un PDF propio la
+  // postulación se crea sin copia y luego se adjunta ese archivo solo a ella.
+  const applyToOffer = async (offer: { id: number; title: string }, options: ApplyOptions = { coverLetter: "", cv: "PERFIL", cvFile: null }): Promise<ApplyResult> => {
     const token = requireToken();
-    if (state.applications.some((a) => a.offerId === offer.id)) return;
-    await applicationsApi.applyToOffer(String(offer.id), token, { cartaPresentacion: `Postulación a ${offer.title}` });
+    if (state.applications.some((a) => a.offerId === offer.id)) return {};
+    const response = await applicationsApi.applyToOffer(String(offer.id), token, {
+      ...(options.coverLetter ? { cartaPresentacion: options.coverLetter } : {}),
+      cvPerfil: options.cv === "PERFIL",
+    });
+    let cvWarning: string | undefined;
+    if (options.cv === "PROPIO" && options.cvFile) {
+      try {
+        await applicationsApi.uploadApplicationCv(response.application.id, options.cvFile, token);
+      } catch (error) {
+        cvWarning = `Tu postulación se envió, pero no se pudo adjuntar la hoja de vida (${error instanceof Error ? error.message : "error desconocido"}). Adjúntala desde Mis postulaciones.`;
+      }
+    }
     await reloadApplications();
+    return cvWarning ? { cvWarning } : {};
   };
 
-  const withdrawApplication = async (applicationId: number) => {
-    await applicationsApi.withdrawApplication(applicationId, requireToken());
+  const withdrawApplication = async (applicationId: number, reason?: string) => {
+    await applicationsApi.withdrawApplication(applicationId, requireToken(), reason);
     await reloadApplications();
-  };
-
-  const updateCandidateStatus = async (id: number, status: "Aceptada" | "Rechazada") => {
-    await applicationsApi.updateApplicationStatus(id, status === "Aceptada" ? "ACEPTADA" : "RECHAZADA", requireToken());
   };
 
   const session = useMemo(() => ({
@@ -339,7 +350,7 @@ export default function App() {
   }
 
   const props: ScreenProps = {
-    state, navigate, applyToOffer, withdrawApplication, reloadApplications, updateCandidateStatus,
+    state, navigate, applyToOffer, withdrawApplication, reloadApplications,
     updateExternalProfile, updateStudentProfile, updateOrganizationProfile, changePassword, login, register,
     refreshCurrentUser, clearResetToken,
   };

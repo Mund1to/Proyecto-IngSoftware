@@ -12,6 +12,7 @@ import EmploymentStats from "../features/stats/EmploymentStats";
 import ExternalDashboard from "../features/offers/ExternalDashboard";
 import OfferDetail from "../features/offers/OfferDetail";
 import StudentDashboard from "../features/offers/StudentDashboard";
+import StudentApplications from "../features/applications/StudentApplications";
 
 const jsonResponse = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -249,24 +250,180 @@ describe("AdminUsers: cambio de contraseña", () => {
   });
 });
 
-describe("CompanyApplicants: etapas", () => {
-  it("avanza al postulante de Nueva a En revisión y a Entrevista", async () => {
-    const fetchMock = vi.fn((url: string, _init?: RequestInit) => Promise.resolve(url.includes("/status")
-      ? jsonResponse(200, { ok: true })
-      : jsonResponse(200, { ok: true, applications: [{ id: 5, estado: "ENVIADA", postulante_nombre: "Sara Estudiante", perfil_tipo: "ESTUDIANTE", created_at: "2026-10-10T00:00:00.000Z" }] })));
+describe("CompanyApplicants: proceso de selección", () => {
+  const offer = {
+    id: 4, title: "Práctica QA", company: "TS", logo: "TS", city: "Ibagué", area: "Tecnología", modality: "Remota" as const, closeDate: "",
+    salary: "", description: "", requirements: [], offerType: "PRACTICA" as const, skills: ["Selenium", "SQL"], vacancies: 2,
+  };
+  const state: AppState = { ...baseState, role: "company", screen: "company-applicants", selectedCompanyOffer: offer,
+    currentUser: { id: 5, email: "rrhh@ts.co", nombreCompleto: "Ana RRHH", organizacionNombre: "TecnoSur", profileTypes: ["ORGANIZACION"], roles: ["USUARIO"] } };
+  const applicant = {
+    id: 5, estado: "ENVIADA", postulante_nombre: "Sara Estudiante", postulante_email: "sara@u.co", perfil_tipo: "ESTUDIANTE", created_at: "2026-10-10T00:00:00.000Z",
+    habilidades: ["SQL", "Python"], tiene_cv: true, cv_nombre: "cv-sara.pdf", cv_tamano: 2048, cv_origen: "PROPIO", carta_presentacion: "Me encanta probar software.",
+    eventos: [{ id: 1, tipo: "POSTULACION", estadoNuevo: "ENVIADA", mensaje: "Me encanta probar software.", privado: false, fecha: "2026-10-10T00:00:00.000Z", autorRol: "CANDIDATO", autor: "Sara Estudiante" }],
+  };
+
+  function mockApi() {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (url.includes("/status")) {
+        return Promise.resolve(jsonResponse(200, { ok: true, application: { id: 5, estado: body.estado, entrevista: body.entrevista ?? null, evento: { id: 9, tipo: body.estado === "PRESELECCIONADA" ? "ENTREVISTA" : "ESTADO", estadoNuevo: body.estado, mensaje: body.mensaje ?? null, entrevista: body.entrevista ?? null, fecha: new Date().toISOString() } } }));
+      }
+      if (url.includes("/notes")) return Promise.resolve(jsonResponse(201, { ok: true, event: { id: 10, tipo: "NOTA", mensaje: body.texto, privado: true, fecha: new Date().toISOString() } }));
+      if (url.includes("/rating")) return Promise.resolve(jsonResponse(200, { ok: true, application: { id: 5, calificacion: body.calificacion } }));
+      return Promise.resolve(jsonResponse(200, { ok: true, applications: [applicant] }));
+    });
     vi.stubGlobal("fetch", fetchMock);
-    const offer = { id: 4, title: "Práctica QA", company: "TS", logo: "TS", city: "Ibagué", area: "TI", modality: "Remota" as const, closeDate: "", salary: "", description: "", requirements: [] };
-    const state: AppState = { ...baseState, role: "company", screen: "company-applicants", selectedCompanyOffer: offer };
-    const updateCandidateStatus = vi.fn().mockResolvedValue(undefined);
-    render(<CompanyApplicants state={state} navigate={vi.fn()} updateCandidateStatus={updateCandidateStatus} />);
+    return fetchMock;
+  }
+  const bodiesTo = (fetchMock: ReturnType<typeof mockApi>, path: string) =>
+    fetchMock.mock.calls.filter(([url]) => String(url).includes(path)).map(([, init]) => JSON.parse(String(init?.body)));
 
-    fireEvent.click(await screen.findByRole("button", { name: "Pasar a revisión: Sara Estudiante" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Citar a entrevista: Sara Estudiante" }));
-    expect(await screen.findByRole("button", { name: "Aceptar: Sara Estudiante" })).toBeTruthy();
+  it("muestra el tablero por etapas, la coincidencia y mueve con el menú accesible", async () => {
+    const fetchMock = mockApi();
+    render(<CompanyApplicants state={state} navigate={vi.fn()} />);
 
-    const bodies = fetchMock.mock.calls.filter(([url]) => String(url).includes("/status")).map(([, init]) => JSON.parse(String(init?.body)));
-    expect(bodies.map((body) => body.estado ?? body.status)).toEqual(["EN_REVISION", "PRESELECCIONADA"]);
-    expect(updateCandidateStatus).not.toHaveBeenCalled();
+    const newColumn = await screen.findByRole("region", { name: "Nuevas" });
+    expect(within(newColumn).getByText("Sara Estudiante")).toBeTruthy();
+    expect(within(newColumn).getByText("50% coincidencia")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "0 de 2 vacantes cubiertas" })).toBeTruthy();
+
+    const move = within(newColumn).getByRole("combobox", { name: "Mover a Sara Estudiante" });
+    // Desde Nueva no se ofrece seleccionar: primero hay entrevista.
+    expect(within(move).queryByRole("option", { name: "Seleccionar" })).toBeNull();
+    fireEvent.change(move, { target: { value: "EN_REVISION" } });
+
+    const review = await screen.findByRole("region", { name: "En revisión" });
+    expect(await within(review).findByText("Sara Estudiante")).toBeTruthy();
+    expect(bodiesTo(fetchMock, "/status")).toEqual([{ estado: "EN_REVISION" }]);
+    expect(screen.getByRole("status").textContent).toMatch(/empezar revisión listo/i);
+  });
+
+  it("cita a entrevista con fecha, modalidad y enlace desde el panel del candidato", async () => {
+    const fetchMock = mockApi();
+    render(<CompanyApplicants state={state} navigate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ver perfil de Sara Estudiante" }));
+    const drawer = screen.getByRole("dialog", { name: "Sara Estudiante" });
+    expect(within(drawer).getByText("cv-sara.pdf")).toBeTruthy();
+    expect(within(drawer).getByText("Me encanta probar software.")).toBeTruthy();
+    expect(within(drawer).getByText("Coincidencia con la oferta: 50%")).toBeTruthy();
+
+    fireEvent.click(within(drawer).getByRole("button", { name: "Citar a entrevista" }));
+    const dialog = screen.getByRole("dialog", { name: /Citar a Sara a entrevista/ });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar citación" }));
+    expect(within(dialog).getByText(/Pega el enlace de la reunión/)).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText(/Enlace de la reunión/), { target: { value: "https://meet.ts.co/qa" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar citación" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /Citar a Sara/ })).toBeNull());
+    const [body] = bodiesTo(fetchMock, "/status");
+    expect(body.estado).toBe("PRESELECCIONADA");
+    expect(body.entrevista).toMatchObject({ modalidad: "VIRTUAL", lugar: "https://meet.ts.co/qa", duracionMinutos: 45 });
+    expect(new Date(body.entrevista.fecha).getTime()).toBeGreaterThan(Date.now());
+    expect(body.mensaje).toMatch(/queremos conocerte/);
+    expect(within(screen.getByRole("dialog", { name: "Sara Estudiante" })).getByRole("button", { name: "Seleccionar" })).toBeTruthy();
+  });
+
+  it("guarda notas privadas y la calificación interna", async () => {
+    const fetchMock = mockApi();
+    render(<CompanyApplicants state={state} navigate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ver perfil de Sara Estudiante" }));
+    const drawer = screen.getByRole("dialog", { name: "Sara Estudiante" });
+    fireEvent.click(within(drawer).getByRole("button", { name: "4 estrellas" }));
+    fireEvent.click(within(drawer).getByRole("tab", { name: /Actividad y notas/ }));
+    fireEvent.change(within(drawer).getByLabelText(/Nota interna/), { target: { value: "Muy buena prueba técnica." } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Guardar nota" }));
+
+    expect(await within(drawer).findByText("“Muy buena prueba técnica.”")).toBeTruthy();
+    // La etiqueta del campo y el evento del historial.
+    expect(within(drawer).getAllByText("Nota interna")).toHaveLength(2);
+    expect(bodiesTo(fetchMock, "/rating")).toEqual([{ calificacion: 4 }]);
+    expect(bodiesTo(fetchMock, "/notes")).toEqual([{ texto: "Muy buena prueba técnica." }]);
+    expect(within(drawer).getByRole("button", { name: "4 estrellas" }).getAttribute("aria-pressed")).toBe("true");
+  });
+});
+
+describe("Mis postulaciones: proceso visible para el candidato", () => {
+  it("muestra la entrevista, el mensaje de la empresa, el historial y la hoja de vida enviada", async () => {
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => Promise.resolve(url.includes("/cv")
+      ? jsonResponse(200, { ok: true, cv: { nombre: "nuevo.pdf" } })
+      : jsonResponse(200, { ok: true, applications: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    const interview = { fecha: new Date(Date.now() + 3 * 86400000).toISOString(), modalidad: "VIRTUAL" as const, lugar: "https://meet.ts.co/qa", duracionMinutos: 45 };
+    const applications = [
+      {
+        id: 7, offerId: 4, offerTitle: "Práctica QA", company: "TecnoSur", appliedDate: "2026-10-10", status: "Entrevista" as const, offerType: "PRACTICA" as const,
+        cv: { nombre: "cv-qa.pdf", tamano: 2048, origen: "PROPIO" as const, fecha: "2026-10-10T00:00:00.000Z" }, interview,
+        events: [
+          { id: 1, tipo: "POSTULACION" as const, estadoAnterior: null, estadoNuevo: "ENVIADA", mensaje: null, privado: false, entrevista: null, fecha: "2026-10-10T00:00:00.000Z", autorRol: "CANDIDATO" as const },
+          { id: 2, tipo: "ENTREVISTA" as const, estadoAnterior: "EN_REVISION", estadoNuevo: "PRESELECCIONADA", mensaje: "Trae tu portafolio.", privado: false, entrevista: interview, fecha: "2026-10-12T00:00:00.000Z", autorRol: "EMPRESA" as const },
+        ],
+      },
+      { id: 8, offerId: 5, offerTitle: "Curso de datos", company: "Academia", appliedDate: "2026-10-11", status: "Enviada" as const, offerType: "FORMACION" as const, cv: null, events: [] },
+    ];
+    const reload = vi.fn().mockResolvedValue(undefined);
+    render(<StudentApplications state={{ ...baseState, role: "student", screen: "student-applications", applications }} navigate={vi.fn()} reloadApplications={reload} withdrawApplication={vi.fn()} />);
+
+    expect(screen.getByText("Entrevista virtual")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Unirse a la reunión" }).getAttribute("href")).toBe("https://meet.ts.co/qa");
+    expect(screen.getByRole("button", { name: "Agregar a mi calendario" })).toBeTruthy();
+    expect(screen.getByText("Trae tu portafolio.")).toBeTruthy();
+    expect(screen.getByText("Hoja de vida enviada: cv-qa.pdf")).toBeTruthy();
+    expect(screen.getByText(/Subida solo para esta oferta/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver historial (2)" }));
+    expect(screen.getByText("Te citaron a entrevista")).toBeTruthy();
+
+    // La formación no tiene etapa de entrevista y, mientras siga Enviada, se puede adjuntar un CV.
+    expect(screen.getByText("Enviaste esta postulación sin hoja de vida")).toBeTruthy();
+    const pdf = new File(["%PDF-1.4"], "nuevo.pdf", { type: "application/pdf" });
+    fireEvent.change(screen.getByLabelText("Hoja de vida para Curso de datos"), { target: { files: [pdf] } });
+    await waitFor(() => expect(reload).toHaveBeenCalled());
+    const upload = fetchMock.mock.calls.find(([url]) => String(url).includes("/applications/8/cv"));
+    expect(upload?.[1]?.method).toBe("PUT");
+  });
+
+  it("retira con un motivo opcional", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { ok: true, applications: [] })));
+    const withdraw = vi.fn().mockResolvedValue(undefined);
+    const applications = [{ id: 9, offerId: 4, offerTitle: "Práctica QA", company: "TecnoSur", appliedDate: "2026-10-10", status: "Enviada" as const, events: [] }];
+    render(<StudentApplications state={{ ...baseState, role: "student", screen: "student-applications", applications }} navigate={vi.fn()} reloadApplications={vi.fn().mockResolvedValue(undefined)} withdrawApplication={withdraw} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Retirar postulación" }));
+    const dialog = screen.getByRole("dialog", { name: /Retirar tu postulación a Práctica QA/ });
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Acepté otra oferta" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retirar postulación" }));
+    await waitFor(() => expect(withdraw).toHaveBeenCalledWith(9, "Acepté otra oferta"));
+  });
+});
+
+describe("Postularse: hoja de vida por oferta", () => {
+  it("permite enviar un PDF distinto solo para esta oferta y un mensaje", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { ok: true, details: { education: [], experience: [], skills: [] } })));
+    const applyToOffer = vi.fn().mockResolvedValue({});
+    const offer = { id: 9, title: "Práctica QA", company: "TecnoSur", logo: "TS", city: "Ibagué", area: "Tecnología", modality: "Remota" as const, closeDate: new Date(Date.now() + 9 * 86400000).toISOString(), salary: "$1.300.000/mes", salaryMin: 1300000, description: "Pruebas.", requirements: [], offerType: "PRACTICA" as const, skills: ["Selenium"] };
+    const currentUser = { ...baseState.currentUser!, archivos: [{ tipo: "CV" as const, nombre: "cv-perfil.pdf", mime: "application/pdf", tamano: 4096, createdAt: "2026-10-01T00:00:00.000Z" }] };
+    render(<OfferDetail state={{ ...baseState, role: "student", screen: "offer-detail", selectedOffer: offer, currentUser }} navigate={vi.fn()} applyToOffer={applyToOffer} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Postularme/ }));
+    const dialog = screen.getByRole("dialog", { name: "Confirma tu postulación" });
+    expect(within(dialog).getByRole("radio", { name: /La de mi perfil/ })).toHaveProperty("checked", true);
+    expect(within(dialog).getByText(/cv-perfil\.pdf/)).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Una distinta, solo para esta oferta/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar postulación" }));
+    expect(within(dialog).getByText(/Selecciona el PDF/)).toBeTruthy();
+
+    const pdf = new File(["%PDF-1.4"], "cv-qa.pdf", { type: "application/pdf" });
+    fireEvent.change(within(dialog).getByLabelText("PDF para esta postulación"), { target: { files: [pdf] } });
+    fireEvent.change(within(dialog).getByLabelText(/Mensaje para TecnoSur/), { target: { value: "  Tengo experiencia con Selenium.  " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar postulación" }));
+
+    await waitFor(() => expect(applyToOffer).toHaveBeenCalled());
+    expect(applyToOffer.mock.calls[0][1]).toEqual({ coverLetter: "Tengo experiencia con Selenium.", cv: "PROPIO", cvFile: pdf });
+    expect(await screen.findByRole("heading", { name: "Postulación enviada" })).toBeTruthy();
   });
 });
 

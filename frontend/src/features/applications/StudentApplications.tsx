@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { AppState, Navigate } from "../../app/types";
 import NavBar from "../../app/NavBar";
+import ApplicationActivity, { WithdrawDialog } from "./ApplicationActivity";
+import type { Application } from "./applications.model";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import { offersApi } from "../offers/offers.api";
 import { toUiOffer } from "../offers/offers.model";
@@ -9,7 +11,7 @@ type Props = {
   state: AppState;
   navigate: Navigate;
   reloadApplications: () => Promise<void>;
-  withdrawApplication: (applicationId: number) => Promise<void>;
+  withdrawApplication: (applicationId: number, reason?: string) => Promise<void>;
 };
 
 const statusConfig = {
@@ -73,7 +75,9 @@ const logoStyle: Record<string, string> = {
   AL: "linear-gradient(145deg, #123b70, #4d87ff)",
 };
 
-const steps = ["Enviada", "En revisión", "Entrevista", "Aceptada"] as const;
+const steps: readonly string[] = ["Enviada", "En revisión", "Entrevista", "Aceptada"];
+// La formación no tiene entrevista: la inscripción se acepta directamente.
+const TRAINING_STEPS: readonly string[] = ["Enviada", "En revisión", "Aceptada"];
 
 export default function StudentApplications({ state, navigate, reloadApplications, withdrawApplication }: Props) {
   const apps = state.applications;
@@ -94,12 +98,13 @@ export default function StudentApplications({ state, navigate, reloadApplication
     }
   };
 
-  const withdraw = async (applicationId: number) => {
-    if (!window.confirm("¿Retirar esta postulación? La empresa dejará de considerarla.")) return;
+  const [withdrawing, setWithdrawing] = useState<Application | null>(null);
+  const withdraw = async (applicationId: number, reason: string) => {
     setBusyId(applicationId);
     setLoadError("");
     try {
-      await withdrawApplication(applicationId);
+      await withdrawApplication(applicationId, reason || undefined);
+      setWithdrawing(null);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "No se pudo retirar la postulación.");
     } finally {
@@ -170,7 +175,8 @@ export default function StudentApplications({ state, navigate, reloadApplication
               const logo = app.company.slice(0, 2).toUpperCase();
               const bg = logoStyle[logo] ?? "linear-gradient(145deg, #123b70, #4d87ff)";
               const cfg = statusConfig[app.status];
-              const stepIndex = app.status === "Rechazada" || app.status === "Retirada" ? 0 : steps.indexOf(app.status as (typeof steps)[number]);
+              const appSteps = app.offerType === "FORMACION" ? TRAINING_STEPS : steps;
+              const stepIndex = app.status === "Rechazada" || app.status === "Retirada" ? 0 : appSteps.indexOf(app.status);
 
               return (
                 <div key={app.id} className="bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm overflow-hidden">
@@ -200,11 +206,11 @@ export default function StudentApplications({ state, navigate, reloadApplication
                       <p className="text-xs text-[var(--muted)] p-3.5 bg-[#f2f6fc] border border-[#e3eaf5] rounded-xl">Retiraste esta postulación.</p>
                     ) : app.status !== "Rechazada" ? (
                       <div className="relative flex items-center">
-                        {steps.map((step, i) => {
+                        {appSteps.map((step, i) => {
                           const done = i < stepIndex;
                           const current = i === stepIndex;
                           return (
-                            <div key={step} className={`flex items-center ${i < steps.length - 1 ? "flex-1" : ""}`}>
+                            <div key={step} className={`flex items-center ${i < appSteps.length - 1 ? "flex-1" : ""}`}>
                               <div className="flex flex-col items-center">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
                                   done ? "bg-[var(--primary)] border-[var(--primary)] text-white" :
@@ -221,7 +227,7 @@ export default function StudentApplications({ state, navigate, reloadApplication
                                   {step}
                                 </span>
                               </div>
-                              {i < steps.length - 1 && (
+                              {i < appSteps.length - 1 && (
                                 <div className={`flex-1 h-0.5 mx-2 mb-5 rounded-full ${i < stepIndex ? "bg-[var(--primary)]" : "bg-[#e6eefc]"}`} />
                               )}
                             </div>
@@ -241,10 +247,12 @@ export default function StudentApplications({ state, navigate, reloadApplication
                       </div>
                     )}
 
+                    <ApplicationActivity app={app} token={state.token} onChanged={reloadApplications} />
+
                     <div className="mt-5 pt-4 border-t border-[#e3eaf5] flex justify-end gap-4">
                       {(app.status === "Enviada" || app.status === "En revisión" || app.status === "Entrevista") && (
                         <button
-                          onClick={() => void withdraw(app.id)}
+                          onClick={() => setWithdrawing(app)}
                           disabled={busyId === app.id}
                           className="text-xs font-semibold text-[var(--danger)] hover:text-[var(--danger)] disabled:opacity-50"
                         >
@@ -268,6 +276,14 @@ export default function StudentApplications({ state, navigate, reloadApplication
           </div>
         )}
       </div>
+      {withdrawing && (
+        <WithdrawDialog
+          offerTitle={withdrawing.offerTitle}
+          busy={busyId === withdrawing.id}
+          onCancel={() => setWithdrawing(null)}
+          onConfirm={(reason) => void withdraw(withdrawing.id, reason)}
+        />
+      )}
     </div>
   );
 }

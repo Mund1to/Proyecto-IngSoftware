@@ -138,7 +138,9 @@ describe("sesión", () => {
       { id: 1, oferta_id: 10, oferta_tipo: "PRACTICA", estado: "ACEPTADA", created_at: "2026-10-01T10:00:00Z" },
       { id: 2, oferta_id: 11, oferta_tipo: "EMPLEO", estado: "RETIRADA", created_at: "2026-10-02T10:00:00Z" },
     ]);
-    expect(applications[0]).toEqual({ id: 1, offerId: 10, offerTitle: "Oferta", company: "Empresa", appliedDate: "2026-10-01", status: "Aceptada" });
+    expect(applications[0]).toMatchObject({ id: 1, offerId: 10, offerTitle: "Oferta", company: "Empresa", appliedDate: "2026-10-01", status: "Aceptada", offerType: "PRACTICA" });
+    // Fase 8: sin hoja de vida, entrevista ni historial en la fila, quedan vacíos.
+    expect(applications[0]).toMatchObject({ cv: null, interview: null, events: [] });
     expect(applications).toHaveLength(2);
     expect(applications[1]).toMatchObject({ offerId: 11, status: "Retirada" });
   });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import type { AppState, Navigate } from "../../app/types";
-import { Offer } from "./offers.model";
+import type { AppState, ApplyResult, Navigate } from "../../app/types";
+import { experienceLabel, languageLevelLabel, workScheduleLabel, type Offer } from "./offers.model";
+import ApplyDialog, { type ApplyOptions } from "../applications/ApplyDialog";
 import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import DueBadge from "../../shared/ui/DueBadge";
@@ -10,13 +11,18 @@ import { profileApi, ProfileDetails } from "../profile/profile.api";
 import { daysUntil, formatDate, isValidDate } from "../../shared/lib/format";
 import { useSavedOffers } from "./useSavedOffers";
 
-type Props = { state: AppState; navigate: Navigate; applyToOffer: (offer: Offer) => Promise<void> };
+type Props = { state: AppState; navigate: Navigate; applyToOffer: (offer: Offer, options?: ApplyOptions) => Promise<ApplyResult> };
 
 const STEPS = [
   { title: "Enviada", text: "La empresa recibe tu perfil" },
   { title: "En revisión", text: "Revisan tu hoja de vida" },
   { title: "Entrevista", text: "Te contactan para conocerte" },
   { title: "Resultado", text: "Te avisamos por SIPU" },
+];
+const TRAINING_STEPS = [
+  { title: "Enviada", text: "La organización recibe tu inscripción" },
+  { title: "En revisión", text: "Revisan que cumplas el perfil" },
+  { title: "Resultado", text: "Te avisamos por SIPU y por correo" },
 ];
 // Paso alcanzado según el estado de la postulación (0 = sin postular).
 const STEP_BY_STATUS: Record<string, number> = { Enviada: 1, "En revisión": 2, Entrevista: 3, Aceptada: 4, Rechazada: 4 };
@@ -43,6 +49,7 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
   const [success, setSuccess] = useState(false);
   const [applyError, setApplyError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [cvWarning, setCvWarning] = useState("");
   // Detalle del perfil para comparar habilidades y calcular el avance; null si no se pudo cargar.
   const [details, setDetails] = useState<ProfileDetails | null>(null);
 
@@ -62,11 +69,12 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
   const days = daysUntil(offer.closeDate);
   const closed = days < 0;
   const isTraining = offer.offerType === "FORMACION";
-  const submit = async () => {
+  const submit = async (options: ApplyOptions) => {
     setApplyError("");
     setSubmitting(true);
     try {
-      await applyToOffer(offer);
+      const result = await applyToOffer(offer, options);
+      setCvWarning(result.cvWarning ?? "");
       setApplied(true);
       setConfirming(false);
       setSuccess(true);
@@ -77,7 +85,8 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
     }
   };
 
-  const skills = offerSkills(offer.requirements, offer.area);
+  // Fase 8: las habilidades estructuradas; en ofertas anteriores, las de los requisitos.
+  const skills = offer.skills?.length ? offer.skills : offerSkills(offer.requirements, offer.area);
   const mySkills = new Set((details?.skills ?? []).map((skill) => normalize(skill.nombre)));
   const hasSkill = (skill: string) => {
     const target = normalize(skill);
@@ -85,14 +94,26 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
   };
   const matchedSkills = details ? skills.filter(hasSkill).length : 0;
 
-  const currentStep = applied ? STEP_BY_STATUS[application?.status ?? "Enviada"] ?? 1 : 0;
+  // Requisitos estructurados (Fase 8); vacío en ofertas anteriores.
+  const profileFacts = [
+    ...(offer.programs?.length ? [{ label: "Programas", value: offer.programs.join(", ") }] : []),
+    ...(offer.minSemester ? [{ label: "Semestre", value: `Desde ${offer.minSemester}° semestre` }] : []),
+    ...(!isTraining && offer.experience ? [{ label: "Experiencia", value: experienceLabel(offer.experience) ?? "" }] : []),
+    ...(offer.languages?.length ? [{ label: "Idiomas", value: offer.languages.map((item) => `${item.idioma} (${languageLevelLabel(item.nivel)})`).join(", ") }] : []),
+    ...(offer.workSchedule ? [{ label: "Jornada", value: workScheduleLabel(offer.workSchedule) ?? "" }] : []),
+    ...((offer.vacancies ?? 1) > 1 ? [{ label: isTraining ? "Cupos" : "Vacantes", value: String(offer.vacancies) }] : []),
+  ];
+
+  // La formación no tiene entrevista: la inscripción se acepta directamente.
+  const steps = isTraining ? TRAINING_STEPS : STEPS;
+  const currentStep = applied ? Math.min(STEP_BY_STATUS[application?.status ?? "Enviada"] ?? 1, steps.length) : 0;
   const hasAffinity = typeof offer.affinity === "number" && Number.isFinite(offer.affinity);
   const affinity = hasAffinity ? Math.max(0, Math.min(100, Math.round(offer.affinity!))) : 0;
   // Barra de cuenta regresiva: avance dentro de los últimos 30 días antes del cierre.
   const showCountdown = isValidDate(offer.closeDate) && !closed;
   const countdown = showCountdown ? Math.max(4, Math.min(100, Math.round((1 - Math.min(days, 30) / 30) * 100))) : 0;
   const daysText = days === 0 ? "Cierra hoy" : days === 1 ? "1 día" : `${days} días`;
-  const hasSalary = offer.salary !== "A convenir";
+  const hasSalary = Number(offer.salaryMin) > 0;
 
   // Avance del perfil: foto, educación, experiencia, habilidades y hoja de vida.
   const files = state.currentUser?.archivos ?? [];
@@ -183,17 +204,35 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
               </section>
             )}
 
+            {profileFacts.length > 0 && (
+              <section className="panel-card detail-panel">
+                <h2>{isTraining ? "A quién va dirigido" : "Perfil que buscamos"}</h2>
+                <dl className="detail-profile-facts">
+                  {profileFacts.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
+                </dl>
+              </section>
+            )}
+
+            {(offer.benefits?.length ?? 0) > 0 && (
+              <section className="panel-card detail-panel">
+                <h2>{isTraining ? "Incluye" : "Beneficios"}</h2>
+                <ul className="skill-chips">
+                  {offer.benefits!.map((benefit) => <li key={benefit} className="skill-chip has"><IconCheck size={14} />{benefit}</li>)}
+                </ul>
+              </section>
+            )}
+
             <section className="panel-card detail-panel">
-              <h2>Cómo es el proceso</h2>
+              <h2>{isTraining ? "Cómo es la inscripción" : "Cómo es el proceso"}</h2>
               <ol className="process-steps">
-                {STEPS.map((step, index) => {
+                {steps.map((step, index) => {
                   const number = index + 1;
                   const reached = number <= currentStep;
                   return (
                     <li key={step.title} className={reached ? "is-reached" : ""} aria-current={number === currentStep ? "step" : undefined}>
                       <span className="process-step-head">
                         <span className="process-step-number" aria-hidden="true">{number}</span>
-                        {number < STEPS.length && <span className="process-step-line" aria-hidden="true" />}
+                        {number < steps.length && <span className="process-step-line" aria-hidden="true" />}
                       </span>
                       <strong>{step.title}</strong>
                       <small>{step.text}</small>
@@ -265,24 +304,27 @@ export default function OfferDetail({ state, navigate, applyToOffer }: Props) {
       </main>
 
       {confirming && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setConfirming(false)}>
-          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onMouseDown={(e) => e.stopPropagation()}>
-            <p className="eyebrow">Antes de enviar</p>
-            <h2 id="confirm-title">Confirma tu postulación</h2>
-            <p>La empresa recibirá los datos de tu perfil SIPU:</p>
-            <div className="cv-row"><span aria-hidden="true">SIPU</span><div><strong>Tu perfil SIPU</strong><small>Revisa tu perfil antes de enviar la postulación.</small></div><button className="text-button" onClick={() => navigate("student-profile")}>Ver perfil</button></div>
-            {applyError && <div className="form-error" role="alert">{applyError}</div>}
-            <div className="modal-actions"><button className="button secondary" onClick={() => setConfirming(false)}>Cancelar</button><button className="button primary" disabled={submitting} onClick={() => void submit()}>{submitting ? "Enviando..." : "Confirmar postulación"}</button></div>
-          </section>
-        </div>
+        <ApplyDialog
+          token={state.token}
+          offerTitle={offer.title}
+          company={offer.company}
+          isTraining={isTraining}
+          profileCv={files.find((file) => file.tipo === "CV")}
+          submitting={submitting}
+          error={applyError}
+          onCancel={() => setConfirming(false)}
+          onConfirm={(options) => void submit(options)}
+          onOpenProfile={() => navigate("student-profile")}
+        />
       )}
 
       {success && (
         <div className="modal-backdrop">
           <section className="modal success-modal" role="dialog" aria-modal="true" aria-labelledby="success-title">
             <div className="success-icon" aria-hidden="true"><IconCheck size={30} /></div>
-            <h2 id="success-title">Postulación enviada</h2>
-            <p>{offer.company} recibió tu postulación. Puedes consultar el estado en cualquier momento.</p>
+            <h2 id="success-title">{isTraining ? "Inscripción enviada" : "Postulación enviada"}</h2>
+            <p>{offer.company} recibió tu {isTraining ? "inscripción" : "postulación"}. Puedes consultar el estado en cualquier momento.</p>
+            {cvWarning && <div className="form-error" role="alert">{cvWarning}</div>}
             <button className="button primary full" onClick={() => navigate("student-applications")}>Ver mi postulación</button>
             <button className="button secondary full" onClick={() => setSuccess(false)}>Permanecer aquí</button>
           </section>

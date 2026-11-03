@@ -1,71 +1,79 @@
-import { useEffect, useState } from "react";
+// Proceso de selección de la empresa (Fase 8): tablero por etapas (con arrastrar
+// y soltar y menú "Mover a" accesible por teclado), vista de lista, panel del
+// candidato con la hoja de vida enviada, coincidencia de habilidades, historial,
+// notas internas y calificación, y diálogos para citar, seleccionar o descartar.
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import type { AppState, Navigate } from "../../app/types";
-import { Offer } from "../offers/offers.model";
 import NavBar from "../../app/NavBar";
-import { IconPin } from "../../shared/ui/icons";
+import ArdyMark from "../../shared/ui/ArdyMark";
+import TypeBadge from "../offers/TypeBadge";
+import { IconArrowRight, IconCalendar, IconCheck, IconClose, IconFile, IconGrid, IconLock, IconMail, IconMenu, IconPin, IconSearch, IconUser } from "../../shared/ui/icons";
 import { offersApi } from "../offers/offers.api";
-import { applicationsApi } from "./applications.api";
+import { toUiOffer, type Offer } from "../offers/offers.model";
 import { formatDate } from "../../shared/lib/format";
-import { toUiOffer } from "../offers/offers.model";
+import { formatSize } from "../../shared/lib/files";
+import { applicationsApi, type StageChange } from "./applications.api";
+import { INTERVIEW_MODE_LABELS, describeEvent, formatInterviewDate, toEvents } from "./applications.model";
+import {
+  STAGE_LABELS,
+  allowedTransitions,
+  boardColumns,
+  daysAgo,
+  initials,
+  isTrainingOffer,
+  mapApplicant,
+  skillMatch,
+  sortApplicants,
+  transitionBlockedReason,
+  type Applicant,
+  type SortKey,
+  type Stage,
+} from "./applicants.model";
+import StageDialog, { type DialogMode } from "./StageDialog";
 
-type Props = {
-  state: AppState;
-  navigate: Navigate;
-  updateCandidateStatus: (id: number, status: "Aceptada" | "Rechazada") => Promise<void>;
+type Props = { state: AppState; navigate: Navigate };
+type Toast = { text: string; tone: "ok" | "error" } | null;
+
+const STAGE_TONE: Record<Stage, string> = { ENVIADA: "sent", EN_REVISION: "review", PRESELECCIONADA: "interview", ACEPTADA: "accepted", RECHAZADA: "rejected", RETIRADA: "withdrawn" };
+
+// Siguiente paso natural de cada etapa (botón principal del panel del candidato).
+const PRIMARY_ACTION: Partial<Record<Stage, (training: boolean) => Stage>> = {
+  ENVIADA: () => "EN_REVISION",
+  EN_REVISION: (training) => (training ? "ACEPTADA" : "PRESELECCIONADA"),
+  PRESELECCIONADA: () => "ACEPTADA",
+  ACEPTADA: () => "EN_REVISION",
+  RECHAZADA: () => "EN_REVISION",
 };
 
-const statusConfig = {
-  Nueva: { bg: "bg-[var(--selection)]", text: "text-[var(--primary)]", border: "border-[#cfe0ff]", dot: "bg-[var(--primary)]" },
-  Entrevista: { bg: "bg-[var(--sky)]", text: "text-[var(--primary-dark)]", border: "border-[#b9dcf0]", dot: "bg-[var(--primary-dark)]" },
-  "En revisión": { bg: "bg-[#fff4df]", text: "text-[var(--warning)]", border: "border-[#f5d9a8]", dot: "bg-[var(--warning)]" },
-  Aceptada: { bg: "bg-[#eaf7f0]", text: "text-[var(--success)]", border: "border-[#b7e4c7]", dot: "bg-[var(--success)]" },
-  Rechazada: { bg: "bg-[#fef3f2]", text: "text-[var(--danger)]", border: "border-[#fecdca]", dot: "bg-[var(--danger)]" },
-  Retirada: { bg: "bg-[#f2f6fc]", text: "text-[#475467]", border: "border-[#e3eaf5]", dot: "bg-[#97b4ea]" },
-};
+// Texto de la acción para pasar a cada etapa.
+function moveLabel(current: Stage, target: Stage, training: boolean): string {
+  if (target === "PRESELECCIONADA") return current === "PRESELECCIONADA" ? "Reprogramar entrevista" : "Citar a entrevista";
+  if (target === "EN_REVISION") return current === "ACEPTADA" || current === "RECHAZADA" ? "Reabrir proceso" : current === "PRESELECCIONADA" ? "Volver a revisión" : "Empezar revisión";
+  if (target === "ACEPTADA") return training ? "Aceptar inscripción" : "Seleccionar";
+  if (target === "RECHAZADA") return "Descartar";
+  return STAGE_LABELS[target];
+}
 
-const avatarGradients = [
-  "linear-gradient(145deg, #123b70, #4d87ff)",
-  "linear-gradient(145deg, #123b70, #4d87ff)",
-  "linear-gradient(145deg, #123b70, #4d87ff)",
-  "linear-gradient(145deg, #123b70, #4d87ff)",
-];
-
-const mapStatus = (status?: string): Candidate["status"] => {
-  switch (status) {
-    case "RETIRADA":
-      return "Retirada";
-    case "ACEPTADA":
-      return "Aceptada";
-    case "RECHAZADA":
-      return "Rechazada";
-    case "PRESELECCIONADA":
-      return "Entrevista";
-    case "EN_REVISION":
-      return "En revisión";
-    default:
-      return "Nueva";
-  }
-};
-
-type Stage = "Nueva" | "En revisión" | "Entrevista" | "Aceptada" | "Rechazada" | "Retirada";
-const PENDING: Stage[] = ["Nueva", "En revisión", "Entrevista"];
-// Siguiente paso de cada etapa abierta; Rechazar está disponible en todas.
-const NEXT_STEP: Partial<Record<Stage, { label: string; to: Stage }>> = {
-  Nueva: { label: "Pasar a revisión", to: "En revisión" },
-  "En revisión": { label: "Citar a entrevista", to: "Entrevista" },
-  Entrevista: { label: "Aceptar", to: "Aceptada" },
-};
-const API_STATUS: Partial<Record<Stage, string>> = { "En revisión": "EN_REVISION", Entrevista: "PRESELECCIONADA" };
-
-type Candidate = { id: number; name: string; career: string; semester: string; university: string; email: string; phone: string; summary: string; cvUrl: string; hasCv: boolean; education: { titulo: string; institucion: string; periodo: string }[]; experience: { cargo: string; empresa: string; periodo: string; descripcion?: string | null }[]; city: string; appliedDate: string; status: Stage; skills: string[] };
-
-export default function CompanyApplicants({ state, navigate, updateCandidateStatus }: Props) {
+export default function CompanyApplicants({ state, navigate }: Props) {
   const offer = state.selectedCompanyOffer;
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [selected, setSelected] = useState<Candidate | null>(null);
-  const [filter, setFilter] = useState<"Todos" | "En revisión" | "Aceptada" | "Rechazada">(state.applicantFilter ?? "Todos");
-  const [actionError, setActionError] = useState("");
+  const company = state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa";
+  const [applicants, setApplicants] = useState<Applicant[] | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [myOffers, setMyOffers] = useState<Offer[] | null>(null);
+  const [view, setView] = useState<"board" | "list">("board");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortKey>("recent");
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [dialog, setDialog] = useState<{ mode: DialogMode; applicantId: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [dialogError, setDialogError] = useState("");
+  const [toast, setToast] = useState<Toast>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  const training = isTrainingOffer(offer?.offerType);
+  const offerSkills = offer?.skills ?? [];
+  const vacancies = offer?.vacancies ?? 1;
 
   // Sin oferta seleccionada (entrada desde el menú) se listan las ofertas propias.
   useEffect(() => {
@@ -74,409 +82,510 @@ export default function CompanyApplicants({ state, navigate, updateCandidateStat
       .then((response) => setMyOffers((response.offers ?? []).map(toUiOffer)))
       .catch((error) => {
         setMyOffers([]);
-        setActionError(error instanceof Error ? error.message : "No se pudieron cargar tus ofertas.");
+        setLoadError(error instanceof Error ? error.message : "No se pudieron cargar tus ofertas.");
       });
   }, [offer, state.token]);
 
   useEffect(() => {
     if (!offer || !state.token) return;
-
+    setApplicants(null);
     applicationsApi.getApplicationsForOffer(String(offer.id), state.token)
-      .then((response) => {
-        const mapped = (response.applications ?? []).map((item) => ({
-          id: Number(item.id),
-          name: item.postulante_nombre ?? item.nombre ?? "Candidato",
-          career: item.programa_academico ?? (item.perfil_tipo === "ESTUDIANTE" ? "Estudiante" : "Candidato externo"),
-          semester: item.semestre ? String(item.semestre) : "No reportado",
-          university: item.universidad ?? "No reportada",
-          email: item.postulante_email ?? "No reportado",
-          phone: item.postulante_telefono ?? "No reportado",
-          summary: item.resumen ?? "",
-          cvUrl: item.cv_url ?? "",
-          hasCv: Boolean(item.tiene_cv),
-          education: Array.isArray(item.educacion) ? item.educacion : [],
-          experience: Array.isArray(item.experiencia) ? item.experiencia : [],
-          city: item.candidato_ubicacion ?? "No reportada",
-          appliedDate: (item.created_at ?? new Date().toISOString()).slice(0, 10),
-          status: mapStatus(item.estado),
-          skills: Array.isArray(item.habilidades) ? item.habilidades : [],
-        }));
-        setCandidates(mapped);
-      })
+      .then((response) => setApplicants((response.applications ?? []).map(mapApplicant)))
       .catch((error) => {
-        setCandidates([]);
-        setActionError(error instanceof Error ? error.message : "No se pudieron cargar las postulaciones.");
+        setApplicants([]);
+        setLoadError(error instanceof Error ? error.message : "No se pudieron cargar las postulaciones.");
       });
   }, [offer, state.token]);
 
-  const changeCandidateStatus = async (id: number, status: Stage) => {
-    setActionError("");
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 4500);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const list = applicants ?? [];
+  const accepted = list.filter((item) => item.status === "ACEPTADA").length;
+  const columns = useMemo(() => boardColumns(offer?.offerType), [offer?.offerType]);
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const filtered = term
+      ? list.filter((item) => `${item.name} ${item.career} ${item.skills.join(" ")}`.toLowerCase().includes(term))
+      : list;
+    return sortApplicants(filtered, sort, offerSkills);
+  }, [list, query, sort, offerSkills]);
+
+  const replaceApplicant = (id: number, changes: Partial<Applicant>) =>
+    setApplicants((current) => (current ?? []).map((item) => item.id === id ? { ...item, ...changes } : item));
+
+  const changeStage = useCallback(async (applicant: Applicant, target: Stage, change: StageChange = {}) => {
+    if (!state.token) return;
+    setBusy(true);
+    setDialogError("");
     try {
-      // Aceptar y rechazar pasan por App; revisión y entrevista usan el mismo endpoint directamente.
-      if (status === "Aceptada" || status === "Rechazada") await updateCandidateStatus(id, status);
-      else await applicationsApi.updateApplicationStatus(id, API_STATUS[status] ?? "EN_REVISION", state.token ?? "");
-      setCandidates((current) => current.map((candidate) => candidate.id === id ? { ...candidate, status } : candidate));
-      setSelected((current) => current?.id === id ? { ...current, status } : current);
-      return true;
+      const response = await applicationsApi.updateApplicationStatus(applicant.id, target, state.token, change);
+      const updated = response.application ?? {};
+      const [event] = toEvents(updated.evento ? [updated.evento] : []);
+      replaceApplicant(applicant.id, {
+        status: (updated.estado ?? target) as Stage,
+        interview: updated.entrevista === undefined ? applicant.interview : updated.entrevista ? { ...updated.entrevista } : null,
+        events: event ? [...applicant.events, { ...event, autorRol: "EMPRESA", autor: state.currentUser?.nombreCompleto ?? null }] : applicant.events,
+      });
+      setDialog(null);
+      setToast({ text: `${applicant.name}: ${moveLabel(applicant.status, target, training).toLowerCase()} listo.${target !== "EN_REVISION" ? " Le avisamos por correo." : ""}`, tone: "ok" });
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "No se pudo actualizar el estado.");
-      return false;
+      const message = error instanceof Error ? error.message : "No se pudo cambiar la etapa.";
+      if (dialog) setDialogError(message);
+      else setToast({ text: message, tone: "error" });
+    } finally {
+      setBusy(false);
     }
+  }, [state.token, state.currentUser?.nombreCompleto, training, dialog]);
+
+  // Pedir un cambio de etapa: algunas transiciones abren un diálogo con lo que necesitan.
+  const requestMove = (applicant: Applicant, target: Stage) => {
+    const blocked = transitionBlockedReason(applicant.status, target, offer?.offerType);
+    if (blocked) {
+      setToast({ text: blocked, tone: "error" });
+      return;
+    }
+    setDialogError("");
+    if (target === "PRESELECCIONADA") setDialog({ mode: "interview", applicantId: applicant.id });
+    else if (target === "ACEPTADA") setDialog({ mode: "accept", applicantId: applicant.id });
+    else if (target === "RECHAZADA") setDialog({ mode: "reject", applicantId: applicant.id });
+    else if (applicant.status === "ACEPTADA" || applicant.status === "RECHAZADA") setDialog({ mode: "reopen", applicantId: applicant.id });
+    else void changeStage(applicant, target);
   };
 
-  // El filtro "En revisión" (que llega también desde el panel) agrupa las etapas abiertas.
-  const filtered = candidates.filter((c) => filter === "Todos" || (filter === "En revisión" ? PENDING.includes(c.status) : c.status === filter));
-  const counts = {
-    pending: candidates.filter((c) => PENDING.includes(c.status)).length,
-    accepted: candidates.filter((c) => c.status === "Aceptada").length,
-    rejected: candidates.filter((c) => c.status === "Rechazada").length,
+  const dialogApplicant = dialog ? list.find((item) => item.id === dialog.applicantId) ?? null : null;
+  const openApplicant = openId ? list.find((item) => item.id === openId) ?? null : null;
+
+  const onDrop = (event: DragEvent, column: (typeof columns)[number]) => {
+    event.preventDefault();
+    setDropTarget(null);
+    const id = Number(event.dataTransfer.getData("text/plain") || dragging);
+    setDragging(null);
+    const applicant = list.find((item) => item.id === id);
+    if (!applicant || !column.drop || column.stages.includes(applicant.status)) return;
+    requestMove(applicant, column.drop);
   };
 
-  if (!offer) return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <NavBar role="company" navigate={navigate} activeScreen="company-applicants" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        <h1 className="display text-3xl text-[var(--navy)] mb-1">Postulantes</h1>
-        <p className="text-[var(--muted)] text-sm mb-6">Elige una oferta para revisar sus candidatos.</p>
-        {actionError && <div className="form-error mb-5" role="alert">{actionError}</div>}
-        {myOffers === null ? (
-          <p className="text-sm text-[var(--muted)]">Cargando ofertas...</p>
-        ) : myOffers.length === 0 ? (
-          <div className="bg-white rounded-[20px] border border-[#d3e0f5] text-center py-16">
-            <p className="text-[var(--muted)] text-sm mb-4">Aún no has publicado ofertas.</p>
-            <button className="button primary" onClick={() => navigate("company-dashboard")}>Crear una oferta</button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {myOffers.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => navigate("company-applicants", { selectedCompanyOffer: item, applicantFilter: "Todos" })}
-                className="w-full text-left bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm p-5 hover:border-[#97b4ea] flex items-center justify-between gap-4"
-              >
-                <span>
-                  <strong className="block text-[var(--navy)]">{item.title}</strong>
-                  <small className="text-[var(--muted)]">{item.city} · {item.modality} · Cierra {formatDate(item.closeDate, "sin fecha")}</small>
-                </span>
-                <span className="text-sm font-semibold text-[var(--navy)]">Ver postulantes →</span>
-              </button>
-            ))}
-          </div>
-        )}
+  const navBar = <NavBar role="company" navigate={navigate} activeScreen="company-applicants" userName={company} />;
+
+  if (!offer) {
+    return (
+      <div className="app-shell">
+        {navBar}
+        <main className="container applicants-page">
+          <h1 className="display applicants-picker-title">Postulantes</h1>
+          <p className="muted">Elige una oferta para gestionar su proceso de selección.</p>
+          {loadError && <div className="form-error" role="alert">{loadError}</div>}
+          {myOffers === null ? (
+            <p className="muted" role="status">Cargando ofertas...</p>
+          ) : myOffers.length === 0 ? (
+            <div className="empty-vivo">
+              <ArdyMark className="empty-vivo-ardy" />
+              <h2>Aún no has publicado ofertas</h2>
+              <button className="button primary" onClick={() => navigate("company-dashboard")}>Crear una oferta</button>
+            </div>
+          ) : (
+            <ul className="applicants-offer-picker">
+              {myOffers.map((item) => (
+                <li key={item.id}>
+                  <button className="panel-card interactive" onClick={() => navigate("company-applicants", { selectedCompanyOffer: item, applicantFilter: "Todos" })}>
+                    <TypeBadge type={item.offerType} />
+                    <span><strong>{item.title}</strong><small>{item.city} · {item.modality} · Cierra {formatDate(item.closeDate, "sin fecha")}</small></span>
+                    <IconArrowRight size={18} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </main>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <NavBar role="company" navigate={navigate} activeScreen="company-applicants" userName={state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "Empresa"} />
+    <div className="app-shell">
+      {navBar}
+      <main className="container applicants-page">
+        <button className="back-link" onClick={() => navigate("company-applicants", { selectedCompanyOffer: null })}><IconArrowRight className="back-link-icon" size={18} />Mis ofertas</button>
 
-      {/* Header */}
-      <div
-        className="relative overflow-hidden"
-        style={{ background: "radial-gradient(circle at 78% 30%, rgba(103,176,255,.45), transparent 30%), linear-gradient(130deg, #0d2240, #123b70 40%, #155eef 85%, #3978f4)" }}
-      >
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }} />
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10">
-          <button
-            onClick={() => navigate("company-applicants", { selectedCompanyOffer: null })}
-            className="flex items-center gap-1.5 text-white/45 hover:text-white/80 text-sm font-medium mb-5"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-            </svg>
-            Mis ofertas
-          </button>
+        <section className="hero-card applicants-hero">
+          <div className="dots company-hero-dots" aria-hidden="true" />
+          <div className="applicants-hero-main">
+            <div className="applicants-hero-badges"><TypeBadge type={offer.offerType} /><span className="applicants-hero-close"><IconCalendar size={15} />Cierra {formatDate(offer.closeDate, "sin fecha")}</span></div>
+            <h1 className="display">{offer.title}</h1>
+            <p>{applicants === null ? "Cargando candidatos..." : list.length === 1 ? "1 candidato en el proceso" : `${list.length} candidatos en el proceso`}</p>
+          </div>
+          <div className="applicants-vacancies" role="img" aria-label={`${accepted} de ${vacancies} ${vacancies === 1 ? "vacante cubierta" : "vacantes cubiertas"}`}>
+            <strong>{accepted}/{vacancies}</strong>
+            <span>{training ? (vacancies === 1 ? "cupo asignado" : "cupos asignados") : (vacancies === 1 ? "vacante cubierta" : "vacantes cubiertas")}</span>
+            <div className="applicants-vacancies-track"><div style={{ width: `${Math.min(100, Math.round((accepted / vacancies) * 100))}%` }} /></div>
+          </div>
+        </section>
 
-          <h1 className="display text-white text-3xl mb-1">
-            {offer?.title ?? "Postulantes"}
-          </h1>
-          <p className="text-white/45 text-sm mb-7">{candidates.length} candidatos para esta oferta</p>
+        {loadError && <div className="form-error" role="alert">{loadError}</div>}
 
-          <div className="flex flex-wrap gap-3">
-            {[
-              { label: "Pendientes", value: counts.pending, color: "bg-amber-400/15 text-amber-300 border-amber-400/25" },
-              { label: "Aceptados", value: counts.accepted, color: "bg-green-400/15 text-green-300 border-green-400/25" },
-              { label: "Rechazados", value: counts.rejected, color: "bg-red-400/15 text-red-300 border-red-400/25" },
-            ].map((s) => (
-              <div key={s.label} className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold ${s.color}`}>
-                <span className="text-lg font-bold tabular">{s.value}</span>
-                <span className="opacity-70 font-normal">{s.label}</span>
-              </div>
-            ))}
+        <div className="applicants-toolbar">
+          <label className="applicants-search">
+            <IconSearch size={18} />
+            <input type="search" placeholder="Buscar por nombre, carrera o habilidad" aria-label="Buscar candidatos" value={query} onChange={(event) => setQuery(event.target.value)} />
+          </label>
+          <label className="applicants-sort">
+            <span>Ordenar</span>
+            <select value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+              <option value="recent">Más recientes</option>
+              {offerSkills.length > 0 && <option value="match">Mayor coincidencia</option>}
+              <option value="rating">Mejor calificados</option>
+            </select>
+          </label>
+          <div className="applicants-view" role="group" aria-label="Vista">
+            <button type="button" aria-pressed={view === "board"} onClick={() => setView("board")}><IconGrid size={16} />Tablero</button>
+            <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}><IconMenu size={16} />Lista</button>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {actionError && <div className="form-error mb-5" role="alert">{actionError}</div>}
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {(["Todos", "En revisión", "Aceptada", "Rechazada"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                filter === f
-                  ? "bg-[var(--primary)] text-white shadow-md"
-                  : "bg-white text-[var(--muted)] border border-[#d3e0f5] hover:border-[#97b4ea]"
-              }`}
-            >
-              {f === "En revisión" ? "En proceso" : f}
-              {f !== "Todos" && (
-                <span className={`ml-1.5 text-xs ${filter === f ? "opacity-70" : "text-[var(--muted)]"}`}>
-                  ({f === "En revisión" ? counts.pending : f === "Aceptada" ? counts.accepted : counts.rejected})
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((candidate, i) => {
-            const cfg = statusConfig[candidate.status];
-            const initials = candidate.name.split(" ").slice(0, 2).map((n) => n[0]).join("");
-            const bg = avatarGradients[i % avatarGradients.length];
-
-            return (
-              <div key={candidate.id} className="bg-white rounded-[20px] border border-[#d3e0f5] shadow-sm overflow-hidden">
-                {/* Status strip */}
-                <div className={`h-1 ${candidate.status === "Aceptada" ? "bg-[var(--success)]" : candidate.status === "Rechazada" ? "bg-[var(--danger)]" : candidate.status === "Retirada" ? "bg-[#e3eaf5]" : "bg-[var(--warning)]"}`} />
-
-                <div className="p-6">
-                  <div className="flex items-start gap-4 mb-4">
-                    <div
-                      className="w-14 h-14 rounded-[20px] flex items-center justify-center flex-shrink-0 shadow-sm"
-                      style={{ background: bg }}
-                    >
-                      <span className="text-white font-bold text-base">{initials}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h3 className="font-bold text-[var(--navy)] text-sm leading-snug">{candidate.name}</h3>
-                          <p className="text-[var(--muted)] text-xs mt-0.5 font-medium">{candidate.career}{candidate.semester !== "No reportado" ? ` · ${candidate.semester}° semestre` : ""}</p>
-                        </div>
-                        <span className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full font-bold border flex-shrink-0 ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                          {candidate.status}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 mt-2 text-[11px] text-[var(--muted)]">
-                        <span className="inline-flex items-center gap-1"><IconPin size={14} />{candidate.city}</span>
-                        <span>{candidate.university}</span>
-                        <span>{new Date(candidate.appliedDate).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Skills */}
-                  {candidate.skills.length > 0 && <div className="flex flex-wrap gap-1.5 mb-5">
-                    {candidate.skills.map((s) => (
-                      <span key={s} className="text-[11px] px-2.5 py-1 bg-[#f2f6fc] border border-[#e3eaf5] text-[#475467] rounded-lg font-semibold">{s}</span>
-                    ))}
-                  </div>}
-
-                  {/* Actions */}
-                  <div className="flex gap-2.5 pt-4 border-t border-[#e3eaf5]">
-                    <button
-                      aria-label={`Ver perfil de ${candidate.name}`}
-                      onClick={() => setSelected(candidate)}
-                      className="flex-1 py-2.5 text-sm font-semibold text-[var(--navy)] border border-[#d3e0f5] rounded-xl hover:bg-[var(--selection)] hover:border-[#97b4ea] flex items-center justify-center gap-1.5"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Ver perfil
-                    </button>
-                    {PENDING.includes(candidate.status) ? (
-                      <>
-                        <button
-                          aria-label={`${NEXT_STEP[candidate.status]!.label}: ${candidate.name}`}
-                          onClick={() => void changeCandidateStatus(candidate.id, NEXT_STEP[candidate.status]!.to)}
-                          className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl hover:opacity-90 flex items-center justify-center gap-1"
-                          style={{ background: candidate.status === "Entrevista" ? "linear-gradient(135deg, #157347, #1f8a57)" : "linear-gradient(135deg, #155eef, #3478ff)" }}
-                        >
-                          {NEXT_STEP[candidate.status]!.label}
-                        </button>
-                        <button
-                          aria-label={`Rechazar a ${candidate.name}`}
-                          title="Rechazar"
-                          onClick={() => void changeCandidateStatus(candidate.id, "Rechazada")}
-                          className="px-3.5 py-2.5 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2]"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </>
-                    ) : candidate.status === "Aceptada" ? (
-                      <div className="flex-1 py-2.5 text-center text-sm font-bold text-[var(--success)] bg-[#eaf7f0] border border-[#b7e4c7] rounded-xl">
-                        ✓ Aceptado
-                      </div>
-                    ) : candidate.status === "Retirada" ? (
-                      <div className="flex-1 py-2.5 text-center text-sm font-semibold text-[var(--muted)] bg-[#f2f6fc] border border-[#e3eaf5] rounded-xl">
-                        Retirada por el candidato
-                      </div>
-                    ) : (
-                      <div className="flex-1 py-2.5 text-center text-sm font-semibold text-red-400 bg-[#fef3f2] border border-[#fecdca] rounded-xl">
-                        No seleccionado
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="bg-white rounded-[20px] border border-[#d3e0f5] text-center py-16">
-            <div className="w-12 h-12 bg-[#f8faff] rounded-xl flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <p className="text-[var(--muted)] text-sm font-medium">Sin candidatos con este filtro</p>
+        {applicants !== null && list.length === 0 && (
+          <div className="empty-vivo">
+            <ArdyMark className="empty-vivo-ardy" />
+            <h2>Aún no hay postulaciones</h2>
+            <p>Cuando alguien se postule aparecerá en la columna Nuevas. Compartir la oferta ayuda a recibir candidatos.</p>
           </div>
         )}
-      </div>
 
-      {/* CV Modal */}
-      {selected && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ backdropFilter: "blur(4px)" }}>
-          <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl my-4">
-            <div className="flex items-center justify-between p-6 border-b border-[#e3eaf5]">
-              <h3 className="font-bold text-[var(--navy)]">Perfil del candidato</h3>
-              <button aria-label="Cerrar perfil" onClick={() => setSelected(null)} className="w-8 h-8 rounded-lg bg-[#f8faff] flex items-center justify-center text-[var(--muted)] hover:bg-[var(--primary-soft)]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6">
-              {/* Candidate header */}
-              <div className="flex items-center gap-4 p-4 bg-[#f8faff] rounded-[20px] mb-5 border border-[#d3e0f5]">
-                <div
-                  className="w-14 h-14 rounded-[20px] flex items-center justify-center shadow-sm"
-                  style={{ background: avatarGradients[0] }}
+        {list.length > 0 && view === "board" && (
+          <div className="pipeline-board" aria-label="Tablero del proceso de selección">
+            {columns.map((column) => {
+              const items = visible.filter((item) => column.stages.includes(item.status));
+              const draggedApplicant = dragging ? list.find((item) => item.id === dragging) : null;
+              const canDrop = Boolean(draggedApplicant && column.drop && !column.stages.includes(draggedApplicant.status) && !transitionBlockedReason(draggedApplicant.status, column.drop, offer.offerType));
+              return (
+                <section
+                  key={column.id}
+                  className={`pipeline-column tone-col-${column.tone} ${dropTarget === column.id ? (canDrop ? "is-drop-ok" : "is-drop-blocked") : ""}`}
+                  aria-labelledby={`col-${column.id}`}
+                  onDragOver={(event) => { if (dragging) { event.preventDefault(); setDropTarget(column.id); } }}
+                  onDragLeave={() => setDropTarget((current) => current === column.id ? null : current)}
+                  onDrop={(event) => onDrop(event, column)}
                 >
-                  <span className="text-white font-bold text-base">
-                    {selected.name.split(" ").slice(0, 2).map((n) => n[0]).join("")}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-[var(--navy)]">{selected.name}</h4>
-                  <p className="text-[var(--muted)] text-sm">{selected.career}</p>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-[var(--muted)]">
-                    <span className="inline-flex items-center gap-1"><IconPin size={14} />{selected.city}</span>
-                    <span>·</span>
-                    <span>{selected.university}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-5">
-                <Section title="Formación">
-                  <p className="text-sm font-semibold text-[var(--text)]">{selected.career}</p>
-                  {selected.semester !== "No reportado" && <p className="text-sm text-[var(--muted)]">Semestre: {selected.semester}</p>}
-                  {selected.education.map((item, index) => (
-                    <p key={index} className="text-sm text-[#475467] mt-1"><strong>{item.titulo}</strong> · {item.institucion} · {item.periodo}</p>
-                  ))}
-                </Section>
-
-                {selected.experience.length > 0 && (
-                  <Section title="Experiencia">
-                    {selected.experience.map((item, index) => (
-                      <div key={index} className="mb-2">
-                        <p className="text-sm font-semibold text-[var(--text)]">{item.cargo} · {item.empresa}</p>
-                        <p className="text-xs text-[var(--muted)]">{item.periodo}</p>
-                        {item.descripcion && <p className="text-sm text-[#475467]">{item.descripcion}</p>}
-                      </div>
-                    ))}
-                  </Section>
-                )}
-
-                {selected.summary && <Section title="Resumen profesional"><p className="text-sm text-[#475467]">{selected.summary}</p></Section>}
-
-                <Section title="Contacto">
-                  <p className="text-sm text-[var(--text)]">Correo: {selected.email}</p>
-                  <p className="text-sm text-[var(--muted)]">Teléfono: {selected.phone}</p>
-                </Section>
-
-                <Section title="Habilidades técnicas">
-                  <div className="flex flex-wrap gap-1.5">
-                    {selected.skills.length > 0 ? selected.skills.map((s) => (
-                      <span key={s} className="text-xs px-3 py-1.5 bg-[var(--selection)] text-[var(--primary)] rounded-full font-semibold">{s}</span>
-                    )) : <p className="text-sm text-[var(--muted)]">No se registraron habilidades en este perfil.</p>}
-                  </div>
-                </Section>
-
-                <Section title="Fecha de postulación">
-                  <p className="text-sm text-[var(--text)]">
-                    {new Date(selected.appliedDate).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
-                  </p>
-                </Section>
-
-                <div className="flex flex-wrap gap-4">
-                  {selected.hasCv && (
-                    <button
-                      className="text-sm font-semibold text-[var(--primary)] underline"
-                      onClick={() => state.token && void applicationsApi.openApplicationCv(selected.id, state.token).catch((error) => setActionError(error instanceof Error ? error.message : "No se pudo abrir la hoja de vida."))}
-                    >
-                      Descargar hoja de vida (PDF)
-                    </button>
+                  <header>
+                    <h2 id={`col-${column.id}`}><span className={`stage-dot tone-${column.tone}`} aria-hidden="true" />{column.title}</h2>
+                    <span className="pipeline-count" aria-label={`${items.length} candidatos`}>{items.length}</span>
+                  </header>
+                  {items.length === 0 ? <p className="pipeline-empty">{column.empty}</p> : (
+                    <ul>
+                      {items.map((item) => (
+                        <li key={item.id}>
+                          <ApplicantCard
+                            applicant={item}
+                            offerSkills={offerSkills}
+                            training={training}
+                            offerType={offer.offerType}
+                            dragging={dragging === item.id}
+                            onOpen={() => setOpenId(item.id)}
+                            onMove={(target) => requestMove(item, target)}
+                            onDragStart={(event) => { event.dataTransfer.setData("text/plain", String(item.id)); event.dataTransfer.effectAllowed = "move"; setDragging(item.id); }}
+                            onDragEnd={() => { setDragging(null); setDropTarget(null); }}
+                          />
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                  {selected.cvUrl && <a className="text-sm font-semibold text-[var(--primary)] underline" href={selected.cvUrl} target="_blank" rel="noreferrer">Abrir enlace de hoja de vida</a>}
-                  {!selected.hasCv && !selected.cvUrl && <p className="text-sm text-[var(--muted)]">El candidato no adjuntó hoja de vida.</p>}
-                </div>
-              </div>
-
-              {PENDING.includes(selected.status) && (
-                <div className="flex flex-wrap gap-3 mt-6">
-                  <button
-                    onClick={() => void changeCandidateStatus(selected.id, "Rechazada").then((updated) => { if (updated) setSelected(null); })}
-                    className="flex-1 py-3 text-sm font-bold text-[var(--danger)] border border-[#fecdca] rounded-xl hover:bg-[#fef3f2]"
-                  >
-                    Rechazar
-                  </button>
-                  {selected.status !== "Entrevista" && (
-                    <button
-                      onClick={() => void changeCandidateStatus(selected.id, NEXT_STEP[selected.status]!.to)}
-                      className="flex-1 py-3 text-sm font-bold text-[var(--primary)] border border-[#cfe0ff] rounded-xl hover:bg-[var(--selection)]"
-                    >
-                      {NEXT_STEP[selected.status]!.label}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => void changeCandidateStatus(selected.id, "Aceptada").then((updated) => { if (updated) setSelected(null); })}
-                    className="flex-1 py-3 text-sm font-bold text-white rounded-xl hover:opacity-90"
-                    style={{ background: "linear-gradient(135deg, #157347, #1f8a57)" }}
-                  >
-                    Aceptar candidato
-                  </button>
-                </div>
-              )}
-            </div>
+                </section>
+              );
+            })}
           </div>
-        </div>
+        )}
+
+        {list.length > 0 && view === "list" && (
+          <ul className="applicants-list">
+            {visible.map((item) => (
+              <li key={item.id}>
+                <ApplicantCard applicant={item} offerSkills={offerSkills} training={training} offerType={offer.offerType} wide
+                  onOpen={() => setOpenId(item.id)} onMove={(target) => requestMove(item, target)} />
+              </li>
+            ))}
+          </ul>
+        )}
+        {list.length > 0 && visible.length === 0 && <p className="muted" role="status">Ningún candidato coincide con "{query}".</p>}
+      </main>
+
+      {openApplicant && (
+        <ApplicantDrawer
+          applicant={openApplicant}
+          offerSkills={offerSkills}
+          training={training}
+          offerType={offer.offerType}
+          token={state.token}
+          authorName={state.currentUser?.nombreCompleto ?? company}
+          onClose={() => setOpenId(null)}
+          onMove={(target) => requestMove(openApplicant, target)}
+          onChanged={(changes) => replaceApplicant(openApplicant.id, changes)}
+          onError={(text) => setToast({ text, tone: "error" })}
+        />
       )}
+
+      {dialog && dialogApplicant && (
+        <StageDialog
+          mode={dialog.mode}
+          applicant={dialogApplicant}
+          company={company}
+          isTraining={training}
+          vacancies={vacancies}
+          accepted={accepted}
+          busy={busy}
+          error={dialogError}
+          onCancel={() => setDialog(null)}
+          onConfirm={(status, change) => void changeStage(dialogApplicant, status, change)}
+        />
+      )}
+
+      <div className={`applicants-toast ${toast ? `is-visible is-${toast.tone}` : ""}`} role="status" aria-live="polite">
+        {toast && <>{toast.tone === "ok" ? <IconCheck size={18} /> : <IconClose size={18} />}{toast.text}</>}
+      </div>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+type CardProps = {
+  applicant: Applicant;
+  offerSkills: string[];
+  training: boolean;
+  offerType?: string;
+  wide?: boolean;
+  dragging?: boolean;
+  onOpen: () => void;
+  onMove: (target: Stage) => void;
+  onDragStart?: (event: DragEvent) => void;
+  onDragEnd?: () => void;
+};
+
+function ApplicantCard({ applicant, offerSkills, training, offerType, wide, dragging, onOpen, onMove, onDragStart, onDragEnd }: CardProps) {
+  const match = skillMatch(applicant.skills, offerSkills);
+  const options = allowedTransitions(applicant.status, offerType).filter((target) => target !== "PRESELECCIONADA" || applicant.status !== "PRESELECCIONADA");
   return (
-    <div>
-      <h5 className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest mb-2">{title}</h5>
-      {children}
+    <article className={`applicant-card ${wide ? "is-wide" : ""} ${dragging ? "is-dragging" : ""} ${applicant.status === "RETIRADA" ? "is-withdrawn" : ""}`}
+      draggable={Boolean(onDragStart) && applicant.status !== "RETIRADA"} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <div className="applicant-card-head">
+        <span className="applicant-avatar" aria-hidden="true">{initials(applicant.name)}</span>
+        <div className="applicant-card-id">
+          <button type="button" className="applicant-name" onClick={onOpen} aria-label={`Ver perfil de ${applicant.name}`}>{applicant.name}</button>
+          <small>{applicant.profileType === "ESTUDIANTE" ? "Estudiante" : "Profesional"}{applicant.career ? ` · ${applicant.career}` : ""}</small>
+        </div>
+        {applicant.rating ? <span className="applicant-rating" aria-label={`Calificación ${applicant.rating} de 5`}>★ {applicant.rating}</span> : null}
+      </div>
+
+      <div className="applicant-card-tags">
+        <span className={`stage-pill tone-pill-${STAGE_TONE[applicant.status]}`}>{applicant.status === "ACEPTADA" && training ? "Inscrito" : STAGE_LABELS[applicant.status]}</span>
+        {match.percent !== null && <span className="match-pill" title={`Coincide en ${match.matched.length} de ${offerSkills.length} habilidades`}>{match.percent}% coincidencia</span>}
+        {applicant.cv && <span className="cv-pill"><IconFile size={13} />CV</span>}
+        <span className="applicant-age">{daysAgo(applicant.appliedAt)}</span>
+      </div>
+
+      {applicant.status === "PRESELECCIONADA" && applicant.interview && (
+        <p className="applicant-interview"><IconCalendar size={14} />{formatInterviewDate(applicant.interview.fecha)}</p>
+      )}
+
+      {options.length > 0 && (
+        <label className="applicant-move">
+          <span className="sr-only">Mover a {applicant.name}</span>
+          <select value="" aria-label={`Mover a ${applicant.name}`} onChange={(event) => { if (event.target.value) onMove(event.target.value as Stage); }}>
+            <option value="">Mover a…</option>
+            {options.map((target) => <option key={target} value={target}>{moveLabel(applicant.status, target, training)}</option>)}
+          </select>
+        </label>
+      )}
+    </article>
+  );
+}
+
+type DrawerProps = {
+  applicant: Applicant;
+  offerSkills: string[];
+  training: boolean;
+  offerType?: string;
+  token: string | null;
+  authorName: string;
+  onClose: () => void;
+  onMove: (target: Stage) => void;
+  onChanged: (changes: Partial<Applicant>) => void;
+  onError: (text: string) => void;
+};
+
+function ApplicantDrawer({ applicant, offerSkills, training, offerType, token, authorName, onClose, onMove, onChanged, onError }: DrawerProps) {
+  const [tab, setTab] = useState<"cv" | "activity">("cv");
+  const [note, setNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const match = skillMatch(applicant.skills, offerSkills);
+  const actions = allowedTransitions(applicant.status, offerType);
+  // Acción principal según la etapa; el resto queda como secundaria.
+  const orderedPrimary = PRIMARY_ACTION[applicant.status]?.(training);
+  const secondary = actions.filter((target) => target !== orderedPrimary);
+
+  useEffect(() => {
+    heading.current?.focus();
+    // Con un diálogo abierto encima, Escape cierra solo el diálogo.
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape" && !document.querySelector(".modal-backdrop")) onClose(); };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  const rate = async (value: number) => {
+    if (!token) return;
+    const next = applicant.rating === value ? null : value;
+    onChanged({ rating: next });
+    try {
+      await applicationsApi.rateApplication(applicant.id, next, token);
+    } catch (error) {
+      onChanged({ rating: applicant.rating });
+      onError(error instanceof Error ? error.message : "No se pudo guardar la calificación.");
+    }
+  };
+
+  const saveNote = async () => {
+    if (!token || note.trim().length < 2) return;
+    setSavingNote(true);
+    try {
+      const response = await applicationsApi.addApplicationNote(applicant.id, note.trim(), token);
+      const [event] = toEvents([response.event]);
+      onChanged({ events: [...applicant.events, { ...event, privado: true, autorRol: "EMPRESA", autor: authorName }] });
+      setNote("");
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "No se pudo guardar la nota.");
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const openCv = () => token && void applicationsApi.openApplicationCv(applicant.id, token).catch((error) => onError(error instanceof Error ? error.message : "No se pudo abrir la hoja de vida."));
+
+  return (
+    <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="applicant-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="applicant-drawer-head">
+          <span className="applicant-avatar lg" aria-hidden="true">{initials(applicant.name)}</span>
+          <div>
+            <h2 id="drawer-title" tabIndex={-1} ref={heading}>{applicant.name}</h2>
+            <p>{applicant.profileType === "ESTUDIANTE" ? "Estudiante" : "Profesional"}{applicant.career ? ` · ${applicant.career}` : ""}{applicant.semester ? ` · ${applicant.semester}° semestre` : ""}</p>
+            <div className="applicant-contact">
+              {applicant.email && <a href={`mailto:${applicant.email}`}><IconMail size={15} />{applicant.email}</a>}
+              {applicant.phone && <a href={`tel:${applicant.phone.replace(/\s/g, "")}`}><IconUser size={15} />{applicant.phone}</a>}
+              {applicant.city && <span><IconPin size={15} />{applicant.city}</span>}
+            </div>
+          </div>
+          <button type="button" className="drawer-close" aria-label="Cerrar perfil" onClick={onClose}><IconClose size={20} /></button>
+        </header>
+
+        <div className="applicant-drawer-stage">
+          <span className={`stage-pill tone-pill-${STAGE_TONE[applicant.status]}`}>{applicant.status === "ACEPTADA" && training ? "Inscrito" : STAGE_LABELS[applicant.status]}</span>
+          <div className="rating" role="group" aria-label="Calificación interna">
+            {[1, 2, 3, 4, 5].map((value) => (
+              <button key={value} type="button" aria-pressed={(applicant.rating ?? 0) >= value} aria-label={`${value} ${value === 1 ? "estrella" : "estrellas"}`} onClick={() => void rate(value)}>★</button>
+            ))}
+          </div>
+        </div>
+
+        {applicant.status === "PRESELECCIONADA" && applicant.interview && (
+          <div className="drawer-interview">
+            <IconCalendar size={18} />
+            <span><strong>Entrevista {INTERVIEW_MODE_LABELS[applicant.interview.modalidad].toLowerCase()}</strong>{formatInterviewDate(applicant.interview.fecha)}{applicant.interview.lugar ? ` · ${applicant.interview.lugar}` : ""}</span>
+          </div>
+        )}
+
+        {applicant.status === "RETIRADA" ? (
+          <p className="drawer-note">El candidato retiró su postulación. Su historial se conserva.</p>
+        ) : (
+          <div className="drawer-actions">
+            {orderedPrimary && actions.includes(orderedPrimary) && (
+              <button type="button" className={`button primary ${orderedPrimary === "ACEPTADA" ? "success" : ""}`} onClick={() => onMove(orderedPrimary)}>{moveLabel(applicant.status, orderedPrimary, training)}</button>
+            )}
+            {secondary.map((target) => (
+              <button key={target} type="button" className={`button secondary ${target === "RECHAZADA" ? "danger-outline" : ""}`} onClick={() => onMove(target)}>{moveLabel(applicant.status, target, training)}</button>
+            ))}
+          </div>
+        )}
+
+        <div className="drawer-tabs" role="tablist" aria-label="Información del candidato">
+          <button type="button" role="tab" id="tab-cv" aria-selected={tab === "cv"} aria-controls="panel-cv" onClick={() => setTab("cv")}>Hoja de vida</button>
+          <button type="button" role="tab" id="tab-activity" aria-selected={tab === "activity"} aria-controls="panel-activity" onClick={() => setTab("activity")}>Actividad y notas ({applicant.events.length})</button>
+        </div>
+
+        {tab === "cv" ? (
+          <div className="drawer-panel" role="tabpanel" id="panel-cv" aria-labelledby="tab-cv">
+            <div className="sent-cv">
+              <span className="sent-cv-icon" aria-hidden="true"><IconFile size={18} /></span>
+              <span className="sent-cv-text">
+                {applicant.cv ? (
+                  <><strong>{applicant.cv.nombre}</strong><small>{applicant.cv.origen === "PROPIO" ? "Subida para esta oferta" : "Copia de su perfil al postularse"} · {formatSize(applicant.cv.tamano)}</small></>
+                ) : <><strong>Sin hoja de vida PDF</strong><small>Se postuló solo con su perfil SIPU.</small></>}
+              </span>
+              {applicant.cv && <button type="button" className="button secondary" onClick={openCv}>Ver hoja de vida</button>}
+            </div>
+            {applicant.cvUrl && <a className="text-button" href={applicant.cvUrl} target="_blank" rel="noreferrer">Abrir enlace de hoja de vida</a>}
+
+            {applicant.coverLetter && (
+              <section className="drawer-section"><h3>Mensaje del candidato</h3><blockquote className="company-message"><p>{applicant.coverLetter}</p></blockquote></section>
+            )}
+
+            {match.percent !== null && (
+              <section className="drawer-section">
+                <h3>Coincidencia con la oferta: {match.percent}%</h3>
+                <ul className="skill-chips">
+                  {match.matched.map((skill) => <li key={skill} className="skill-chip has"><IconCheck size={14} />{skill}</li>)}
+                  {match.missing.map((skill) => <li key={skill} className="skill-chip missing">{skill}<span className="sr-only"> (no la tiene)</span></li>)}
+                </ul>
+              </section>
+            )}
+
+            <section className="drawer-section">
+              <h3>Habilidades</h3>
+              {applicant.skills.length ? <ul className="skill-chips">{applicant.skills.map((skill) => <li key={skill} className="skill-chip">{skill}</li>)}</ul> : <p className="muted">No registró habilidades.</p>}
+            </section>
+            <section className="drawer-section">
+              <h3>Formación</h3>
+              {applicant.university && <p><strong>{applicant.career || "Programa no reportado"}</strong> · {applicant.university}</p>}
+              {applicant.education.length ? applicant.education.map((item, index) => <p key={index}><strong>{item.titulo}</strong> · {item.institucion} · {item.periodo}</p>) : !applicant.university && <p className="muted">No registró formación.</p>}
+            </section>
+            <section className="drawer-section">
+              <h3>Experiencia</h3>
+              {applicant.experience.length ? applicant.experience.map((item, index) => (
+                <div key={index} className="drawer-experience"><strong>{item.cargo} · {item.empresa}</strong><small>{item.periodo}</small>{item.descripcion && <p>{item.descripcion}</p>}</div>
+              )) : <p className="muted">No registró experiencia.</p>}
+            </section>
+            {(applicant.summary || applicant.availability) && (
+              <section className="drawer-section">
+                <h3>Resumen</h3>
+                {applicant.summary && <p>{applicant.summary}</p>}
+                {applicant.availability && <p className="muted">Disponibilidad: {applicant.availability}</p>}
+              </section>
+            )}
+            <p className="drawer-footnote">Datos con los que se postuló el {formatDate(applicant.appliedAt)}. El contacto es el vigente del perfil.</p>
+          </div>
+        ) : (
+          <div className="drawer-panel" role="tabpanel" id="panel-activity" aria-labelledby="tab-activity">
+            <div className="note-composer">
+              <label htmlFor="note-text" className="vf-label"><IconLock size={15} /> Nota interna</label>
+              <textarea id="note-text" rows={3} maxLength={1000} value={note} placeholder="Solo la ve tu equipo. Ej.: Buen nivel técnico, validar disponibilidad." onChange={(event) => setNote(event.target.value)} />
+              <button type="button" className="button secondary" disabled={savingNote || note.trim().length < 2} onClick={() => void saveNote()}>{savingNote ? "Guardando..." : "Guardar nota"}</button>
+            </div>
+            <ol className="timeline">
+              {[...applicant.events].reverse().map((event) => (
+                <li key={event.id} className={`timeline-item timeline-${event.tipo.toLowerCase()} ${event.privado ? "is-private" : ""}`}>
+                  <span className="timeline-dot" aria-hidden="true" />
+                  <div>
+                    <strong>{event.privado && <IconLock size={13} />}{describeEvent(event, "company")}</strong>
+                    <time dateTime={event.fecha}>{formatDate(event.fecha)}{event.autor ? ` · ${event.autor}` : ""}</time>
+                    {event.entrevista && <p>{formatInterviewDate(event.entrevista.fecha)} · {INTERVIEW_MODE_LABELS[event.entrevista.modalidad]}{event.entrevista.lugar ? ` · ${event.entrevista.lugar}` : ""}</p>}
+                    {event.mensaje && <p className="timeline-message">{event.tipo === "CV" ? event.mensaje : `“${event.mensaje}”`}</p>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </aside>
     </div>
   );
 }

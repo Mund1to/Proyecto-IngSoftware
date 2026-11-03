@@ -3,6 +3,7 @@ import { HOME_SCREEN, type Role, type Screen } from "./types";
 import { useSession } from "./session";
 import UniversityLogo from "../shared/ui/UniversityLogo";
 import { IconBell, IconExit, IconMenu } from "../shared/ui/icons";
+import { describeEvent, formatInterviewDate } from "../features/applications/applications.model";
 
 type Props = { role: Role; navigate: (screen: Screen) => void; activeScreen: Screen; userName?: string; onLogout?: () => void };
 
@@ -88,17 +89,21 @@ export default function NavBar({ role: requestedRole, navigate, activeScreen, us
     }
   });
 
-  // Notificaciones reales: cambios de estado en las postulaciones del candidato.
+  // Notificaciones reales: el último paso que dio la empresa en cada postulación
+  // (cambio de etapa, entrevista o reprogramación). Cada evento nuevo es una
+  // notificación nueva; sin historial (datos anteriores) se usa el estado.
   const notifications = useMemo<NotificationItem[]>(() => {
     const target: Screen = role === "external" ? "external-applications" : "student-applications";
-    return session.applications
-      .filter((app) => statusText[app.status])
-      .map((app) => ({
-        id: `${app.id}-${app.status}`,
-        title: `Tu postulación ${statusText[app.status]}`,
-        detail: `${app.offerTitle} · ${app.company}`,
-        screen: target,
-      }));
+    return session.applications.flatMap((app) => {
+      const last = [...(app.events ?? [])].reverse().find((event) => event.autorRol === "EMPRESA" && !event.privado);
+      if (last) {
+        const when = last.entrevista ? ` · ${formatInterviewDate(last.entrevista.fecha)}` : "";
+        return [{ id: `${app.id}-e${last.id}`, title: describeEvent(last, "candidate"), detail: `${app.offerTitle} · ${app.company}${when}`, screen: target }];
+      }
+      return statusText[app.status]
+        ? [{ id: `${app.id}-${app.status}`, title: `Tu postulación ${statusText[app.status]}`, detail: `${app.offerTitle} · ${app.company}`, screen: target }]
+        : [];
+    });
   }, [role, session.applications]);
 
   const unreadCount = notifications.filter((item) => !readNotifications.includes(item.id)).length;
