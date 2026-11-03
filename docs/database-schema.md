@@ -141,3 +141,38 @@ La modalidad de una oferta se valida en la API contra esos tres valores; las var
 - `verificaciones_estado_fecha_idx` (`estado`, `created_at DESC`) sirve a la bandeja paginada del revisor.
 
 Las transacciones de este flujo bloquean primero la fila de `organizaciones` y después la de `verificaciones`, para evitar interbloqueos.
+
+## Ofertas estructuradas y proceso de selección (Fase 8)
+
+Columnas nuevas de `ofertas` (migración `20261102_offer_structured_requirements.sql`). `requisitos` queda para requisitos adicionales:
+
+| Columna | Responsabilidad |
+| --- | --- |
+| `programas` | `TEXT[]` con los programas o carreras buscados; vacío significa cualquier programa. |
+| `semestre_minimo` | Semestre mínimo, entre 1 y 12. Solo lo usa la práctica. |
+| `habilidades` | `TEXT[]` con las habilidades buscadas (o los temas, en formación). Para publicar se exige al menos una. |
+| `experiencia` | `NINGUNA`, `MENOS_1`, `DE_1_A_2`, `DE_3_A_5` o `MAS_5`. Una práctica solo admite las dos primeras. |
+| `idiomas` | `JSONB` con `[{ "idioma": "Inglés", "nivel": "B2" }]`, donde el nivel es A1 a C2 o `NATIVO`. |
+| `jornada` | `TIEMPO_COMPLETO`, `MEDIO_TIEMPO`, `POR_HORAS` o `FLEXIBLE`. |
+| `beneficios` | `TEXT[]` con los beneficios que ofrece la empresa. |
+| `vacantes` | Personas que se contratarán o inscribirán, de 1 a 50 (por defecto, 1). |
+
+Hoja de vida enviada (migración `20261102_application_resume_snapshot.sql`):
+
+| Tabla o columna | Responsabilidad |
+| --- | --- |
+| `postulaciones.hoja_vida` | `JSONB` con la formación, la experiencia, las habilidades y los datos académicos del candidato al postularse. Los datos de contacto se leen del perfil vigente. |
+| `postulacion_cv` | PDF enviado con la postulación (`postulacion_id` es la clave primaria y se borra en cascada): nombre, MIME, tamaño, `contenido` (`BYTEA`) y `origen`, que puede ser `PERFIL` (copia del CV del perfil) o `PROPIO` (subido solo para esta postulación). |
+
+Proceso de selección (migración `20261102_application_pipeline.sql`):
+
+| Tabla o columna | Responsabilidad |
+| --- | --- |
+| `postulaciones.entrevista` | `JSONB` con la entrevista vigente: `fecha`, `modalidad` (`PRESENCIAL`, `VIRTUAL` o `TELEFONICA`), `lugar` y `duracionMinutos`. Volver a revisión la borra. |
+| `postulaciones.calificacion` | Valoración interna de la empresa, de 1 a 5. El candidato no la ve. |
+| `postulacion_eventos` | Historial de la postulación: `tipo` (`POSTULACION`, `ESTADO`, `ENTREVISTA`, `NOTA`, `RETIRO` o `CV`), `estado_anterior`, `estado_nuevo`, `mensaje`, `entrevista`, `autor_id` y `privado`. Las notas son privadas y el candidato no las recibe. |
+
+Índices y bloqueos:
+
+- `postulacion_eventos_postulacion_idx` (`postulacion_id`, `created_at`) sirve al historial de cada postulación.
+- Cada cambio de etapa, retiro o cambio de CV bloquea la fila de `postulaciones` (`FOR UPDATE`) dentro de su transacción.

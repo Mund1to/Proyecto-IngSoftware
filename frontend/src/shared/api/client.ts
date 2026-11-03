@@ -21,11 +21,14 @@ export const SESSION_EXPIRED_EVENT = 'sipu:session-expired';
 
 export class ApiError extends Error {
   status: number;
+  // Errores por campo de un formulario ({ titulo: '...' }), si la API los envía.
+  errors?: Record<string, string>;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, errors?: Record<string, string>) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    if (errors) this.errors = errors;
   }
 }
 
@@ -66,7 +69,8 @@ export async function request<T>(path: string, options: RequestInit = {}, token?
     if (response.status === 401 && token && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
     }
-    throw new ApiError(payload?.message ?? 'La solicitud falló.', response.status);
+    const errors = payload?.errors && typeof payload.errors === 'object' ? payload.errors as Record<string, string> : undefined;
+    throw new ApiError(payload?.message ?? 'La solicitud falló.', response.status, errors);
   }
 
   return (payload ?? ({} as T)) as T;

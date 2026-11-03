@@ -10,7 +10,11 @@ const INSERT_COLUMNS = [
   'organizacion_id', 'titulo', 'descripcion', 'tipo', 'estado', 'ubicacion', 'modalidad', 'area',
   'requisitos', 'duracion', 'horario', 'contacto_email', 'remuneracion', 'remuneracion_maxima',
   'fecha_publicacion', 'fecha_cierre',
+  'programas', 'semestre_minimo', 'habilidades', 'experiencia', 'idiomas', 'jornada', 'beneficios', 'vacantes',
 ];
+
+// idiomas es JSONB: pg necesita el texto JSON, no el arreglo de objetos.
+const toSqlValue = (column, value) => (column === 'idiomas' ? JSON.stringify(value ?? []) : value);
 
 export async function listPublished() {
   const result = await pool.query(`${OFFER_WITH_COMPANY}
@@ -69,7 +73,7 @@ export async function findRecommendationProfile(userId) {
 }
 
 export async function insert(organizationId, offer) {
-  const values = [organizationId, ...INSERT_COLUMNS.slice(1).map((column) => offer[column])];
+  const values = [organizationId, ...INSERT_COLUMNS.slice(1).map((column) => toSqlValue(column, offer[column]))];
   const placeholders = INSERT_COLUMNS.map((_, index) => `$${index + 1}`).join(', ');
   const result = await pool.query(
     `INSERT INTO ofertas (${INSERT_COLUMNS.join(', ')}) VALUES (${placeholders}) RETURNING *`,
@@ -92,7 +96,7 @@ export async function updateOwned(id, organizationId, changes) {
      SET ${assignments.join(', ')}, updated_at = NOW()
      WHERE id = $${columns.length + 1} AND organizacion_id = $${columns.length + 2}
      RETURNING *`,
-    [...columns.map((column) => changes[column]), id, organizationId]
+    [...columns.map((column) => toSqlValue(column, changes[column])), id, organizationId]
   );
   return result.rows[0] ?? null;
 }

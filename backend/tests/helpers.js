@@ -80,16 +80,18 @@ export function futureDate(days = 30) {
   return new Date(Date.now() + days * 86400000).toISOString();
 }
 
+// Oferta completa para publicar (Fase 8: descripción con contenido y habilidades).
 export function offerPayload(overrides = {}) {
   return {
     titulo: 'Practicante de desarrollo',
-    descripcion: 'Apoyo en desarrollo de APIs',
+    descripcion: 'Apoyarás al equipo en el desarrollo y las pruebas de APIs REST para nuestros clientes.',
     tipo: 'PRACTICA',
     estado: 'PUBLICADA',
     ubicacion: 'Bogotá',
     modalidad: 'Híbrida',
     area: 'Tecnología',
     requisitos: ['JavaScript', 'SQL'],
+    habilidades: ['JavaScript', 'SQL'],
     remuneracion: 1300000,
     contactoEmail: 'rrhh@empresa.test',
     fechaCierre: futureDate(),

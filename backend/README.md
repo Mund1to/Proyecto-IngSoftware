@@ -77,7 +77,7 @@ La respuesta esperada es:
 | --- | --- |
 | `npm run dev` | Inicia Express con reinicio automático mediante `node --watch`. |
 | `npm start` | Inicia Express sin modo de vigilancia. |
-| `npm test` | Ejecuta las 124 pruebas de la API (`node:test` + `supertest`) sobre una base `<base>_test` que se recrea en cada ejecución. |
+| `npm test` | Ejecuta las 145 pruebas de la API (`node:test` + `supertest`) sobre una base `<base>_test` que se recrea en cada ejecución. |
 | `npm run grant-role -- correo ROL` | Asigna `ADMINISTRADOR` o `FUNCIONARIO_PUBLICO` a una cuenta existente. Sirve para crear el primer administrador. |
 
 ## Seguridad
@@ -112,7 +112,7 @@ La respuesta esperada es:
 | `GET` | `/api/profile/details` | Candidato | Educación, experiencia y habilidades. |
 | `PUT` | `/api/profile/education`, `/experience`, `/skills` | Candidato | Reemplaza la lista completa. |
 | `GET` / `PUT` / `DELETE` | `/api/profile/files/:tipo` (`cv`, `foto`) | Autenticado | Archivo del perfil; `PUT` recibe el binario y la cabecera `X-File-Name`. |
-| `GET` | `/api/applications/:id/cv` | Organización dueña | Hoja de vida del postulante. |
+| `GET` | `/api/applications/:id/cv` | Organización dueña | Hoja de vida del postulante (desde la Fase 8, la copia enviada con la postulación; también la ve el candidato). |
 
 El detalle está en [`docs/informe-fase-6-perfil-archivos.md`](../docs/informe-fase-6-perfil-archivos.md).
 
@@ -130,6 +130,20 @@ El detalle está en [`docs/informe-fase-6-perfil-archivos.md`](../docs/informe-f
 | `GET` | `/api/verifications/documents/:documentId` | Administrador o funcionario | Abre un documento de cualquier organización. |
 
 El detalle está en [`docs/informe-fase-7-verificacion-documental.md`](../docs/informe-fase-7-verificacion-documental.md).
+
+## Endpoints añadidos o ampliados en la Fase 8
+
+| Método | Ruta | Acceso | Descripción |
+| --- | --- | --- | --- |
+| `POST` / `PATCH` | `/api/offers`, `/api/offers/:id` | Organización | Campos `programas`, `semestreMinimo`, `habilidades`, `experiencia`, `idiomas`, `jornada`, `beneficios` y `vacantes`. Al publicar se exige una oferta completa; el `400` incluye `errors` por campo. |
+| `POST` | `/api/applications/offers/:offerId` | Candidato | Guarda una copia de la hoja de vida y del CV del perfil (`cvPerfil: false` para no copiarlo). `cartaPresentacion` admite hasta 1500 caracteres. |
+| `PUT` | `/api/applications/:id/cv` | Candidato dueño | Sube un PDF solo para esa postulación mientras siga `ENVIADA` (cuerpo binario y `X-File-Name`). |
+| `PATCH` | `/api/applications/:id/status` | Organización dueña | Cambia la etapa según las reglas del proceso; acepta `mensaje` y, para `PRESELECCIONADA`, `entrevista` (`fecha`, `modalidad`, `lugar`, `duracionMinutos`). Un cambio no permitido responde `409`. |
+| `POST` | `/api/applications/:id/notes` | Organización dueña | Nota interna; el candidato no la ve. |
+| `PATCH` | `/api/applications/:id/rating` | Organización dueña | Calificación interna de 1 a 5 (o `null`). |
+| `PATCH` | `/api/applications/:id/withdraw` | Candidato dueño | Acepta un `motivo` opcional que queda en el historial. |
+
+Las postulaciones (`GET /api/applications/me` y `GET /api/applications/offers/:offerId`) incluyen ahora `entrevista`, el CV enviado y `eventos`; la empresa además recibe las notas, sus autores y la `calificacion`. El detalle está en [`docs/informe-fase-8-ofertas-seleccion.md`](../docs/informe-fase-8-ofertas-seleccion.md).
 
 ## Estructura relevante
 

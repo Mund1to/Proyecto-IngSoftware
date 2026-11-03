@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { daysUntil, formatDate } from "../../shared/lib/format";
-import type { AppState, Navigate } from "../../app/types";
-import { Job } from "./offers.model";
+import type { AppState, ApplyResult, Navigate } from "../../app/types";
+import { languageLevelLabel, workScheduleLabel, type Job } from "./offers.model";
+import ApplyDialog, { type ApplyOptions } from "../applications/ApplyDialog";
 import NavBar from "../../app/NavBar";
 import { IconBriefcase, IconCalendar, IconMonitor, IconPin, IconUser } from "../../shared/ui/icons";
 
 type Props = {
   state: AppState;
   navigate: Navigate;
-  applyToOffer: (job: Job) => Promise<void>;
+  applyToOffer: (job: Job, options?: ApplyOptions) => Promise<ApplyResult>;
 };
 
 const logoStyle: Record<string, string> = {
@@ -32,6 +33,8 @@ export default function ExternalJobDetail({ state, navigate, applyToOffer }: Pro
     job ? state.applications.some((a) => a.offerId === job.id) : false
   );
   const [showModal, setShowModal] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [cvWarning, setCvWarning] = useState("");
   const [applyError, setApplyError] = useState("");
   const [applying, setApplying] = useState(false);
 
@@ -45,12 +48,14 @@ export default function ExternalJobDetail({ state, navigate, applyToOffer }: Pro
   const bg = logoStyle[job.logo] ?? "linear-gradient(145deg, #123b70, #4d87ff)";
   const daysLeft = daysUntil(job.closeDate);
 
-  const handleApply = async () => {
+  const handleApply = async (options: ApplyOptions) => {
     setApplying(true);
     setApplyError("");
     try {
-      await applyToOffer(job);
+      const result = await applyToOffer(job, options);
+      setCvWarning(result.cvWarning ?? "");
       setApplied(true);
+      setConfirming(false);
       setShowModal(true);
     } catch (error) {
       setApplyError(error instanceof Error ? error.message : "No se pudo enviar la postulación.");
@@ -156,6 +161,16 @@ export default function ExternalJobDetail({ state, navigate, applyToOffer }: Pro
               </ul>
             </div>
 
+            {((job.skills?.length ?? 0) > 0 || (job.languages?.length ?? 0) > 0) && (
+              <div className="bg-white rounded-[20px] border border-[#d3e0f5] p-7">
+                <h2 className="text-lg font-bold text-[var(--navy)] mb-5">{job.type === "Formación" ? "Temas" : "Habilidades e idiomas"}</h2>
+                <ul className="skill-chips">
+                  {(job.skills ?? []).map((skill) => <li key={skill} className="skill-chip">{skill}</li>)}
+                  {(job.languages ?? []).map((item) => <li key={item.idioma} className="skill-chip">{item.idioma} · {languageLevelLabel(item.nivel)}</li>)}
+                </ul>
+              </div>
+            )}
+
             <div className="bg-white rounded-[20px] border border-[#d3e0f5] p-7">
               <h2 className="text-lg font-bold text-[var(--navy)] mb-5">Beneficios</h2>
               <div className="flex flex-wrap gap-2">
@@ -206,7 +221,7 @@ export default function ExternalJobDetail({ state, navigate, applyToOffer }: Pro
                 </div>
               ) : (
                 <button
-                  onClick={() => void handleApply()}
+                  onClick={() => setConfirming(true)}
                   disabled={applying || daysLeft < 0}
                   className="w-full py-3.5 rounded-xl text-white text-sm font-bold shadow-lg shadow-green-900/20 hover:opacity-90 active:scale-[0.98]"
                   style={{ background: "linear-gradient(135deg, #155eef, #3478ff)", transition: "opacity 0.15s, transform 0.1s" }}
@@ -227,7 +242,9 @@ export default function ExternalJobDetail({ state, navigate, applyToOffer }: Pro
                 {[
                   { label: "Tipo de oferta", value: job.type },
                   { label: "Modalidad", value: job.modality },
-                  { label: "Duración", value: job.experience },
+                  ...(job.workSchedule ? [{ label: "Jornada", value: workScheduleLabel(job.workSchedule) ?? "" }] : []),
+                  { label: "Experiencia", value: job.experience },
+                  ...((job.vacancies ?? 1) > 1 ? [{ label: "Vacantes", value: String(job.vacancies) }] : []),
                   { label: "Salario", value: job.salaryMin || job.salaryMax ? `${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}` : "A convenir" },
                 ].map((s) => (
                   <div key={s.label} className="flex justify-between text-sm">
@@ -240,6 +257,21 @@ export default function ExternalJobDetail({ state, navigate, applyToOffer }: Pro
           </div>
         </div>
       </div>
+
+      {confirming && (
+        <ApplyDialog
+          token={state.token}
+          offerTitle={job.title}
+          company={job.company}
+          isTraining={job.type === "Formación"}
+          profileCv={state.currentUser?.archivos?.find((file) => file.tipo === "CV")}
+          submitting={applying}
+          error={applyError}
+          onCancel={() => setConfirming(false)}
+          onConfirm={(options) => void handleApply(options)}
+          onOpenProfile={() => navigate("external-profile")}
+        />
+      )}
 
       {/* Modal */}
       {showModal && (
@@ -255,8 +287,9 @@ export default function ExternalJobDetail({ state, navigate, applyToOffer }: Pro
             </div>
             <h3 className="text-xl font-bold text-[var(--navy)] mb-2">¡Aplicación enviada!</h3>
             <p className="text-[var(--muted)] text-sm mb-7 leading-relaxed">
-              Tu aplicación a <span className="font-semibold text-[var(--navy)]">{job.company}</span> fue enviada. El equipo de RRHH revisará tu perfil y te contactará si quedas preseleccionado.
+              Tu aplicación a <span className="font-semibold text-[var(--navy)]">{job.company}</span> fue enviada. Sigue el proceso, la entrevista y los mensajes de la empresa en Mis aplicaciones.
             </p>
+            {cvWarning && <div className="form-error mb-5 text-left" role="alert">{cvWarning}</div>}
             <div className="flex gap-3">
               <button onClick={() => setShowModal(false)}
                 className="flex-1 py-3 rounded-xl border border-[#d3e0f5] text-sm font-semibold text-[var(--muted)] hover:bg-[var(--selection)]">

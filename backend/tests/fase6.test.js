@@ -167,7 +167,10 @@ describe('archivos del perfil', () => {
 
     const other = await registerUser('ORGANIZACION', { razonSocial: 'Curiosa SAS' });
     assert.equal((await api().get(`/api/applications/${apply.body.application.id}/cv`).set(auth(other.token))).status, 403);
-    assert.equal((await api().get(`/api/applications/${apply.body.application.id}/cv`).set(auth(student.token))).status, 403);
+    // Fase 8: el candidato consulta la hoja de vida que envió; otro candidato no.
+    assert.equal((await api().get(`/api/applications/${apply.body.application.id}/cv`).set(auth(student.token))).status, 200);
+    const stranger = await registerUser('ESTUDIANTE');
+    assert.equal((await api().get(`/api/applications/${apply.body.application.id}/cv`).set(auth(stranger.token))).status, 403);
   });
 });
 

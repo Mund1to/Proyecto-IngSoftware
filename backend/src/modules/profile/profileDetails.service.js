@@ -126,8 +126,10 @@ export function resolveFileRule(tipo) {
   return rule;
 }
 
-// Valida tamaño y tipo real del archivo (por su firma, no solo por la cabecera).
-export async function uploadFile(userId, tipo, { buffer, contentType, rawName }) {
+// Valida tamaño y tipo real del archivo (por su firma, no solo por la cabecera)
+// y devuelve { rule, nombre, mime, contenido }. También la usan las postulaciones
+// para la hoja de vida que se sube solo para una oferta.
+export function parseUploadedFile(tipo, { buffer, contentType, rawName }) {
   const rule = resolveFileRule(tipo);
 
   if (!buffer || buffer.length === 0) throw badRequest('No se recibió ningún archivo.');
@@ -142,12 +144,16 @@ export async function uploadFile(userId, tipo, { buffer, contentType, rawName })
     throw new HttpError(415, `${rule.label} debe ser un archivo ${formats} válido.`);
   }
 
-  const nombre = cleanFileName(rawName, rule.defaultName);
+  return { rule, nombre: cleanFileName(rawName, rule.defaultName), mime, contenido: buffer };
+}
+
+export async function uploadFile(userId, tipo, input) {
+  const { rule, nombre, mime, contenido } = parseUploadedFile(tipo, input);
 
   const profile = await detailsRepository.findProfile(userId, { candidateOnly: rule.candidateOnly });
   if (!profile) throw notFound('Tu cuenta no tiene un perfil que admita este archivo.');
 
-  return detailsRepository.upsertFile(profile.id, { tipo: rule.tipo, nombre, mime, contenido: buffer });
+  return detailsRepository.upsertFile(profile.id, { tipo: rule.tipo, nombre, mime, contenido });
 }
 
 export async function getFile(userId, tipo) {

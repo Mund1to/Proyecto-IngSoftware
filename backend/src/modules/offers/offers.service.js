@@ -5,7 +5,7 @@ import { getOrganizationProfileId } from '../profile/profile.repository.js';
 import { EXTERNAL_OFFER_TYPES } from './offers.domain.js';
 import * as offersRepository from './offers.repository.js';
 import { offerAffinity, scoreOffer } from './offers.scoring.js';
-import { REQUIRED_TEXT_FIELDS, parseOfferPayload, validateOfferState } from './offers.validation.js';
+import { REQUIRED_TEXT_FIELDS, applyTypeRules, parseOfferPayload, publicationErrors, validateOfferState } from './offers.validation.js';
 
 async function requireOrganization(userId, message) {
   const organizationId = await getOrganizationProfileId(userId);
@@ -19,9 +19,23 @@ function parseOrThrow(payload) {
   return parsed.values;
 }
 
-function assertValidState(offer) {
+// Reglas sobre la oferta resultante: rango salarial y fechas siempre; además, una
+// oferta publicada debe estar completa (un borrador puede guardarse a medias).
+// `onlyFields` limita la revisión a los campos editados: así una oferta publicada
+// antes de estas reglas puede, por ejemplo, ampliar su fecha de cierre.
+function assertValidState(offer, { onlyFields = null } = {}) {
   const stateError = validateOfferState(offer);
   if (stateError) throw badRequest(stateError);
+
+  if (offer.estado === 'PUBLICADA') {
+    const all = publicationErrors(offer);
+    const errors = onlyFields ? Object.fromEntries(Object.entries(all).filter(([field]) => onlyFields.includes(field))) : all;
+    const fields = Object.keys(errors);
+    if (fields.length > 0) {
+      const message = fields.length === 1 ? errors[fields[0]] : `Completa la oferta antes de publicarla: ${Object.values(errors).join(' ')}`;
+      throw badRequest(message, errors);
+    }
+  }
 }
 
 export function listPublishedOffers() {
@@ -66,7 +80,7 @@ export async function createOffer(userId, payload) {
   const organizationId = await requireOrganization(userId, 'Solo una organización puede publicar ofertas.');
   const values = parseOrThrow(payload);
 
-  const offer = {
+  const offer = applyTypeRules({
     titulo: null,
     descripcion: null,
     tipo: null,
@@ -80,10 +94,18 @@ export async function createOffer(userId, payload) {
     remuneracion_maxima: null,
     fecha_publicacion: null,
     fecha_cierre: null,
+    programas: [],
+    semestre_minimo: null,
+    habilidades: [],
+    experiencia: null,
+    idiomas: [],
+    jornada: null,
+    beneficios: [],
+    vacantes: 1,
     ...values,
     estado: values.estado ?? 'BORRADOR',
     area: values.area ?? 'General',
-  };
+  });
 
   if (!offer.titulo || !offer.descripcion || !offer.tipo) {
     throw badRequest('Se requieren título, descripción y tipo de oferta.');
@@ -115,7 +137,17 @@ export async function updateOffer(userId, id, payload) {
     changes.fecha_publicacion = new Date().toISOString();
   }
 
-  assertValidState({ ...current, ...changes });
+  // Cambiar el tipo puede dejar campos que ya no aplican (salario en formación...).
+  const merged = applyTypeRules({ ...current, ...changes });
+  for (const column of ['remuneracion', 'remuneracion_maxima', 'experiencia', 'semestre_minimo']) {
+    if (merged[column] !== ({ ...current, ...changes })[column]) changes[column] = merged[column];
+  }
+
+  // Al publicar se revisa la oferta completa; al editar una ya publicada, lo editado.
+  // Cambiar el tipo cambia las reglas de salario y experiencia.
+  const publishing = current.estado !== 'PUBLICADA' && merged.estado === 'PUBLICADA';
+  const edited = [...Object.keys(changes), ...('tipo' in changes ? ['remuneracion', 'experiencia'] : [])];
+  assertValidState(merged, { onlyFields: publishing ? null : edited });
 
   if (Object.keys(changes).length === 0) return current;
   return offersRepository.updateOwned(id, organizationId, changes);

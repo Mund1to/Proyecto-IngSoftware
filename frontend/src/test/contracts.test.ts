@@ -2,15 +2,33 @@
 // deben coincidir. Se importan solo módulos puros del backend (sin base de
 // datos), así que la prueba corre igual en local y en CI.
 import { describe, expect, it } from "vitest";
-// @ts-expect-error módulo JavaScript del backend sin tipos
-import { EXTERNAL_OFFER_TYPES as BACKEND_EXTERNAL_TYPES, MODALITIES, OFFER_TYPES } from "../../../backend/src/modules/offers/offers.domain.js";
+import {
+  EXTERNAL_OFFER_TYPES as BACKEND_EXTERNAL_TYPES,
+  EXPERIENCE_LEVELS,
+  LANGUAGE_LEVELS,
+  MODALITIES,
+  OFFER_LIMITS as BACKEND_OFFER_LIMITS,
+  OFFER_TYPES,
+  PRACTICE_EXPERIENCE_LEVELS,
+  WORK_SCHEDULES,
+  // @ts-expect-error módulo JavaScript del backend sin tipos
+} from "../../../backend/src/modules/offers/offers.domain.js";
 // @ts-expect-error módulo JavaScript del backend sin tipos
 import { APPLICATION_STATUSES } from "../../../backend/src/modules/applications/applications.domain.js";
 // @ts-expect-error módulo JavaScript del backend sin tipos
 import { DOCUMENT_TYPES, MIN_REJECTION_REASON_LENGTH } from "../../../backend/src/modules/verifications/verifications.rules.js";
 // @ts-expect-error módulo JavaScript del backend sin tipos
 import { isStrongPassword as backendIsStrongPassword } from "../../../backend/src/core/security/password.js";
-import { EXTERNAL_OFFER_TYPES, normalizeModality, OFFER_TYPE_LABELS } from "../features/offers/offers.model";
+import {
+  EXPERIENCE_LABELS,
+  EXTERNAL_OFFER_TYPES,
+  LANGUAGE_LEVEL_LABELS,
+  normalizeModality,
+  OFFER_TYPE_LABELS,
+  PRACTICE_EXPERIENCE,
+  WORK_SCHEDULE_LABELS,
+} from "../features/offers/offers.model";
+import { OFFER_LIMITS } from "../features/offers/offer-form/offerForm.model";
 import { mapApplicationStatus } from "../features/applications/applications.model";
 import { DOCUMENT_TYPE_LABELS, MIN_REJECTION_REASON } from "../features/verifications/verification";
 import { isStrongPassword } from "../shared/lib/password";
@@ -21,6 +39,14 @@ describe("contrato con el backend", () => {
   it("tipos de oferta y quién los ve", () => {
     expect(sorted(Object.keys(OFFER_TYPE_LABELS))).toEqual(sorted(OFFER_TYPES));
     expect(sorted(EXTERNAL_OFFER_TYPES)).toEqual(sorted(BACKEND_EXTERNAL_TYPES));
+  });
+
+  it("opciones y límites del formulario de ofertas (Fase 8)", () => {
+    expect(sorted(Object.keys(EXPERIENCE_LABELS))).toEqual(sorted(EXPERIENCE_LEVELS));
+    expect(sorted(PRACTICE_EXPERIENCE)).toEqual(sorted(PRACTICE_EXPERIENCE_LEVELS));
+    expect(sorted(Object.keys(WORK_SCHEDULE_LABELS))).toEqual(sorted(WORK_SCHEDULES));
+    expect(sorted(Object.keys(LANGUAGE_LEVEL_LABELS))).toEqual(sorted(LANGUAGE_LEVELS));
+    expect(OFFER_LIMITS).toEqual(BACKEND_OFFER_LIMITS);
   });
 
   it("modalidades", () => {

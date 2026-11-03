@@ -3,6 +3,10 @@
 import type { UserSession } from "./session";
 import type { Job, Offer } from "../features/offers/offers.model";
 import type { Application } from "../features/applications/applications.model";
+import type { ApplyOptions } from "../features/applications/ApplyDialog";
+
+// Resultado de postularse: un aviso si el PDF propio no se pudo adjuntar.
+export type ApplyResult = { cvWarning?: string };
 
 export type Role = "student" | "company" | "external" | "admin";
 
@@ -66,8 +70,7 @@ export type ScreenProps = {
   updateExternalProfile: (payload: Record<string, unknown>) => Promise<void>;
   updateOrganizationProfile: (payload: Record<string, unknown>) => Promise<void>;
   // Sirve para la oferta del estudiante (Offer) y la vacante del externo (Job).
-  applyToOffer: (offer: { id: number; title: string }) => Promise<void>;
-  withdrawApplication: (applicationId: number) => Promise<void>;
+  applyToOffer: (offer: { id: number; title: string }, options?: ApplyOptions) => Promise<ApplyResult>;
+  withdrawApplication: (applicationId: number, reason?: string) => Promise<void>;
   reloadApplications: () => Promise<void>;
-  updateCandidateStatus: (id: number, status: "Aceptada" | "Rechazada") => Promise<void>;
 };

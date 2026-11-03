@@ -54,7 +54,7 @@ npm run preview
 | `npm run dev` | Inicia el servidor de desarrollo de Vite. |
 | `npm run build` | Genera la compilación de producción (los tipos se verifican con `npm run typecheck`). |
 | `npm run preview` | Sirve localmente la compilación generada. |
-| `npm test` | Ejecuta las 69 pruebas con Vitest y Testing Library, incluidas las de arquitectura y contrato con el backend. |
+| `npm test` | Ejecuta las 99 pruebas con Vitest y Testing Library, incluidas las de arquitectura y contrato con el backend. |
 | `npm run typecheck` | Verifica los tipos con TypeScript. |
 
 ## Enlaces de cada pantalla

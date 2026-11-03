@@ -1,16 +1,64 @@
-// Reglas de negocio de postulaciones. No conoce Express ni SQL.
+// Reglas de negocio de postulaciones y del proceso de selección. No conoce
+// Express ni SQL. Las reglas puras (etapas permitidas, datos de la entrevista)
+// están en applications.domain.js.
+import { withTransaction } from '../../core/database/database.js';
 import { badRequest, conflict, forbidden, notFound } from '../../core/http/errors.js';
+import { getBodyValue } from '../../core/http/payload.js';
 import { EXTERNAL_OFFER_TYPES } from '../offers/offers.domain.js';
-import { COMPANY_STATUSES, RESOLVED_STATUSES } from './applications.domain.js';
+import {
+  COMPANY_STATUSES,
+  MAX_COVER_LETTER_LENGTH,
+  MAX_MESSAGE_LENGTH,
+  MAX_NOTE_LENGTH,
+  MIN_NOTE_LENGTH,
+  RESOLVED_STATUSES,
+  parseInterview,
+  transitionError,
+} from './applications.domain.js';
+import { notifyCandidateOfStage } from './applications.mail.js';
 import { getOrganizationProfileId } from '../profile/profile.repository.js';
+import { parseUploadedFile } from '../profile/profileDetails.service.js';
 import * as applicationsRepository from './applications.repository.js';
 
 const DUPLICATE_MESSAGE = 'Ya existe una postulación para esta oferta.';
+
+// Texto libre opcional: sin espacios sobrantes, null si queda vacío y con límite.
+function optionalText(payload, keys, maxLength, label) {
+  const raw = getBodyValue(payload, keys);
+  const text = raw === undefined ? '' : String(raw).trim();
+  if (text.length > maxLength) throw badRequest(`${label} admite como máximo ${maxLength} caracteres.`);
+  return text || null;
+}
+
+const parseCoverLetter = (payload) => optionalText(payload, ['cartaPresentacion', 'carta_presentacion', 'message'], MAX_COVER_LETTER_LENGTH, 'El mensaje para la empresa');
+
+// Por defecto se adjunta la hoja de vida del perfil; con cvPerfil: false el
+// candidato la sube después, solo para esta postulación.
+function wantsProfileCv(payload) {
+  const value = getBodyValue(payload, ['cvPerfil', 'usarCvPerfil']);
+  return !(value === false || value === 'false');
+}
 
 async function requireCandidate(userId, message) {
   const candidateProfileId = await applicationsRepository.findCandidateProfileId(userId);
   if (!candidateProfileId) throw forbidden(message);
   return candidateProfileId;
+}
+
+// Postulación de una oferta propia de la organización del usuario.
+async function requireOwnedApplication(userId, id, message, db, options) {
+  const application = await applicationsRepository.findWithOfferOwner(id, db, options);
+  if (!application) throw notFound('Postulación no encontrada.');
+  if (String(await getOrganizationProfileId(userId, db)) !== String(application.organizacion_id)) {
+    throw forbidden(message);
+  }
+  return application;
+}
+
+// Un aviso que falla no debe deshacer un cambio ya confirmado.
+function notifyStage(applicationId, data) {
+  return notifyCandidateOfStage(applicationId, data)
+    .catch((error) => console.error('application notifyCandidate error:', error));
 }
 
 export async function listMyApplications(userId) {
@@ -52,10 +100,24 @@ export async function applyToOffer(userId, offerId, payload = {}) {
     throw conflict(DUPLICATE_MESSAGE);
   }
 
-  const coverLetter = payload.cartaPresentacion ?? payload.carta_presentacion ?? payload.message ?? null;
+  const coverLetter = parseCoverLetter(payload);
+  const attachProfileCv = wantsProfileCv(payload);
 
   try {
-    return await applicationsRepository.insert(offerId, candidateProfileId, coverLetter);
+    // La postulación, la copia de la hoja de vida y el primer evento del historial
+    // se guardan juntos: si algo falla, no queda una postulación a medias.
+    return await withTransaction(async (db) => {
+      const application = await applicationsRepository.insert(db, offerId, candidateProfileId, coverLetter);
+      const cv = attachProfileCv ? await applicationsRepository.copyProfileCv(db, application.id, candidateProfileId) : null;
+      await applicationsRepository.insertEvent(db, {
+        applicationId: application.id,
+        authorId: userId,
+        tipo: 'POSTULACION',
+        nextStatus: 'ENVIADA',
+        message: coverLetter,
+      });
+      return { ...application, cv };
+    });
   } catch (error) {
     // Dos envíos simultáneos pueden superar la comprobación previa; la restricción
     // única de la tabla lo detecta.
@@ -64,50 +126,139 @@ export async function applyToOffer(userId, offerId, payload = {}) {
   }
 }
 
+// La organización mueve la postulación a otra etapa. Cada cambio queda en el
+// historial con el mensaje para el candidato; citar a entrevista exige fecha,
+// modalidad y lugar o enlace, y repetir PRESELECCIONADA reprograma la entrevista.
 export async function updateApplicationStatus(userId, id, payload = {}) {
-  const nextStatus = String(payload.estado ?? payload.status ?? '').trim().toUpperCase();
+  const nextStatus = String(getBodyValue(payload, ['estado', 'status']) ?? '').trim().toUpperCase();
   if (!COMPANY_STATUSES.includes(nextStatus)) {
     throw badRequest('El estado de la postulación no es válido.');
   }
 
-  const application = await applicationsRepository.findWithOfferOwner(id);
-  if (!application) throw notFound('Postulación no encontrada.');
+  const message = optionalText(payload, ['mensaje', 'message'], MAX_MESSAGE_LENGTH, 'El mensaje para el candidato');
 
-  if (await getOrganizationProfileId(userId) !== application.organizacion_id) {
-    throw forbidden('No tienes permisos para cambiar el estado de esta postulación.');
+  let interview;
+  if (nextStatus === 'PRESELECCIONADA') {
+    const parsed = parseInterview(getBodyValue(payload, ['entrevista', 'interview']));
+    if (parsed.error) throw badRequest(parsed.error);
+    interview = parsed.value;
   }
 
-  if (application.estado === 'RETIRADA') {
-    throw conflict('El candidato retiró esta postulación.');
+  const result = await withTransaction(async (db) => {
+    const application = await requireOwnedApplication(userId, id, 'No tienes permisos para cambiar el estado de esta postulación.', db, { forUpdate: true });
+
+    const blocked = transitionError(application.estado, nextStatus, application.oferta_tipo);
+    if (blocked) throw conflict(blocked);
+
+    const rescheduled = application.estado === 'PRESELECCIONADA' && nextStatus === 'PRESELECCIONADA';
+    // Volver a revisión borra la entrevista vigente; decidir tras ella la conserva.
+    const interviewChange = nextStatus === 'PRESELECCIONADA' ? interview : nextStatus === 'EN_REVISION' ? null : undefined;
+    const updated = await applicationsRepository.updateStatus(db, id, nextStatus, interviewChange);
+    const event = await applicationsRepository.insertEvent(db, {
+      applicationId: id,
+      authorId: userId,
+      tipo: nextStatus === 'PRESELECCIONADA' ? 'ENTREVISTA' : 'ESTADO',
+      previousStatus: application.estado,
+      nextStatus,
+      message,
+      interview: interview ?? null,
+    });
+    return { updated, event, rescheduled };
+  });
+
+  await notifyStage(id, { status: nextStatus, message, interview, rescheduled: result.rescheduled });
+  return { ...result.updated, evento: result.event };
+}
+
+// Nota interna de la organización sobre el candidato. El candidato no la ve.
+export async function addApplicationNote(userId, id, payload = {}) {
+  const text = optionalText(payload, ['texto', 'nota', 'text'], MAX_NOTE_LENGTH, 'La nota');
+  if (!text || text.length < MIN_NOTE_LENGTH) throw badRequest('Escribe la nota antes de guardarla.');
+
+  await requireOwnedApplication(userId, id, 'No tienes permisos para anotar en esta postulación.');
+  return withTransaction((db) => applicationsRepository.insertEvent(db, {
+    applicationId: id,
+    authorId: userId,
+    tipo: 'NOTA',
+    message: text,
+    privado: true,
+  }));
+}
+
+// Calificación interna de 1 a 5 estrellas; null la quita.
+export async function rateApplication(userId, id, payload = {}) {
+  const raw = getBodyValue(payload, ['calificacion', 'rating']);
+  const rating = raw === undefined || raw === '' ? null : Number(raw);
+  if (rating !== null && !(Number.isInteger(rating) && rating >= 1 && rating <= 5)) {
+    throw badRequest('La calificación debe ser un número entero de 1 a 5.');
   }
 
-  return applicationsRepository.updateStatus(id, nextStatus);
+  await requireOwnedApplication(userId, id, 'No tienes permisos para calificar esta postulación.');
+  return applicationsRepository.setRating(id, rating);
 }
 
 // El candidato puede retirar su postulación mientras no esté resuelta.
-export async function withdrawApplication(userId, id) {
+export async function withdrawApplication(userId, id, payload = {}) {
   const candidateProfileId = await requireCandidate(userId, 'Solo un candidato o estudiante puede retirar sus postulaciones.');
+  const reason = optionalText(payload, ['motivo', 'reason'], MAX_MESSAGE_LENGTH, 'El motivo');
 
-  const application = await applicationsRepository.findOwnedByCandidate(id, candidateProfileId);
-  if (!application) throw notFound('Postulación no encontrada.');
+  return withTransaction(async (db) => {
+    const application = await applicationsRepository.findOwnedByCandidate(id, candidateProfileId, db, { forUpdate: true });
+    if (!application) throw notFound('Postulación no encontrada.');
 
-  if (RESOLVED_STATUSES.includes(application.estado)) {
-    throw conflict('La postulación ya fue resuelta y no puede retirarse.');
-  }
+    if (RESOLVED_STATUSES.includes(application.estado)) {
+      throw conflict('La postulación ya fue resuelta y no puede retirarse.');
+    }
 
-  return applicationsRepository.updateStatus(id, 'RETIRADA');
+    const updated = await applicationsRepository.updateStatus(db, id, 'RETIRADA');
+    await applicationsRepository.insertEvent(db, {
+      applicationId: id,
+      authorId: userId,
+      tipo: 'RETIRO',
+      previousStatus: application.estado,
+      nextStatus: 'RETIRADA',
+      message: reason,
+    });
+    return updated;
+  });
 }
 
-// La organización dueña de la oferta descarga la hoja de vida del postulante.
+// Hoja de vida enviada con la postulación. La ven la organización dueña de la
+// oferta y el propio candidato; es la copia guardada al postularse, no la del perfil.
 export async function getApplicationCv(userId, id) {
-  const row = await applicationsRepository.findCvWithOfferOwner(id);
+  const row = await applicationsRepository.findApplicationCv(id);
   if (!row) throw notFound('Postulación no encontrada.');
 
-  const organizationProfileId = await getOrganizationProfileId(userId);
-  if (String(organizationProfileId) !== String(row.organizacion_id)) {
+  const [organizationProfileId, candidateProfileId] = await Promise.all([
+    getOrganizationProfileId(userId),
+    applicationsRepository.findCandidateProfileId(userId),
+  ]);
+  const isOwnerCompany = organizationProfileId !== null && String(organizationProfileId) === String(row.organizacion_id);
+  const isCandidate = candidateProfileId !== null && String(candidateProfileId) === String(row.candidato_id);
+  if (!isOwnerCompany && !isCandidate) {
     throw forbidden('No tienes permisos para ver esta hoja de vida.');
   }
 
-  if (!row.contenido) throw notFound('El candidato no ha subido una hoja de vida.');
+  if (!row.contenido) throw notFound('Esta postulación se envió sin hoja de vida.');
   return row;
+}
+
+// El candidato cambia la hoja de vida de UNA postulación (no la de su perfil ni
+// la de otras postulaciones). Solo mientras la empresa no haya empezado a revisarla.
+export async function replaceApplicationCv(userId, id, input) {
+  const candidateProfileId = await requireCandidate(userId, 'Solo el candidato puede cambiar la hoja de vida de su postulación.');
+  const { nombre, mime, contenido } = parseUploadedFile('cv', input);
+
+  return withTransaction(async (db) => {
+    const application = await applicationsRepository.findOwnedByCandidate(id, candidateProfileId, db, { forUpdate: true });
+    if (!application) throw notFound('Postulación no encontrada.');
+
+    if (application.estado !== 'ENVIADA') {
+      throw conflict('La empresa ya empezó a revisar esta postulación; la hoja de vida enviada ya no se puede cambiar.');
+    }
+
+    const cv = await applicationsRepository.upsertApplicationCv(db, id, { nombre, mime, contenido });
+    await applicationsRepository.insertEvent(db, { applicationId: id, authorId: userId, tipo: 'CV', message: nombre });
+    return cv;
+  });
 }

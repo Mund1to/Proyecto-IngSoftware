@@ -15,12 +15,73 @@ export async function findOfferOwnerId(offerId) {
   return result.rows[0]?.organizacion_id ?? null;
 }
 
+// Hoja de vida del perfil `$<param>` tal como está ahora. Se guarda en la
+// postulación al enviarla (columna hoja_vida); la migración
+// 20261102_application_resume_snapshot.sql usa la misma forma.
+const resumeSnapshotSql = (param) => `(
+  SELECT jsonb_build_object(
+    'perfilTipo', pf.tipo,
+    'universidad', pe.universidad,
+    'programaAcademico', pe.programa_academico,
+    'semestre', pe.semestre,
+    'resumen', pc.resumen,
+    'ubicacion', pc.ubicacion,
+    'disponibilidad', pc.disponibilidad,
+    'cvUrl', pc.cv_url,
+    'educacion', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('titulo', e.titulo, 'institucion', e.institucion, 'periodo', e.periodo) ORDER BY e.orden, e.id)
+      FROM perfil_educacion e WHERE e.perfil_id = pf.id
+    ), '[]'::jsonb),
+    'experiencia', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('cargo', x.cargo, 'empresa', x.empresa, 'periodo', x.periodo, 'descripcion', x.descripcion) ORDER BY x.orden, x.id)
+      FROM perfil_experiencia x WHERE x.perfil_id = pf.id
+    ), '[]'::jsonb),
+    'habilidades', COALESCE((
+      SELECT jsonb_agg(h.nombre ORDER BY h.categoria, h.id)
+      FROM perfil_habilidades h WHERE h.perfil_id = pf.id
+    ), '[]'::jsonb)
+  )
+  FROM perfiles pf
+  LEFT JOIN perfiles_estudiante pe ON pe.perfil_id = pf.id
+  LEFT JOIN perfiles_candidato pc ON pc.perfil_id = pf.id
+  WHERE pf.id = ${param}
+)`;
+
+// Datos del archivo enviado con la postulación (sin el contenido).
+const CV_COLUMNS = `cv.nombre AS cv_nombre, cv.tamano AS cv_tamano, cv.origen AS cv_origen, cv.created_at AS cv_fecha,
+            (cv.postulacion_id IS NOT NULL) AS tiene_cv`;
+
+// Historial de la postulación `p` (con su perfil `pf`) en orden cronológico.
+// La empresa ve todo, incluidas sus notas privadas y quién hizo cada cambio;
+// el candidato ve solo lo público y sin nombres de usuarios de la empresa.
+const eventsSql = ({ forCompany }) => `COALESCE((
+    SELECT jsonb_agg(jsonb_build_object(
+      'id', e.id,
+      'tipo', e.tipo,
+      'estadoAnterior', e.estado_anterior,
+      'estadoNuevo', e.estado_nuevo,
+      'mensaje', e.mensaje,
+      'privado', e.privado,
+      'entrevista', e.entrevista,
+      'fecha', e.created_at,
+      'autorRol', CASE WHEN e.tipo IN ('POSTULACION', 'RETIRO', 'CV') THEN 'CANDIDATO' ELSE 'EMPRESA' END
+      ${forCompany ? ", 'autor', au.nombre_completo" : ''}
+    ) ORDER BY e.created_at, e.id)
+    FROM postulacion_eventos e
+    ${forCompany ? 'LEFT JOIN usuarios au ON au.id = e.autor_id' : ''}
+    WHERE e.postulacion_id = p.id ${forCompany ? '' : 'AND e.privado = FALSE'}
+  ), '[]'::jsonb)`;
+
 export async function listByCandidate(candidateProfileId) {
   const result = await pool.query(
-    `SELECT p.*, o.titulo AS oferta_titulo, o.tipo AS oferta_tipo, o.modalidad, o.ubicacion, org.razon_social AS empresa
+    `SELECT p.id, p.oferta_id, p.candidato_id, p.estado, p.carta_presentacion, p.entrevista, p.created_at, p.updated_at,
+            o.titulo AS oferta_titulo, o.tipo AS oferta_tipo, o.modalidad, o.ubicacion, org.razon_social AS empresa,
+            ${CV_COLUMNS},
+            ${eventsSql({ forCompany: false })} AS eventos
      FROM postulaciones p
      INNER JOIN ofertas o ON o.id = p.oferta_id
      INNER JOIN organizaciones org ON org.perfil_id = o.organizacion_id
+     LEFT JOIN postulacion_cv cv ON cv.postulacion_id = p.id
      WHERE p.candidato_id = $1
      ORDER BY p.created_at DESC`,
     [candidateProfileId]
@@ -28,24 +89,30 @@ export async function listByCandidate(candidateProfileId) {
   return result.rows;
 }
 
-// Postulaciones de una oferta con la hoja de vida resumida de cada postulante.
+// Postulaciones de una oferta. La hoja de vida es la copia guardada al postularse;
+// nombre, correo y teléfono son los vigentes del perfil.
 export async function listByOffer(offerId) {
   const result = await pool.query(
-    `SELECT p.*, u.nombre_completo AS postulante_nombre, u.email AS postulante_email, u.telefono AS postulante_telefono,
-            pf.tipo AS perfil_tipo, pe.programa_academico, pe.semestre, pe.universidad,
-            pc.resumen, pc.ubicacion AS candidato_ubicacion, pc.disponibilidad, pc.cv_url,
-            EXISTS (SELECT 1 FROM archivos a WHERE a.perfil_id = pf.id AND a.tipo = 'CV') AS tiene_cv,
-            COALESCE((SELECT json_agg(json_build_object('titulo', e.titulo, 'institucion', e.institucion, 'periodo', e.periodo) ORDER BY e.orden, e.id)
-                      FROM perfil_educacion e WHERE e.perfil_id = pf.id), '[]'::json) AS educacion,
-            COALESCE((SELECT json_agg(json_build_object('cargo', x.cargo, 'empresa', x.empresa, 'periodo', x.periodo, 'descripcion', x.descripcion) ORDER BY x.orden, x.id)
-                      FROM perfil_experiencia x WHERE x.perfil_id = pf.id), '[]'::json) AS experiencia,
-            COALESCE((SELECT json_agg(h.nombre ORDER BY h.categoria, h.id)
-                      FROM perfil_habilidades h WHERE h.perfil_id = pf.id), '[]'::json) AS habilidades
+    `SELECT p.id, p.oferta_id, p.candidato_id, p.estado, p.carta_presentacion, p.created_at, p.updated_at,
+            p.entrevista, p.calificacion,
+            u.nombre_completo AS postulante_nombre, u.email AS postulante_email, u.telefono AS postulante_telefono,
+            pf.tipo AS perfil_tipo,
+            p.hoja_vida->>'programaAcademico' AS programa_academico,
+            (p.hoja_vida->>'semestre')::int AS semestre,
+            p.hoja_vida->>'universidad' AS universidad,
+            p.hoja_vida->>'resumen' AS resumen,
+            p.hoja_vida->>'ubicacion' AS candidato_ubicacion,
+            p.hoja_vida->>'disponibilidad' AS disponibilidad,
+            p.hoja_vida->>'cvUrl' AS cv_url,
+            COALESCE(p.hoja_vida->'educacion', '[]'::jsonb) AS educacion,
+            COALESCE(p.hoja_vida->'experiencia', '[]'::jsonb) AS experiencia,
+            COALESCE(p.hoja_vida->'habilidades', '[]'::jsonb) AS habilidades,
+            ${CV_COLUMNS},
+            ${eventsSql({ forCompany: true })} AS eventos
      FROM postulaciones p
      INNER JOIN perfiles pf ON pf.id = p.candidato_id
      INNER JOIN usuarios u ON u.id = pf.usuario_id
-     LEFT JOIN perfiles_estudiante pe ON pe.perfil_id = pf.id
-     LEFT JOIN perfiles_candidato pc ON pc.perfil_id = pf.id
+     LEFT JOIN postulacion_cv cv ON cv.postulacion_id = p.id
      WHERE p.oferta_id = $1
      ORDER BY p.created_at DESC`,
     [offerId]
@@ -72,54 +139,125 @@ export async function existsForCandidate(offerId, candidateProfileId) {
   return result.rowCount > 0;
 }
 
-export async function insert(offerId, candidateProfileId, coverLetter) {
-  const result = await pool.query(
-    `INSERT INTO postulaciones (oferta_id, candidato_id, estado, carta_presentacion)
-     VALUES ($1, $2, 'ENVIADA', $3)
-     RETURNING *`,
+// Crea la postulación con la copia de la hoja de vida actual del candidato.
+export async function insert(db, offerId, candidateProfileId, coverLetter) {
+  const result = await db.query(
+    `INSERT INTO postulaciones (oferta_id, candidato_id, estado, carta_presentacion, hoja_vida)
+     VALUES ($1, $2, 'ENVIADA', $3, ${resumeSnapshotSql('$2')})
+     RETURNING id, oferta_id, candidato_id, estado, carta_presentacion, created_at, updated_at`,
     [offerId, candidateProfileId, coverLetter]
   );
   return result.rows[0];
 }
 
-export async function findWithOfferOwner(id) {
-  const result = await pool.query(
-    `SELECT p.id, p.oferta_id, p.estado, o.organizacion_id
+// Copia en la postulación la hoja de vida PDF que el candidato tiene en su perfil.
+// Devuelve los datos del archivo copiado o null si el perfil no tiene uno.
+export async function copyProfileCv(db, applicationId, candidateProfileId) {
+  const result = await db.query(
+    `INSERT INTO postulacion_cv (postulacion_id, nombre, mime, tamano, contenido, origen)
+     SELECT $1, a.nombre, a.mime, a.tamano, a.contenido, 'PERFIL'
+     FROM archivos a
+     WHERE a.perfil_id = $2 AND a.tipo = 'CV'
+     ON CONFLICT (postulacion_id) DO NOTHING
+     RETURNING nombre, tamano, origen, created_at`,
+    [applicationId, candidateProfileId]
+  );
+  return result.rows[0] ?? null;
+}
+
+// Guarda o reemplaza el archivo propio de una postulación. No toca el perfil.
+export async function upsertApplicationCv(db, applicationId, { nombre, mime, contenido }) {
+  const result = await db.query(
+    `INSERT INTO postulacion_cv (postulacion_id, nombre, mime, tamano, contenido, origen)
+     VALUES ($1, $2, $3, $4, $5, 'PROPIO')
+     ON CONFLICT (postulacion_id) DO UPDATE
+       SET nombre = EXCLUDED.nombre, mime = EXCLUDED.mime, tamano = EXCLUDED.tamano,
+           contenido = EXCLUDED.contenido, origen = 'PROPIO', created_at = NOW()
+     RETURNING nombre, tamano, origen, created_at`,
+    [applicationId, nombre, mime, contenido.length, contenido]
+  );
+  return result.rows[0];
+}
+
+// Postulación con el dueño y el tipo de la oferta. Dentro de una transacción,
+// forUpdate bloquea la fila para que dos cambios de etapa no se crucen.
+export async function findWithOfferOwner(id, db = pool, { forUpdate = false } = {}) {
+  const result = await db.query(
+    `SELECT p.id, p.oferta_id, p.estado, o.organizacion_id, o.tipo::text AS oferta_tipo
      FROM postulaciones p
      INNER JOIN ofertas o ON o.id = p.oferta_id
+     WHERE p.id = $1
+     ${forUpdate ? 'FOR UPDATE OF p' : ''}`,
+    [id]
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function findOwnedByCandidate(id, candidateProfileId, db = pool, { forUpdate = false } = {}) {
+  const result = await db.query(
+    `SELECT id, estado FROM postulaciones WHERE id = $1 AND candidato_id = $2 ${forUpdate ? 'FOR UPDATE' : ''}`,
+    [id, candidateProfileId]
+  );
+  return result.rows[0] ?? null;
+}
+
+// Cambia la etapa. `interview` (objeto) reemplaza la entrevista vigente; null la
+// borra (al volver a revisión) y undefined la conserva (al decidir tras la entrevista).
+export async function updateStatus(db, id, status, interview) {
+  const result = await db.query(
+    `UPDATE postulaciones
+     SET estado = $1,
+         entrevista = CASE WHEN $3::boolean THEN $4::jsonb ELSE entrevista END,
+         updated_at = NOW()
+     WHERE id = $2
+     RETURNING id, oferta_id, candidato_id, estado, carta_presentacion, entrevista, calificacion, created_at, updated_at`,
+    [status, id, interview !== undefined, interview === undefined ? null : JSON.stringify(interview)]
+  );
+  return result.rows[0];
+}
+
+// Agrega un evento al historial de la postulación.
+export async function insertEvent(db, { applicationId, authorId, tipo, previousStatus = null, nextStatus = null, message = null, privado = false, interview = null }) {
+  const result = await db.query(
+    `INSERT INTO postulacion_eventos (postulacion_id, autor_id, tipo, estado_anterior, estado_nuevo, mensaje, privado, entrevista)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, tipo, estado_anterior AS "estadoAnterior", estado_nuevo AS "estadoNuevo", mensaje, privado, entrevista, created_at AS fecha`,
+    [applicationId, authorId, tipo, previousStatus, nextStatus, message, privado, interview === null ? null : JSON.stringify(interview)]
+  );
+  return result.rows[0];
+}
+
+export async function setRating(id, rating) {
+  const result = await pool.query(
+    'UPDATE postulaciones SET calificacion = $1, updated_at = NOW() WHERE id = $2 RETURNING id, calificacion',
+    [rating, id]
+  );
+  return result.rows[0] ?? null;
+}
+
+// Datos para avisar al candidato por correo de un cambio en su postulación.
+export async function findNotificationContext(id) {
+  const result = await pool.query(
+    `SELECT u.email, u.nombre_completo, o.titulo AS oferta_titulo, org.razon_social AS empresa
+     FROM postulaciones p
+     INNER JOIN perfiles pf ON pf.id = p.candidato_id
+     INNER JOIN usuarios u ON u.id = pf.usuario_id
+     INNER JOIN ofertas o ON o.id = p.oferta_id
+     INNER JOIN organizaciones org ON org.perfil_id = o.organizacion_id
      WHERE p.id = $1`,
     [id]
   );
   return result.rows[0] ?? null;
 }
 
-export async function findOwnedByCandidate(id, candidateProfileId) {
+// Hoja de vida enviada con la postulación (puede no existir), con el dueño de la
+// oferta y el candidato para comprobar quién puede verla.
+export async function findApplicationCv(id) {
   const result = await pool.query(
-    'SELECT id, estado FROM postulaciones WHERE id = $1 AND candidato_id = $2',
-    [id, candidateProfileId]
-  );
-  return result.rows[0] ?? null;
-}
-
-export async function updateStatus(id, status) {
-  const result = await pool.query(
-    `UPDATE postulaciones
-     SET estado = $1,
-         updated_at = NOW()
-     WHERE id = $2
-     RETURNING *`,
-    [status, id]
-  );
-  return result.rows[0];
-}
-
-// Hoja de vida del postulante (puede no existir) con el dueño de la oferta.
-export async function findCvWithOfferOwner(id) {
-  const result = await pool.query(
-    `SELECT o.organizacion_id, a.nombre, a.mime, a.tamano, a.contenido
+    `SELECT o.organizacion_id, p.candidato_id, cv.nombre, cv.mime, cv.tamano, cv.contenido
      FROM postulaciones p
      INNER JOIN ofertas o ON o.id = p.oferta_id
-     LEFT JOIN archivos a ON a.perfil_id = p.candidato_id AND a.tipo = 'CV'
+     LEFT JOIN postulacion_cv cv ON cv.postulacion_id = p.id
      WHERE p.id = $1`,
     [id]
   );

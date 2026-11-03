@@ -87,6 +87,8 @@ Algunos valores se repiten a propósito en los dos lados: el frontend los necesi
 | Tipos de oferta y tipos que ve el externo | `offers/offers.domain.js` | `features/offers/offers.model.ts` |
 | Modalidades | `offers/offers.domain.js` | `normalizeModality` |
 | Estados de postulación | `applications/applications.domain.js` | `features/applications/applications.model.ts` |
+| Etapas permitidas del proceso de selección y modalidades de entrevista (Fase 8) | `applications/applications.domain.js` | `features/applications/applicants.model.ts` (`test/selection.test.ts`) |
+| Experiencia, jornada, niveles de idioma y límites de una oferta (Fase 8) | `offers/offers.domain.js` | `features/offers/offers.model.ts` y `features/offers/offer-form/offerForm.model.ts` |
 | Tipos de documento y motivo mínimo de rechazo | `verifications/verifications.rules.js` | `features/verifications/verification.ts` |
 | Regla de contraseña | `core/security/password.js` | `shared/lib/password.ts` |
 

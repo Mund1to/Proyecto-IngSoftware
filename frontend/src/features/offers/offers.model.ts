@@ -41,6 +41,78 @@ export const OFFER_AUDIENCE: Record<OfferType, string> = {
   FORMACION: "Estudiantes, egresados y profesionales externos.",
 };
 
+// Fase 8: requisitos y condiciones como opciones. Deben coincidir con
+// EXPERIENCE_LEVELS, WORK_SCHEDULES y LANGUAGE_LEVELS del backend
+// (src/modules/offers/offers.domain.js); test/contracts.test.ts lo comprueba.
+export type ExperienceLevel = "NINGUNA" | "MENOS_1" | "DE_1_A_2" | "DE_3_A_5" | "MAS_5";
+export const EXPERIENCE_LABELS: Record<ExperienceLevel, string> = {
+  NINGUNA: "Sin experiencia",
+  MENOS_1: "Menos de 1 año",
+  DE_1_A_2: "1 a 2 años",
+  DE_3_A_5: "3 a 5 años",
+  MAS_5: "Más de 5 años",
+};
+// Una práctica es para estudiantes: no puede exigir más de un año.
+export const PRACTICE_EXPERIENCE: ExperienceLevel[] = ["NINGUNA", "MENOS_1"];
+
+export type WorkSchedule = "TIEMPO_COMPLETO" | "MEDIO_TIEMPO" | "POR_HORAS" | "FLEXIBLE";
+export const WORK_SCHEDULE_LABELS: Record<WorkSchedule, string> = {
+  TIEMPO_COMPLETO: "Tiempo completo",
+  MEDIO_TIEMPO: "Medio tiempo",
+  POR_HORAS: "Por horas",
+  FLEXIBLE: "Horario flexible",
+};
+
+export type LanguageLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "NATIVO";
+export const LANGUAGE_LEVEL_LABELS: Record<LanguageLevel, string> = {
+  A1: "A1 · Principiante",
+  A2: "A2 · Básico",
+  B1: "B1 · Intermedio",
+  B2: "B2 · Intermedio alto",
+  C1: "C1 · Avanzado",
+  C2: "C2 · Dominio",
+  NATIVO: "Nativo",
+};
+export type OfferLanguage = { idioma: string; nivel: LanguageLevel };
+
+const label = <T extends string>(labels: Record<T, string>, value: unknown) =>
+  (typeof value === "string" && value in labels ? labels[value as T] : null);
+export const experienceLabel = (value: unknown) => label(EXPERIENCE_LABELS, value);
+export const workScheduleLabel = (value: unknown) => label(WORK_SCHEDULE_LABELS, value);
+export const languageLevelLabel = (value: unknown) => label(LANGUAGE_LEVEL_LABELS, value) ?? String(value ?? "");
+
+const money = (value: number) => `$${value.toLocaleString("es-CO")}`;
+
+// Remuneración según el tipo: la práctica puede no tener apoyo económico, el
+// empleo muestra su rango y la formación no tiene salario.
+export function offerSalaryLabel(type: unknown, min: unknown, max: unknown): string {
+  const low = Number(min) > 0 ? Number(min) : null;
+  const high = Number(max) > 0 ? Number(max) : null;
+  if (type === "FORMACION") return "No aplica";
+  if (type === "PRACTICA") return low ? `${money(low)}/mes` : "Sin apoyo económico";
+  if (low && high && high > low) return `${money(low)} – ${money(high)}/mes`;
+  return low ? `${money(low)}/mes` : "A convenir";
+}
+
+const textList = (value: unknown): string[] => (Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []);
+const languageList = (value: unknown): OfferLanguage[] => (Array.isArray(value)
+  ? value.filter((item) => item && typeof item.idioma === "string").map((item) => ({ idioma: item.idioma, nivel: item.nivel }))
+  : []);
+
+// Campos estructurados de una fila de la API (vacíos en ofertas anteriores a la Fase 8).
+export function structuredFields(offer: any) {
+  return {
+    programs: textList(offer.programas),
+    minSemester: offer.semestre_minimo == null ? null : Number(offer.semestre_minimo),
+    skills: textList(offer.habilidades),
+    experience: (offer.experiencia ?? null) as ExperienceLevel | null,
+    languages: languageList(offer.idiomas),
+    workSchedule: (offer.jornada ?? null) as WorkSchedule | null,
+    benefits: textList(offer.beneficios),
+    vacancies: Number(offer.vacantes) > 0 ? Number(offer.vacantes) : 1,
+  };
+}
+
 // Oferta tal como la muestran el catálogo del estudiante y el panel de la empresa.
 export type Offer = {
   id: number;
@@ -63,6 +135,15 @@ export type Offer = {
   contactEmail?: string | null;
   salaryMin?: number | null;
   salaryMax?: number | null;
+  // Fase 8 (opcionales para tolerar datos anteriores y pruebas).
+  programs?: string[];
+  minSemester?: number | null;
+  skills?: string[];
+  experience?: ExperienceLevel | null;
+  languages?: OfferLanguage[];
+  workSchedule?: WorkSchedule | null;
+  benefits?: string[];
+  vacancies?: number;
 };
 
 // Las recomendaciones traen `affinity` (0 a 100); el catálogo público no.
@@ -88,6 +169,12 @@ export type Job = {
   requirements: string[];
   benefits: string[];
   applicants: number;
+  skills?: string[];
+  languages?: OfferLanguage[];
+  workSchedule?: WorkSchedule | null;
+  programs?: string[];
+  vacancies?: number;
+  offerType?: OfferType;
 };
 
 export const toUiOffer = (offer: any): CatalogOffer => ({
@@ -99,7 +186,7 @@ export const toUiOffer = (offer: any): CatalogOffer => ({
   area: offer.area ?? "General",
   modality: normalizeModality(offer.modalidad ?? offer.modality),
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? "",
-  salary: formatSalary(offer.remuneracion),
+  salary: offer.tipo ? offerSalaryLabel(offer.tipo, offer.remuneracion, offer.remuneracion_maxima) : formatSalary(offer.remuneracion),
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
   applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
@@ -108,8 +195,9 @@ export const toUiOffer = (offer: any): CatalogOffer => ({
   duration: offer.duracion,
   schedule: offer.horario,
   contactEmail: offer.contacto_email,
-  salaryMin: offer.remuneracion === null ? null : toNumberOrZero(offer.remuneracion),
-  salaryMax: offer.remuneracion_maxima === null ? null : toNumberOrZero(offer.remuneracion_maxima),
+  salaryMin: offer.remuneracion == null ? null : toNumberOrZero(offer.remuneracion),
+  salaryMax: offer.remuneracion_maxima == null ? null : toNumberOrZero(offer.remuneracion_maxima),
+  ...structuredFields(offer),
   ...(Number.isFinite(Number(offer.affinity)) && offer.affinity !== null && offer.affinity !== undefined ? { affinity: Number(offer.affinity) } : {}),
 });
 
@@ -125,9 +213,15 @@ export const mapOfferToJob = (offer: any): Job => ({
   closeDate: offer.fecha_cierre ?? offer.closeDate ?? "",
   salaryMin: toNumberOrZero(offer.remuneracion ?? offer.salaryMin),
   salaryMax: toNumberOrZero(offer.remuneracion_maxima ?? offer.remuneracionMaxima ?? offer.salaryMax ?? offer.remuneracion),
-  experience: offer.experiencia ?? offer.duracion ?? "No especificada",
+  experience: experienceLabel(offer.experiencia) ?? offer.duracion ?? "No especificada",
   description: offer.descripcion ?? offer.description ?? "Sin descripción disponible.",
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
-  benefits: Array.isArray(offer.benefits) ? offer.benefits : [],
+  benefits: textList(offer.beneficios ?? offer.benefits),
+  skills: textList(offer.habilidades),
+  languages: languageList(offer.idiomas),
+  workSchedule: (offer.jornada ?? null) as WorkSchedule | null,
+  programs: textList(offer.programas),
+  vacancies: Number(offer.vacantes) > 0 ? Number(offer.vacantes) : 1,
+  offerType: offer.tipo,
   applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
 });

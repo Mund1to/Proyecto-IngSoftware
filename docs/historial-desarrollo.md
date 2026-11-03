@@ -570,6 +570,31 @@ Antes, la URL no cambiaba al moverse por la app. Además, el enlace "Ir a la ver
 - **Archivos:** `app/hashRoutes.ts` contiene la tabla `ROLE_ROUTES` y sus funciones; los efectos de navegación están en `App.tsx`.
 - **Pruebas:** `test/navigation.test.tsx` (7 nuevas, 69 en total en el frontend). La comprobación en Edge con los cuatro tipos de cuenta pasó 6 de 6, y la prueba integral entre roles 27 de 27.
 
-## 23. Regla para mantener la documentación
+## 23. Fase 8 — Ofertas con opciones, hoja de vida por postulación y proceso de selección (2 de noviembre de 2026)
+
+Rama: `feature/fase-8-ofertas-seleccion`, creada sobre `main`.
+
+- **Hoja de vida por postulación:** cada postulación guarda una copia de la hoja de vida (`postulaciones.hoja_vida`) y del PDF enviado (`postulacion_cv`). Antes la empresa veía siempre el CV actual del perfil, así que cambiarlo para otra oferta también cambiaba la primera. El candidato puede enviar el CV de su perfil, un PDF solo para esa oferta o ninguno, y cambiarlo mientras la postulación siga Enviada.
+- **Formulario de oferta por pasos:** tipo, oferta, perfil, condiciones y publicación, con opciones en lugar de texto libre (áreas, habilidades sugeridas, experiencia, idiomas con nivel, modalidad, ciudades, jornada, beneficios y vacantes), validación por paso, detección de texto al azar, vista previa, indicador de calidad y borradores. El servidor aplica las mismas reglas al publicar y devuelve los errores por campo.
+- **Proceso de selección:**
+  - Tablero por etapas con arrastrar y soltar y menú accesible.
+  - Panel del candidato con su CV, coincidencia de habilidades, historial, notas internas y calificación.
+  - Diálogos para citar a entrevista (fecha, modalidad y enlace o dirección), seleccionar, descartar con mensaje y reabrir.
+  - Las reglas de etapa son las mismas en el backend y en el frontend.
+  - El candidato ve la entrevista (con archivo `.ics`), los mensajes y el historial, y recibe correos.
+- **Modelo de datos:** migraciones `20261102_application_resume_snapshot.sql`, `20261102_application_pipeline.sql` y `20261102_offer_structured_requirements.sql`.
+- **Pruebas:** 145 en el backend (21 nuevas) y 99 en el frontend (30 nuevas).
+
+| Commit | Cambio |
+| --- | --- |
+| `a3c1cd4` | Cada postulación conserva la hoja de vida con que se envió. |
+| `e0f59c1` | Proceso de selección en el backend: etapas, entrevista, mensajes, notas, calificación y correos. |
+| `3c5636d` | Requisitos estructurados y reglas para publicar ofertas. |
+| `8b116ef` | Formulario de oferta por pasos con opciones y vista previa. |
+| `65ea458` | Tablero de selección, panel del candidato y seguimiento del candidato. |
+
+El detalle está en [`informe-fase-8-ofertas-seleccion.md`](informe-fase-8-ofertas-seleccion.md).
+
+## 24. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y añada una migración idempotente en `backend/database/migrations/`. Desde la Fase 5, `backend/database/schema.sql` es solo el esquema inicial. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.
