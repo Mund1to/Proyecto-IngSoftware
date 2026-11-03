@@ -101,11 +101,42 @@ export async function updateOwned(id, organizationId, changes) {
   return result.rows[0] ?? null;
 }
 
-export async function cancelOwned(id, organizationId) {
+// Papelera: cancelar guarda la fecha y el motivo; restaurar vuelve a borrador.
+export async function cancelOwned(db, id, organizationId, reason) {
+  const result = await db.query(
+    `UPDATE ofertas
+     SET estado = 'CANCELADA', cancelada_at = NOW(), motivo_cancelacion = $3, updated_at = NOW()
+     WHERE id = $1 AND organizacion_id = $2 AND estado <> 'CANCELADA'
+     RETURNING *`,
+    [id, organizationId, reason]
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function restoreOwned(id, organizationId) {
   const result = await pool.query(
-    `UPDATE ofertas SET estado = 'CANCELADA', updated_at = NOW()
-     WHERE id = $1 AND organizacion_id = $2
-     RETURNING id`,
+    `UPDATE ofertas
+     SET estado = 'BORRADOR', cancelada_at = NULL, motivo_cancelacion = NULL, updated_at = NOW()
+     WHERE id = $1 AND organizacion_id = $2 AND estado = 'CANCELADA'
+     RETURNING *`,
+    [id, organizationId]
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function countApplications(offerId) {
+  const result = await pool.query('SELECT COUNT(*)::int AS total FROM postulaciones WHERE oferta_id = $1', [offerId]);
+  return result.rows[0].total;
+}
+
+// Borra una oferta cancelada sin postulaciones (la condición se repite en SQL
+// por si llega una postulación entre la comprobación y el borrado).
+export async function deleteOwned(id, organizationId) {
+  const result = await pool.query(
+    `DELETE FROM ofertas o
+     WHERE o.id = $1 AND o.organizacion_id = $2 AND o.estado = 'CANCELADA'
+       AND NOT EXISTS (SELECT 1 FROM postulaciones p WHERE p.oferta_id = o.id)
+     RETURNING o.id`,
     [id, organizationId]
   );
   return result.rows[0] ?? null;

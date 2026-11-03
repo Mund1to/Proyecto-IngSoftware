@@ -147,6 +147,11 @@ export async function updateApplicationStatus(userId, id, payload = {}) {
   const result = await withTransaction(async (db) => {
     const application = await requireOwnedApplication(userId, id, 'No tienes permisos para cambiar el estado de esta postulación.', db, { forUpdate: true });
 
+    // Una oferta en la papelera conserva su historial, pero el proceso se detiene.
+    if (application.oferta_estado === 'CANCELADA') {
+      throw conflict('La oferta está cancelada. Restáurala para continuar con el proceso.');
+    }
+
     const blocked = transitionError(application.estado, nextStatus, application.oferta_tipo);
     if (blocked) throw conflict(blocked);
 
