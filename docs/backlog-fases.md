@@ -118,6 +118,20 @@ El detalle está en [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-
 
 El detalle está en [`informe-fase-7-verificacion-documental.md`](informe-fase-7-verificacion-documental.md).
 
+## Fase 8 — Ofertas con opciones y proceso de selección
+
+**Objetivo:** que las ofertas se publiquen completas y con sentido, que cada postulación conserve lo que el candidato envió y que la empresa y el candidato sigan un proceso de selección claro.
+
+- Formulario de oferta por pasos con opciones (áreas, habilidades, experiencia, idiomas, jornada, beneficios y vacantes), vista previa, calidad y borradores. ✅ Completada
+- Reglas de publicación en el servidor: nada de texto al azar, una práctica no pide años de experiencia y el empleo muestra salario. ✅ Completada
+- Cada postulación conserva su hoja de vida y su PDF; el candidato puede enviar un PDF distinto por oferta (corrige el CV que cambiaba solo). ✅ Completada
+- Tablero de selección con etapas, citación a entrevista, mensajes, notas internas y calificación. ✅ Completada
+- El candidato ve su entrevista (con archivo `.ics`), los mensajes y el historial, y recibe correos. ✅ Completada
+
+**Criterio de salida:** una empresa publica una oferta completa sin escribir texto libre para lo que tiene opciones, cita a un candidato a entrevista y lo selecciona o descarta con un mensaje. El candidato ve cada paso y la hoja de vida que envió no cambia aunque edite su perfil.
+
+El detalle está en [`informe-fase-8-ofertas-seleccion.md`](informe-fase-8-ofertas-seleccion.md).
+
 ## Orden recomendado
 
 ```text

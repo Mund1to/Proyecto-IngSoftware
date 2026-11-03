@@ -14,6 +14,7 @@ Esta carpeta contiene la documentación funcional, técnica y de proceso del pro
 - [`informe-fase-6-perfil-archivos.md`](informe-fase-6-perfil-archivos.md): hoja de vida en base de datos, CV y foto, recuperación de contraseña y ofertas de formación.
 - [`informe-fase-7-verificacion-documental.md`](informe-fase-7-verificacion-documental.md): documentos y solicitudes de verificación de empresas, bandeja del revisor, mejoras de seguridad, integración continua y sugerencias.
 - [`informe-estructura-escalable.md`](informe-estructura-escalable.md): revisión de archivos redundantes, frontend por funcionalidades, pruebas de arquitectura y de contrato, y pendientes.
+- [`informe-fase-8-ofertas-seleccion.md`](informe-fase-8-ofertas-seleccion.md): formulario de oferta por pasos, hoja de vida por postulación (corrige el CV que cambiaba solo) y proceso de selección con entrevistas, mensajes y notas.
 - [`diseno/brief-claude-design.md`](diseno/brief-claude-design.md): brief de diseño de todas las pantallas para Claude Design.
 - [`diseno/prompt-implementacion-vivo.md`](diseno/prompt-implementacion-vivo.md) y [`diseno/referencia-vivo/`](diseno/referencia-vivo/): plan por fases y maquetas del rediseño "vivo".
 - [`diseno/informe-rediseno-vivo.md`](diseno/informe-rediseno-vivo.md): avance, decisiones y verificación del rediseño "vivo".
