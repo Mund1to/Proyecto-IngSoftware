@@ -12,7 +12,7 @@ export function listUsers(search) {
   return adminRepository.searchUsers(String(search ?? '').trim());
 }
 
-export async function updateUserRoles(userId, payload = {}) {
+export async function updateUserRoles(actorId, userId, payload = {}) {
   const rawRoles = getBodyValue(payload, ['roles']);
   if (!Array.isArray(rawRoles)) throw badRequest('Debe enviar la lista de roles.');
 
@@ -29,6 +29,10 @@ export async function updateUserRoles(userId, payload = {}) {
     if (!user) throw notFound('Usuario no encontrado.');
 
     const removesAdmin = user.roles.includes('ADMINISTRADOR') && !roles.includes('ADMINISTRADOR');
+    // Igual que con la desactivación: quitarse el rol cerraría su propio acceso a esta pantalla.
+    if (removesAdmin && String(userId) === String(actorId)) {
+      throw conflict('No puedes quitarte tu propio rol de administrador. Pídeselo a otro administrador.');
+    }
     if (removesAdmin && (await adminRepository.countOtherActiveAdmins(userId, db)) === 0) {
       throw conflict('Debe existir al menos un administrador activo.');
     }

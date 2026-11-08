@@ -22,9 +22,11 @@ export async function loadAccount(userId) {
 
 export async function authenticate(request, response, next) {
   const authorization = request.get('authorization');
-  const [scheme, token] = authorization?.split(' ') ?? [];
+  // Exactamente "Bearer <token>": un encabezado con texto de más no es válido.
+  const parts = authorization?.split(' ') ?? [];
+  const [scheme, token] = parts;
 
-  if (scheme !== 'Bearer' || !token) {
+  if (parts.length !== 2 || scheme !== 'Bearer' || !token) {
     return response.status(401).json({
       ok: false,
       message: 'Se requiere un token Bearer válido.',

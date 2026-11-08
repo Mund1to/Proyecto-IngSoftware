@@ -8,7 +8,7 @@ export const listUsersController = asyncHandler(async function listUsersControll
 }, 'No se pudieron listar los usuarios.');
 
 export const updateUserRolesController = asyncHandler(async function updateUserRolesController(request, response) {
-  const user = await adminService.updateUserRoles(request.params.userId, request.body ?? {});
+  const user = await adminService.updateUserRoles(request.auth.sub, request.params.userId, request.body ?? {});
   return response.json({ ok: true, user });
 }, 'No se pudieron actualizar los roles.');
 

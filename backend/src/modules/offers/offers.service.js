@@ -179,6 +179,8 @@ export async function cancelOffer(userId, id, payload = {}) {
 
   const { offer, notified } = await withTransaction(async (db) => {
     const cancelled = await offersRepository.cancelOwned(db, id, organizationId, reason);
+    // Otra petición la canceló entre la consulta y esta transacción.
+    if (!cancelled) throw conflict('La oferta ya está en Canceladas.');
     const events = await addOfferCancelledEvents(db, id, userId, reason);
     return { offer: cancelled, notified: events.length };
   });
@@ -197,7 +199,9 @@ export async function restoreOffer(userId, id) {
   const current = await offersRepository.findOwned(id, organizationId);
   if (!current) throw notFound('No se encontró una oferta propia para restaurar.');
   if (current.estado !== 'CANCELADA') throw conflict('Solo se pueden restaurar ofertas canceladas.');
-  return offersRepository.restoreOwned(id, organizationId);
+  const restored = await offersRepository.restoreOwned(id, organizationId);
+  if (!restored) throw conflict('Solo se pueden restaurar ofertas canceladas.');
+  return restored;
 }
 
 // Borrado definitivo desde la papelera. Una oferta con postulaciones no se
