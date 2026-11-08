@@ -4,7 +4,7 @@
 
 // URL de la API desplegada en Render. Se usa si el build de producción no recibe
 // VITE_API_URL, para que el frontend publicado nunca apunte a localhost.
-export const PRODUCTION_API_URL = 'https://proyecto-ingsoftware.onrender.com/api';
+export const PRODUCTION_API_URL = 'https://proyecto-ingsoftware-m4f3.onrender.com/api';
 
 export function resolveApiBaseUrl(configured: string | undefined, isProduction: boolean): string {
   const value = configured?.trim();

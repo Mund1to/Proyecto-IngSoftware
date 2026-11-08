@@ -17,7 +17,7 @@ Desde la raíz del repositorio, cree `frontend/.env` para configurar la URL de l
 VITE_API_URL=http://localhost:3000/api
 ```
 
-En producción, configure `VITE_API_URL` en Vercel con la URL pública de la API, incluyendo `/api`. Si falta, el build de producción usa `https://proyecto-ingsoftware.onrender.com/api` y nunca `localhost`. Las variables `VITE_*` quedan incorporadas en la compilación y no deben contener secretos.
+En producción, configure `VITE_API_URL` en Vercel con la URL pública de la API, incluyendo `/api`. Si falta, el build de producción usa `https://proyecto-ingsoftware-m4f3.onrender.com/api` y nunca `localhost`. Las variables `VITE_*` quedan incorporadas en la compilación y no deben contener secretos.
 
 ## Ejecutar en desarrollo
 
