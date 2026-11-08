@@ -603,6 +603,22 @@ El detalle está en [`informe-fase-8-ofertas-seleccion.md`](informe-fase-8-ofert
 - **Despliegue:** `docs/despliegue-render-vercel.md` explica cómo cambiar de base de datos o de cuenta de Render sin perder los datos.
 - **Wiki:** páginas nuevas de Arquitectura, Guía de instalación, Despliegue, Pruebas y Documentación técnica.
 
-## 25. Regla para mantener la documentación
+## 25. Papelera de ofertas y pruebas extremas (8 de noviembre de 2026)
+
+- **Papelera de ofertas:** la empresa cancela una oferta con un motivo opcional y la oferta pasa a la pestaña **Canceladas**. Desde ahí la restaura como borrador o la borra definitivamente si no tiene postulaciones. Los candidatos con postulaciones abiertas reciben el aviso en su historial y por correo, y la empresa ve a esos postulantes en modo de solo lectura. Migración `20261103_offer_trash.sql`.
+- **Pruebas extremas:** `backend/tests/extremas.test.js` (71) y `frontend/src/test/extremas.test.tsx` (55) prueban entradas absurdas, permisos cruzados entre roles, operaciones simultáneas, enlaces `#` imposibles, respuestas de la API rotas y almacenamiento dañado.
+- **Bugs corregidos gracias a esas pruebas:**
+  - El carácter nulo y los textos o números que exceden su columna daban 500; ahora responden 400.
+  - Correos con formato estricto y un máximo de 254 caracteres.
+  - Contraseñas de hasta 72 bytes, porque bcrypt ignoraba el resto.
+  - El login revisa la contraseña antes de avisar que la cuenta está inactiva.
+  - `Authorization` debe ser exactamente `Bearer <token>`.
+  - El administrador no puede quitarse su propio rol.
+  - La calificación solo acepta números, y las notas y cartas solo texto.
+  - Cancelar y restaurar a la vez la misma oferta responde 409.
+  - En el frontend, un `#` con `%` suelto o `#__proto__` ya no rompen la app, y cuatro pantallas normalizan la respuesta de la API.
+- **Pruebas:** 221 en el backend y 158 en el frontend.
+
+## 26. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y añada una migración idempotente en `backend/database/migrations/`. Desde la Fase 5, `backend/database/schema.sql` es solo el esquema inicial. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.

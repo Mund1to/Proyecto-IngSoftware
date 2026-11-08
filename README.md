@@ -159,11 +159,11 @@ Cierre sesión y vuelva a entrar. Desde la pantalla **Usuarios**, el administrad
 
 ```bash
 cd backend
-npm test        # 150 pruebas de la API contra PostgreSQL
+npm test        # 221 pruebas de la API contra PostgreSQL, incluidas 71 extremas
 
 cd ../frontend
 npm run typecheck
-npm test        # 103 pruebas con Vitest y Testing Library, incluidas las de arquitectura y contrato
+npm test        # 158 pruebas con Vitest y Testing Library, incluidas 55 extremas y las de arquitectura y contrato
 ```
 
 Las pruebas del backend crean solas una base aparte cuyo nombre termina en `_test` (por defecto `sipu_test`) y la vacían en cada ejecución; nunca tocan la base `sipu`. Para usar otra, defina `TEST_DATABASE_URL` en `backend/.env`. GitHub Actions (`.github/workflows/ci.yml`) ejecuta estas pruebas, el typecheck y el build en cada push a `main` o `develop` y en cada pull request.
