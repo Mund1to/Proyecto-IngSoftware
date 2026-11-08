@@ -33,7 +33,7 @@ La verificaci처n real devolvi처 respuestas `ok: true` y confirmaci처n de creaci�
 
 | Componente | Servicio | URL |
 | --- | --- | --- |
-| Aplicaci처n web | Vercel | URL_VERCEL |
+| Aplicaci처n web | Vercel | https://frontend-theta-two-21.vercel.app |
 | API REST | Render (Web Service) | https://proyecto-ingsoftware-m4f3.onrender.com/api |
 | Base de datos | Render (PostgreSQL) | Privada, solo la usa la API |
 
