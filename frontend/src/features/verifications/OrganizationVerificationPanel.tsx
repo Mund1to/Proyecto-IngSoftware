@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type OrganizationVerification, type VerificationDocumentType, verificationsApi } from "./verifications.api";
+import { type OrganizationVerification, type VerificationDocumentType, normalizeVerification, verificationsApi } from "./verifications.api";
 import { formatSize } from "../../shared/lib/files";
 import { formatDate } from "../../shared/lib/format";
 import {
@@ -34,7 +34,8 @@ export default function OrganizationVerificationPanel({ token, nit }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
 
   // Propone el primer documento obligatorio que falta.
-  const apply = useCallback((next: OrganizationVerification) => {
+  const apply = useCallback((raw: OrganizationVerification) => {
+    const next = normalizeVerification(raw);
     setVerification(next);
     const missing = next.requisitos.tipos.find((item) => item.obligatorio && next.faltantes.includes(item.tipo));
     setDocumentType(missing?.tipo ?? "OTRO");
