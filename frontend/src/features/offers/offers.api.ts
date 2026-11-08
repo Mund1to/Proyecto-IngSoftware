@@ -21,6 +21,15 @@ export const offersApi = {
   updateOffer: (offerId: string | number, payload: Record<string, unknown>, token: string) =>
     request<OfferResponse>(`/offers/${offerId}`, json('PATCH', payload), token),
 
-  deleteOffer: (offerId: string | number, token: string) =>
-    request<{ ok: boolean; deletedOfferId: number }>(`/offers/${offerId}`, json('DELETE'), token),
+  // Papelera: cancelar no borra, mueve la oferta a Canceladas (con motivo opcional).
+  cancelOffer: (offerId: string | number, token: string, motivo?: string) =>
+    request<OfferResponse & { deletedOfferId: number; notifiedApplications: number }>(`/offers/${offerId}`, json('DELETE', motivo ? { motivo } : undefined), token),
+
+  // Vuelve a borrador para revisarla y publicarla de nuevo.
+  restoreOffer: (offerId: string | number, token: string) =>
+    request<OfferResponse>(`/offers/${offerId}/restore`, json('PATCH'), token),
+
+  // Solo ofertas canceladas sin postulaciones.
+  deleteOfferPermanently: (offerId: string | number, token: string) =>
+    request<{ ok: boolean; deletedOfferId: number }>(`/offers/${offerId}/permanent`, json('DELETE'), token),
 };

@@ -9,6 +9,78 @@ SIPU es un monorepo con dos aplicaciones que se despliegan por separado:
 - **Backend** (`backend/`): API REST en Express 5 y PostgreSQL, desplegada en Render. Es un **monolito modular**: un solo servicio, con el código dividido en módulos por funcionalidad.
 - **Frontend** (`frontend/`): aplicación React 18 + Vite + TypeScript + Tailwind 4, desplegada en Vercel. Está organizada **por funcionalidades** (una variante simplificada de Feature-Sliced Design).
 
+### Diagrama de despliegue y componentes
+
+```mermaid
+flowchart LR
+    U["Usuario<br/>(estudiante, externo, empresa,<br/>funcionario, administrador)"]
+
+    subgraph GH["GitHub"]
+        REPO["Repositorio<br/>Mund1to/Proyecto-IngSoftware"]
+        CI["GitHub Actions<br/>pruebas, typecheck y build"]
+    end
+
+    subgraph VERCEL["Vercel"]
+        SPA["Frontend SPA<br/>React 18 + Vite + TypeScript + Tailwind 4<br/>app/ → features/ → shared/"]
+    end
+
+    subgraph RENDER["Render"]
+        subgraph API["Web Service: API REST (Node 20 + Express 5)"]
+            MW["Middleware<br/>cabeceras de seguridad, CORS, JSON,<br/>JWT, roles, límite de peticiones"]
+            MOD["Módulos<br/>auth · profile · offers · applications ·<br/>verifications · convocatorias · stats · admin"]
+            CORE["core/<br/>config · database · http · mail · security"]
+        end
+        DB[("PostgreSQL<br/>datos + archivos (BYTEA)<br/>schema.sql + migraciones")]
+    end
+
+    MAIL["Resend<br/>correos transaccionales"]
+
+    U -->|HTTPS| SPA
+    SPA -->|"fetch JSON /api/*<br/>Authorization: Bearer JWT"| MW
+    MW --> MOD
+    MOD --> CORE
+    CORE -->|"pg (SSL)"| DB
+    CORE -->|"API HTTPS"| MAIL
+    MAIL -.->|"recuperación de contraseña,<br/>avisos de postulación"| U
+
+    REPO -->|"push / pull request"| CI
+    REPO -->|"deploy automático de main"| SPA
+    REPO -->|"deploy automático de main"| API
+```
+
+- El navegador descarga el frontend desde Vercel y habla con la API solo por HTTPS y JSON. La URL de la API sale de `VITE_API_URL`.
+- La API es el único componente que accede a la base. Al arrancar crea el esquema si la base está vacía y aplica las migraciones pendientes (`src/core/database/migrate.js`).
+- Las hojas de vida, fotos y documentos de verificación se guardan dentro de PostgreSQL como `BYTEA`, así que un respaldo de la base incluye los archivos.
+- Cada push a `main` despliega Render y Vercel. GitHub Actions corre las pruebas en cada push a `main` o `develop` y en cada pull request.
+
+### Diagrama de una petición
+
+Ejemplo: una empresa cambia la etapa de una postulación.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant N as Navegador (React)
+    participant R as routes + middleware
+    participant C as controller
+    participant S as service
+    participant P as repository
+    participant DB as PostgreSQL
+
+    N->>R: PATCH /api/applications/:id/status (Bearer JWT)
+    R->>R: authenticate + requireRole
+    R->>C: petición autenticada
+    C->>S: datos validados de la petición
+    S->>S: reglas de negocio (applications.domain.js)
+    S->>P: withTransaction(...)
+    P->>DB: UPDATE postulaciones + INSERT postulacion_eventos
+    DB-->>P: filas
+    P-->>S: resultado
+    S-->>C: postulación actualizada
+    C-->>N: 200 { ok: true, ... }
+    Note over S,C: Un HttpError (400, 403, 404, 409) se convierte en { ok: false, message }
+```
+
 Las funcionalidades llevan el mismo nombre en los dos lados. Quien busca "postulaciones" encuentra `backend/src/modules/applications/` y `frontend/src/features/applications/`.
 
 | Funcionalidad | Backend (`src/modules/`) | Frontend (`src/features/`) | Tablas principales |

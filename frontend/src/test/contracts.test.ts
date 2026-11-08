@@ -67,7 +67,7 @@ describe("contrato con el backend", () => {
   });
 
   it("regla de contraseña", () => {
-    for (const sample of ["Clave1234", "Corta1", "sinmayuscula1", "SinNumeroAqui", "", "ABCDEFG1", "abcdefg1"]) {
+    for (const sample of ["Clave1234", "Corta1", "sinmayuscula1", "SinNumeroAqui", "", "ABCDEFG1", "abcdefg1", "Aa1" + "x".repeat(69), "Aa1" + "x".repeat(70), "Ññ1" + "ñ".repeat(40)]) {
       expect(isStrongPassword(sample), sample).toBe(backendIsStrongPassword(sample));
     }
   });

@@ -13,6 +13,9 @@ export const WORK_SCHEDULES = ['TIEMPO_COMPLETO', 'MEDIO_TIEMPO', 'POR_HORAS', '
 // Marco común europeo y lengua materna.
 export const LANGUAGE_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'NATIVO'];
 
+// Motivo opcional al cancelar una oferta (lo ve el candidato en su historial).
+export const MAX_CANCEL_REASON_LENGTH = 300;
+
 // Límites de los campos de una oferta. Los mínimos de contenido (título,
 // descripción, habilidades...) se exigen al publicar; un borrador puede estar incompleto.
 export const OFFER_LIMITS = {

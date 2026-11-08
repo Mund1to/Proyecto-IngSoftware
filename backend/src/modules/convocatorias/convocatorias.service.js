@@ -47,6 +47,7 @@ export async function getConvocatoria(id) {
 export async function createConvocatoria(payload = {}) {
   const values = parseConvocatoria(payload);
   if (!values.titulo) throw badRequest('La convocatoria requiere un título.');
+  if (values.titulo.length > 200) throw badRequest('El título admite como máximo 200 caracteres.');
   assertValidDates(values);
   return convocatoriasRepository.insert(values);
 }

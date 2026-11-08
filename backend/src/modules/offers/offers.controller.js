@@ -32,7 +32,18 @@ export const updateOfferController = asyncHandler(async function updateOfferCont
   return response.json({ ok: true, offer });
 }, 'No se pudo actualizar la oferta.');
 
+// DELETE /offers/:id manda la oferta a la papelera (Canceladas); no la borra.
 export const deleteOfferController = asyncHandler(async function deleteOfferController(request, response) {
-  const deletedOfferId = await offersService.cancelOffer(request.auth.sub, request.params.id);
+  const { offer, notified } = await offersService.cancelOffer(request.auth.sub, request.params.id, request.body ?? {});
+  return response.json({ ok: true, deletedOfferId: Number(offer.id), offer, notifiedApplications: notified });
+}, 'No se pudo cancelar la oferta.');
+
+export const restoreOfferController = asyncHandler(async function restoreOfferController(request, response) {
+  const offer = await offersService.restoreOffer(request.auth.sub, request.params.id);
+  return response.json({ ok: true, offer });
+}, 'No se pudo restaurar la oferta.');
+
+export const deleteOfferPermanentlyController = asyncHandler(async function deleteOfferPermanentlyController(request, response) {
+  const deletedOfferId = await offersService.deleteOfferPermanently(request.auth.sub, request.params.id);
   return response.json({ ok: true, deletedOfferId });
 }, 'No se pudo eliminar la oferta.');

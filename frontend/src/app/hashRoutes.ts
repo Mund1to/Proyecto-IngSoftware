@@ -38,8 +38,16 @@ export type HashRoute = { screen: Screen; id?: number };
 // "#oferta/12" -> { screen: "offer-detail", id: 12 }. Devuelve null si el enlace
 // no existe para el rol o si a un detalle le falta un id válido.
 export function routeFromHash(hash: string, role: Role): HashRoute | null {
-  const [name, rawId] = decodeURIComponent(hash.replace(/^#/, "")).split("/");
-  const screen = ROLE_ROUTES[role][name ?? ""];
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(hash.replace(/^#/, ""));
+  } catch {
+    return null; // "#%E0%A4%A": un % suelto no es un enlace válido
+  }
+  const [name = "", rawId] = decoded.split("/");
+  // Solo los nombres propios del rol: "#__proto__" o "#constructor" no son pantallas.
+  const routes = ROLE_ROUTES[role];
+  const screen = Object.prototype.hasOwnProperty.call(routes, name) ? routes[name] : undefined;
   if (!screen) return null;
 
   if (!DETAIL_SCREENS.includes(screen)) return { screen };

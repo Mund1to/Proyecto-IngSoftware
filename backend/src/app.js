@@ -28,16 +28,18 @@ app.use(express.json({ limit: '1mb' }));
 
 // Un cliente que no envía UTF-8 deja caracteres de reemplazo (U+FFFD) en el
 // texto; se rechaza la petición en lugar de guardar datos dañados.
-function containsReplacementChar(value) {
+// PostgreSQL tampoco acepta el carácter nulo (U+0000) en un texto: sin este
+// filtro la consulta falla y la API respondería 500.
+function containsInvalidChar(value) {
   if (Buffer.isBuffer(value)) return false;
-  if (typeof value === 'string') return value.includes('�');
-  if (Array.isArray(value)) return value.some(containsReplacementChar);
-  if (value && typeof value === 'object') return Object.values(value).some(containsReplacementChar);
+  if (typeof value === 'string') return value.includes('�') || value.includes('\u0000');
+  if (Array.isArray(value)) return value.some(containsInvalidChar);
+  if (value && typeof value === 'object') return Object.values(value).some(containsInvalidChar);
   return false;
 }
 
 app.use((request, response, next) => {
-  if (containsReplacementChar(request.body)) {
+  if (containsInvalidChar(request.body) || containsInvalidChar(request.query)) {
     return response.status(400).json({
       ok: false,
       message: 'El texto contiene caracteres con codificación inválida. Envía la petición en UTF-8.',

@@ -75,7 +75,7 @@ const eventsSql = ({ forCompany }) => `COALESCE((
 export async function listByCandidate(candidateProfileId) {
   const result = await pool.query(
     `SELECT p.id, p.oferta_id, p.candidato_id, p.estado, p.carta_presentacion, p.entrevista, p.created_at, p.updated_at,
-            o.titulo AS oferta_titulo, o.tipo AS oferta_tipo, o.modalidad, o.ubicacion, org.razon_social AS empresa,
+            o.titulo AS oferta_titulo, o.tipo AS oferta_tipo, o.estado AS oferta_estado, o.modalidad, o.ubicacion, org.razon_social AS empresa,
             ${CV_COLUMNS},
             ${eventsSql({ forCompany: false })} AS eventos
      FROM postulaciones p
@@ -183,7 +183,7 @@ export async function upsertApplicationCv(db, applicationId, { nombre, mime, con
 // forUpdate bloquea la fila para que dos cambios de etapa no se crucen.
 export async function findWithOfferOwner(id, db = pool, { forUpdate = false } = {}) {
   const result = await db.query(
-    `SELECT p.id, p.oferta_id, p.estado, o.organizacion_id, o.tipo::text AS oferta_tipo
+    `SELECT p.id, p.oferta_id, p.estado, o.organizacion_id, o.tipo::text AS oferta_tipo, o.estado::text AS oferta_estado
      FROM postulaciones p
      INNER JOIN ofertas o ON o.id = p.oferta_id
      WHERE p.id = $1
@@ -262,4 +262,35 @@ export async function findApplicationCv(id) {
     [id]
   );
   return result.rows[0] ?? null;
+}
+
+// Estados en los que una postulación sigue abierta.
+const OPEN_STATUSES_SQL = "('ENVIADA', 'EN_REVISION', 'PRESELECCIONADA')";
+
+// Al cancelar una oferta, cada postulación abierta recibe un evento OFERTA
+// (público) con el motivo. Devuelve los ids de las postulaciones avisadas.
+export async function addOfferCancelledEvents(db, offerId, authorId, message) {
+  const result = await db.query(
+    `INSERT INTO postulacion_eventos (postulacion_id, autor_id, tipo, mensaje)
+     SELECT p.id, $2, 'OFERTA', $3 FROM postulaciones p
+     WHERE p.oferta_id = $1 AND p.estado IN ${OPEN_STATUSES_SQL}
+     RETURNING postulacion_id`,
+    [offerId, authorId, message]
+  );
+  return result.rows.map((row) => row.postulacion_id);
+}
+
+// Correo y nombre de los candidatos con postulaciones abiertas a la oferta.
+export async function listOpenApplicantContacts(offerId) {
+  const result = await pool.query(
+    `SELECT u.email, u.nombre_completo, o.titulo AS oferta_titulo, org.razon_social AS empresa
+     FROM postulaciones p
+     INNER JOIN perfiles pf ON pf.id = p.candidato_id
+     INNER JOIN usuarios u ON u.id = pf.usuario_id
+     INNER JOIN ofertas o ON o.id = p.oferta_id
+     INNER JOIN organizaciones org ON org.perfil_id = o.organizacion_id
+     WHERE p.oferta_id = $1 AND p.estado IN ${OPEN_STATUSES_SQL}`,
+    [offerId]
+  );
+  return result.rows;
 }

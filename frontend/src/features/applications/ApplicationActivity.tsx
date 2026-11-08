@@ -59,7 +59,9 @@ export default function ApplicationActivity({ app, token, onChanged }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const events = app.events ?? [];
   const message = lastCompanyMessage(events);
-  const canReplaceCv = app.status === "Enviada";
+  const cancelled = app.offerStatus === "CANCELADA";
+  const cancellation = cancelled ? [...events].reverse().find((event) => event.tipo === "OFERTA") : undefined;
+  const canReplaceCv = app.status === "Enviada" && !cancelled;
 
   const replaceCv = async (file: File | undefined) => {
     if (!file || !token) return;
@@ -86,7 +88,13 @@ export default function ApplicationActivity({ app, token, onChanged }: Props) {
 
   return (
     <div className="application-activity">
-      {app.status === "Entrevista" && app.interview && (
+      {cancelled && (
+        <div className="offer-cancelled-note" role="status">
+          <strong>{app.company} canceló esta oferta.</strong>
+          <span>{cancellation?.mensaje ? "Motivo: " + cancellation.mensaje + ". " : ""}Tu postulación quedó en pausa; puedes retirarla o seguir buscando otras oportunidades.</span>
+        </div>
+      )}
+      {app.status === "Entrevista" && app.interview && !cancelled && (
         <InterviewCard interview={app.interview} title={app.offerTitle} company={app.company} uid={String(app.id)} />
       )}
 

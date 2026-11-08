@@ -81,6 +81,57 @@ export type ReviewedOrganization = {
 
 type VerificationResponse = { ok: boolean; verification: OrganizationVerification };
 
+const list = <T,>(value: unknown): T[] => (Array.isArray(value) ? value as T[] : []);
+
+const textOrNull = (value: unknown) => (typeof value === "string" ? value : null);
+
+// Solicitud del revisor con la organización, el solicitante y los documentos
+// siempre presentes; una fila sin id se descarta.
+function normalizeRequest(raw: any): VerificationRequest | null {
+  if (!raw || typeof raw !== "object" || raw.id == null) return null;
+  const org = raw.organizacion && typeof raw.organizacion === "object" ? raw.organizacion : {};
+  const person = raw.solicitante && typeof raw.solicitante === "object" ? raw.solicitante : {};
+  return {
+    ...raw,
+    documentos: list<VerificationDocument>(raw.documentos).filter((doc) => doc && typeof doc === "object"),
+    organizacion: {
+      ...org,
+      id: org.id ?? 0,
+      razonSocial: typeof org.razonSocial === "string" ? org.razonSocial : "Organización sin nombre",
+      identificacionFiscal: textOrNull(org.identificacionFiscal),
+      sitioWeb: textOrNull(org.sitioWeb),
+      descripcion: textOrNull(org.descripcion),
+      verificada: org.verificada === true,
+    },
+    solicitante: { nombre: textOrNull(person.nombre), email: textOrNull(person.email), telefono: textOrNull(person.telefono) },
+  };
+}
+
+
+// La pantalla recorre listas y lee los requisitos sin comprobarlos: una respuesta
+// incompleta o inesperada se completa con valores vacíos en lugar de romperla.
+export function normalizeVerification(raw: any): OrganizationVerification {
+  const requisitos = raw?.requisitos && typeof raw.requisitos === "object" ? raw.requisitos : {};
+  return {
+    ...raw,
+    estado: raw?.estado ?? "NO_VERIFICADA",
+    verificada: raw?.verificada === true,
+    solicitud: raw?.solicitud && typeof raw.solicitud === "object" ? raw.solicitud : null,
+    documentos: list<VerificationDocument>(raw?.documentos),
+    bloqueada: raw?.bloqueada === true,
+    faltantes: list<string>(raw?.faltantes),
+    puedeEnviar: raw?.puedeEnviar === true,
+    requisitos: {
+      ...requisitos,
+      tipos: list<VerificationRequirements["tipos"][number]>(requisitos.tipos),
+      formatos: list<string>(requisitos.formatos),
+      maxBytes: Number(requisitos.maxBytes) || 0,
+      maxDocumentos: Number(requisitos.maxDocumentos) || 0,
+      maxMensaje: Number(requisitos.maxMensaje) || 0,
+    },
+  };
+}
+
 export const verificationsApi = {
   // Lado de la empresa.
   getMyVerification: (token: string) => request<VerificationResponse>(`/verifications/me`, {}, token),
@@ -120,7 +171,8 @@ export const verificationsApi = {
     ),
 
   getVerificationRequests: (token: string, { estado = 'PENDIENTE', page = 1, limit = 20 }: { estado?: RequestStatus | 'TODAS'; page?: number; limit?: number } = {}) =>
-    request<VerificationRequestPage>(`/verifications/requests?${new URLSearchParams({ estado, page: String(page), limit: String(limit) })}`, {}, token),
+    request<VerificationRequestPage>(`/verifications/requests?${new URLSearchParams({ estado, page: String(page), limit: String(limit) })}`, {}, token)
+      .then((page) => ({ ...page, requests: list<unknown>(page.requests).map(normalizeRequest).filter((item): item is VerificationRequest => item !== null) })),
 
   getVerificationSummary: (token: string) =>
     request<{ ok: boolean; pendientes: number }>(`/verifications/requests/summary`, {}, token),

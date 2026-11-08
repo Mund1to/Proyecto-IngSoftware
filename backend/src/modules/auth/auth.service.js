@@ -6,7 +6,7 @@ import { withTransaction } from '../../core/database/database.js';
 import { HttpError, badRequest, conflict, forbidden } from '../../core/http/errors.js';
 import { getBodyValue } from '../../core/http/payload.js';
 import { escapeHtml, sendEmail } from '../../core/mail/mailer.js';
-import { isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../core/security/password.js';
+import { isStrongPassword, PASSWORD_MAX_BYTES, PASSWORD_RULE_MESSAGE } from '../../core/security/password.js';
 import * as authRepository from './auth.repository.js';
 import { buildToken } from './auth.tokens.js';
 
@@ -21,7 +21,11 @@ const PROFILE_TYPES = new Map([
 ]);
 
 const REGISTRABLE_PROFILE_TYPES = ['ESTUDIANTE', 'ORGANIZACION', 'CANDIDATO_EXTERNO'];
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Parte local sin espacios, <> ni puntos al inicio, al final o seguidos; dominio
+// con etiquetas válidas y extensión de al menos dos letras. usuarios.email admite 254.
+const EMAIL_PATTERN = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/;
+const MAX_EMAIL_LENGTH = 254;
+const isValidEmail = (email) => email.length <= MAX_EMAIL_LENGTH && email.indexOf('@') <= 64 && EMAIL_PATTERN.test(email);
 const RESET_TOKEN_TTL_MINUTES = 60;
 
 const unauthorized = (message) => new HttpError(401, message);
@@ -78,8 +82,12 @@ export async function register(payload = {}) {
     throw badRequest('Se requieren email, password y nombre completo.');
   }
 
-  if (!EMAIL_PATTERN.test(email)) {
+  if (!isValidEmail(email)) {
     throw badRequest('El email no tiene un formato válido.');
+  }
+
+  if (nombreCompleto.length > 160) {
+    throw badRequest('El nombre admite como máximo 160 caracteres.');
   }
 
   if (!isStrongPassword(password)) {
@@ -170,14 +178,21 @@ export async function login(payload = {}) {
     throw badRequest('Debe indicar email y password.');
   }
 
+  // Un correo imposible o una clave que no es texto o pasa de 72 bytes (bcrypt
+  // ignora el resto) no pueden coincidir con ninguna cuenta.
+  if (typeof password !== 'string' || email.length > MAX_EMAIL_LENGTH || new TextEncoder().encode(password).length > PASSWORD_MAX_BYTES) {
+    throw unauthorized('Credenciales inválidas.');
+  }
+
   const user = await authRepository.findLoginUser(email);
   if (!user) throw unauthorized('Credenciales inválidas.');
 
-  if (!user.activo) throw forbidden('El usuario está inactivo.');
-
-  if (!(await bcrypt.compare(String(password), user.password_hash))) {
+  if (!(await bcrypt.compare(password, user.password_hash))) {
     throw unauthorized('Credenciales inválidas.');
   }
+
+  // Después de la contraseña: así un tercero no averigua qué cuentas están inactivas.
+  if (!user.activo) throw forbidden('El usuario está inactivo.');
 
   const roles = Array.isArray(user.roles) ? user.roles : [];
   const profileTypes = Array.isArray(user.profile_types) ? user.profile_types : [];
@@ -201,7 +216,7 @@ async function notifyAdminsOfResetRequest(name, email) {
 export async function requestPasswordReset(payload = {}) {
   const email = normalizeEmail(getBodyValue(payload, ['email', 'correo']));
 
-  if (!EMAIL_PATTERN.test(email)) {
+  if (!isValidEmail(email)) {
     throw badRequest('El email no tiene un formato válido.');
   }
 

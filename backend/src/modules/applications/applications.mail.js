@@ -38,6 +38,21 @@ function summaryFor(status, { oferta, empresa, rescheduled }) {
   }
 }
 
+// Avisa a los candidatos con postulaciones abiertas que la empresa canceló la oferta.
+export async function notifyCandidatesOfCancellation(offerId, reason) {
+  const contacts = await applicationsRepository.listOpenApplicantContacts(offerId);
+  const link = `${env.appUrl}/`;
+  await Promise.all(contacts.map((contact) => {
+    const intro = `${contact.empresa} canceló la oferta "${contact.oferta_titulo}", así que tu postulación no seguirá avanzando por ahora.`;
+    return sendEmail({
+      to: contact.email,
+      subject: `${contact.empresa} canceló la oferta ${contact.oferta_titulo}`,
+      text: [`Hola ${contact.nombre_completo}:`, '', intro, ...(reason ? ['', `Motivo: ${reason}`] : []), '', `Sigue buscando oportunidades en SIPU: ${link}`].join('\n'),
+      html: `<p>Hola ${escapeHtml(contact.nombre_completo)}:</p><p>${escapeHtml(intro)}</p>${reason ? `<p><strong>Motivo:</strong> ${escapeHtml(reason)}</p>` : ''}<p><a href="${link}">Ver otras ofertas en SIPU</a></p>`,
+    });
+  }));
+}
+
 export async function notifyCandidateOfStage(applicationId, { status, message, interview, rescheduled = false }) {
   const context = await applicationsRepository.findNotificationContext(applicationId);
   if (!context) return;

@@ -25,7 +25,8 @@ const DUPLICATE_MESSAGE = 'Ya existe una postulación para esta oferta.';
 // Texto libre opcional: sin espacios sobrantes, null si queda vacío y con límite.
 function optionalText(payload, keys, maxLength, label) {
   const raw = getBodyValue(payload, keys);
-  const text = raw === undefined ? '' : String(raw).trim();
+  if (raw !== undefined && raw !== null && typeof raw !== 'string') throw badRequest(`${label} debe ser texto.`);
+  const text = raw == null ? '' : raw.trim();
   if (text.length > maxLength) throw badRequest(`${label} admite como máximo ${maxLength} caracteres.`);
   return text || null;
 }
@@ -147,6 +148,11 @@ export async function updateApplicationStatus(userId, id, payload = {}) {
   const result = await withTransaction(async (db) => {
     const application = await requireOwnedApplication(userId, id, 'No tienes permisos para cambiar el estado de esta postulación.', db, { forUpdate: true });
 
+    // Una oferta en la papelera conserva su historial, pero el proceso se detiene.
+    if (application.oferta_estado === 'CANCELADA') {
+      throw conflict('La oferta está cancelada. Restáurala para continuar con el proceso.');
+    }
+
     const blocked = transitionError(application.estado, nextStatus, application.oferta_tipo);
     if (blocked) throw conflict(blocked);
 
@@ -188,8 +194,9 @@ export async function addApplicationNote(userId, id, payload = {}) {
 // Calificación interna de 1 a 5 estrellas; null la quita.
 export async function rateApplication(userId, id, payload = {}) {
   const raw = getBodyValue(payload, ['calificacion', 'rating']);
-  const rating = raw === undefined || raw === '' ? null : Number(raw);
-  if (rating !== null && !(Number.isInteger(rating) && rating >= 1 && rating <= 5)) {
+  // Solo un número o null: "5", [3] o true no son calificaciones.
+  const rating = raw === undefined || raw === null || raw === '' ? null : raw;
+  if (rating !== null && !(typeof rating === 'number' && Number.isInteger(rating) && rating >= 1 && rating <= 5)) {
     throw badRequest('La calificación debe ser un número entero de 1 a 5.');
   }
 

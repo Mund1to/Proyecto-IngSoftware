@@ -325,6 +325,19 @@ describe("CompanyApplicants: proceso de selección", () => {
     expect(within(screen.getByRole("dialog", { name: "Sara Estudiante" })).getByRole("button", { name: "Seleccionar" })).toBeTruthy();
   });
 
+  it("una oferta cancelada deja ver a los candidatos pero no moverlos de etapa", async () => {
+    mockApi();
+    render(<CompanyApplicants state={{ ...state, selectedCompanyOffer: { ...offer, status: "CANCELADA" } }} navigate={vi.fn()} />);
+
+    expect(await screen.findByText(/Su proceso está en pausa/)).toBeTruthy();
+    const newColumn = screen.getByRole("region", { name: "Nuevas" });
+    expect(within(newColumn).queryByRole("combobox", { name: "Mover a Sara Estudiante" })).toBeNull();
+    fireEvent.click(within(newColumn).getByRole("button", { name: "Ver perfil de Sara Estudiante" }));
+    const drawer = screen.getByRole("dialog", { name: "Sara Estudiante" });
+    expect(within(drawer).queryByRole("button", { name: "Empezar revisión" })).toBeNull();
+    expect(within(drawer).getByText(/el proceso está en pausa/)).toBeTruthy();
+  });
+
   it("guarda notas privadas y la calificación interna", async () => {
     const fetchMock = mockApi();
     render(<CompanyApplicants state={state} navigate={vi.fn()} />);
@@ -383,6 +396,20 @@ describe("Mis postulaciones: proceso visible para el candidato", () => {
     await waitFor(() => expect(reload).toHaveBeenCalled());
     const upload = fetchMock.mock.calls.find(([url]) => String(url).includes("/applications/8/cv"));
     expect(upload?.[1]?.method).toBe("PUT");
+  });
+
+  it("avisa cuando la empresa canceló la oferta", () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { ok: true, applications: [] })));
+    const applications = [{
+      id: 10, offerId: 4, offerTitle: "Práctica QA", company: "TecnoSur", appliedDate: "2026-10-10", status: "Enviada" as const, offerStatus: "CANCELADA", cv: null,
+      events: [{ id: 3, tipo: "OFERTA" as const, estadoAnterior: null, estadoNuevo: null, mensaje: "La vacante ya se cubrió", privado: false, entrevista: null, fecha: "2026-10-20T00:00:00.000Z", autorRol: "EMPRESA" as const }],
+    }];
+    render(<StudentApplications state={{ ...baseState, role: "student", screen: "student-applications", applications }} navigate={vi.fn()} reloadApplications={vi.fn().mockResolvedValue(undefined)} withdrawApplication={vi.fn()} />);
+
+    expect(screen.getByText("TecnoSur canceló esta oferta.")).toBeTruthy();
+    expect(screen.getByText(/Motivo: La vacante ya se cubrió/)).toBeTruthy();
+    // Sin proceso activo no se ofrece cambiar la hoja de vida.
+    expect(screen.queryByRole("button", { name: "Adjuntar" })).toBeNull();
   });
 
   it("retira con un motivo opcional", async () => {
@@ -529,6 +556,64 @@ describe("CompanyDashboard", () => {
       tipo: "EMPLEO", estado: "PUBLICADA", titulo: "Analista de tecnología", area: "Tecnología", habilidades: ["SQL"],
       jornada: "TIEMPO_COMPLETO", remuneracion: 2500000, contactoEmail: "rrhh@ts.co",
     });
+  });
+
+  it("manda las ofertas canceladas a su pestaña, cancela con motivo y restaura como borrador", async () => {
+    const published = { ...brokenOffer, id: "40", titulo: "Practicante web", estado: "PUBLICADA", conteo_estados: { ENVIADA: 1 }, nuevos_semana: 1 };
+    const trashed = { ...brokenOffer, id: "41", titulo: "Oferta vieja", estado: "CANCELADA", conteo_estados: { RECHAZADA: 2 }, cancelada_at: "2026-10-20T10:00:00.000Z", motivo_cancelacion: "Error al publicar" };
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/offers/40") && init?.method === "DELETE") {
+        return Promise.resolve(jsonResponse(200, { ok: true, deletedOfferId: 40, notifiedApplications: 1, offer: { ...published, estado: "CANCELADA", cancelada_at: new Date().toISOString(), motivo_cancelacion: "Ya no necesitamos el cargo" } }));
+      }
+      if (url.endsWith("/offers/41/restore")) return Promise.resolve(jsonResponse(200, { ok: true, offer: { ...trashed, estado: "BORRADOR", cancelada_at: null, motivo_cancelacion: null } }));
+      return Promise.resolve(jsonResponse(200, { ok: true, offers: [published, trashed] }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CompanyDashboard state={companyState} navigate={vi.fn()} />);
+
+    expect(await screen.findByText("Practicante web")).toBeTruthy();
+    expect(screen.queryByText("Oferta vieja")).toBeNull();
+    expect(screen.getByRole("tab", { name: /Canceladas/ }).textContent).toContain("1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar oferta" }));
+    const dialog = screen.getByRole("dialog", { name: /Mover “Practicante web” a Canceladas/ });
+    expect(within(dialog).getByText(/1 candidato con postulación abierta recibirá un aviso/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Ya no necesitamos el cargo" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar oferta" }));
+
+    expect(await screen.findByText(/se movió a Canceladas\. Avisamos a 1 candidato/)).toBeTruthy();
+    const cancelCall = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith("/offers/40") && init?.method === "DELETE");
+    expect(JSON.parse(String(cancelCall?.[1]?.body))).toEqual({ motivo: "Ya no necesitamos el cargo" });
+    expect(screen.queryByText("Practicante web")).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Canceladas/ }));
+    const old = screen.getByRole("article", { name: "Oferta vieja, cancelada" });
+    expect(within(old).getByText("Error al publicar")).toBeTruthy();
+    expect(within(old).queryByRole("button", { name: "Eliminar definitivamente" })).toBeNull();
+    expect(within(old).getByText(/Se conserva para el historial de sus 2 candidatos/)).toBeTruthy();
+    fireEvent.click(within(old).getByRole("button", { name: "Restaurar como borrador" }));
+
+    expect(await screen.findByText(/volvió como borrador/)).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Borradores/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Oferta vieja")).toBeTruthy();
+  });
+
+  it("elimina definitivamente una oferta cancelada sin postulaciones", async () => {
+    const trashed = { ...brokenOffer, id: "42", titulo: "Borrador descartado", estado: "CANCELADA", conteo_estados: {}, cancelada_at: "2026-10-20T10:00:00.000Z" };
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => Promise.resolve(url.endsWith("/offers/42/permanent")
+      ? jsonResponse(200, { ok: true, deletedOfferId: 42 })
+      : jsonResponse(200, { ok: true, offers: [trashed] })));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CompanyDashboard state={companyState} navigate={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole("tab", { name: /Canceladas/ }).textContent).toContain("1"));
+    fireEvent.click(screen.getByRole("tab", { name: /Canceladas/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar definitivamente" }));
+    const dialog = screen.getByRole("alertdialog", { name: /Eliminar “Borrador descartado” para siempre/ });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Eliminar definitivamente" }));
+
+    expect(await screen.findByText("La papelera está vacía")).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith("/offers/42/permanent") && init?.method === "DELETE")).toBe(true);
   });
 
   it("lleva al paso del error cuando la API rechaza la oferta", async () => {

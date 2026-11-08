@@ -33,7 +33,7 @@ export const INTERVIEW_MODE_LABELS: Record<InterviewMode, string> = {
 
 export type Interview = { fecha: string; modalidad: InterviewMode; lugar: string | null; duracionMinutos: number | null };
 
-export type ApplicationEventType = "POSTULACION" | "ESTADO" | "ENTREVISTA" | "NOTA" | "RETIRO" | "CV";
+export type ApplicationEventType = "POSTULACION" | "ESTADO" | "ENTREVISTA" | "NOTA" | "RETIRO" | "CV" | "OFERTA";
 export type ApplicationEvent = {
   id: number;
   tipo: ApplicationEventType;
@@ -58,6 +58,8 @@ export type Application = {
   appliedDate: string;
   status: ApplicationStatus;
   offerType?: OfferType;
+  // Estado de la oferta (CANCELADA si la empresa la mandó a la papelera).
+  offerStatus?: string;
   coverLetter?: string | null;
   // Hoja de vida enviada con la postulación (null si se envió sin ella).
   cv?: SentCv | null;
@@ -105,6 +107,7 @@ export const mapApiApplications = (items: any[]): Application[] => items.map((it
   appliedDate: String(item.created_at ?? new Date().toISOString()).slice(0, 10),
   status: mapApplicationStatus(item.estado),
   offerType: item.oferta_tipo,
+  ...(item.oferta_estado ? { offerStatus: String(item.oferta_estado) } : {}),
   coverLetter: item.carta_presentacion ?? null,
   cv: toSentCv(item),
   interview: toInterview(item.entrevista),
@@ -130,6 +133,8 @@ export function describeEvent(event: ApplicationEvent, viewer: "candidate" | "co
       return mine ? "Cambiaste la hoja de vida enviada" : "El candidato cambió la hoja de vida enviada";
     case "NOTA":
       return "Nota interna";
+    case "OFERTA":
+      return mine ? "La empresa canceló la oferta" : "Oferta cancelada";
     case "ENTREVISTA":
       if (event.estadoAnterior === "PRESELECCIONADA") return "Entrevista reprogramada";
       return mine ? "Te citaron a entrevista" : "Citado a entrevista";
@@ -151,6 +156,7 @@ export function describeEvent(event: ApplicationEvent, viewer: "candidate" | "co
   }
 }
 
-// Último mensaje de la empresa para el candidato (si lo hay).
+// Último mensaje de la empresa para el candidato (si lo hay). El motivo de una
+// oferta cancelada se muestra aparte, en el aviso de cancelación.
 export const lastCompanyMessage = (events: ApplicationEvent[] = []) =>
-  [...events].reverse().find((event) => event.autorRol === "EMPRESA" && !event.privado && event.mensaje);
+  [...events].reverse().find((event) => event.autorRol === "EMPRESA" && !event.privado && event.mensaje && event.tipo !== "OFERTA");

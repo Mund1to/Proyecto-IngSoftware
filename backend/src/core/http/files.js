@@ -28,7 +28,9 @@ export function cleanFileName(rawName, fallback) {
   } catch {
     fileName = '';
   }
-  return fileName.replace(/[\\/\r\n"]/g, '_') || fallback;
+  // Barras, comillas y caracteres de control (incluido el nulo, que PostgreSQL rechaza).
+  // eslint-disable-next-line no-control-regex
+  return fileName.replace(/[\\/"\u0000-\u001f\u007f]/g, '_').trim() || fallback;
 }
 
 // Lee el cuerpo de la petición como binario: el archivo llega sin multipart.

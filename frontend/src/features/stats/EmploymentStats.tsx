@@ -62,6 +62,20 @@ function lastSixMonths(rows: Row[]) {
   });
 }
 
+const rows = (value: unknown): Row[] => (Array.isArray(value) ? value.filter((row) => row && typeof row === "object") : []);
+
+// Una respuesta incompleta muestra secciones vacías en lugar de romper la pantalla.
+function normalizeStats(raw: any): Stats {
+  return {
+    totals: raw?.totals && typeof raw.totals === "object" ? raw.totals : {},
+    offersByType: rows(raw?.offersByType),
+    offersByArea: rows(raw?.offersByArea),
+    offersByCity: rows(raw?.offersByCity),
+    topOrganizations: rows(raw?.topOrganizations),
+    applicationsByMonth: rows(raw?.applicationsByMonth),
+  };
+}
+
 // #21 HU-17: indicadores agregados de empleo (Fase 4).
 export default function EmploymentStats({ state, navigate }: Props) {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -75,7 +89,7 @@ export default function EmploymentStats({ state, navigate }: Props) {
     }
     statsApi.getEmploymentStats(state.token)
       .then((response) => {
-        setStats(response.stats);
+        setStats(normalizeStats(response.stats));
         setError("");
       })
       .catch((err) => {

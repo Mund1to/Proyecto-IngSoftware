@@ -1,8 +1,12 @@
 // Reglas de negocio de ofertas. No conoce Express ni SQL: recibe datos, aplica
 // las reglas y lanza HttpError cuando algo no se cumple.
-import { badRequest, forbidden, notFound } from '../../core/http/errors.js';
+import { withTransaction } from '../../core/database/database.js';
+import { badRequest, conflict, forbidden, notFound } from '../../core/http/errors.js';
+import { getBodyValue } from '../../core/http/payload.js';
 import { getOrganizationProfileId } from '../profile/profile.repository.js';
-import { EXTERNAL_OFFER_TYPES } from './offers.domain.js';
+import { addOfferCancelledEvents } from '../applications/applications.repository.js';
+import { notifyCandidatesOfCancellation } from '../applications/applications.mail.js';
+import { EXTERNAL_OFFER_TYPES, MAX_CANCEL_REASON_LENGTH } from './offers.domain.js';
 import * as offersRepository from './offers.repository.js';
 import { offerAffinity, scoreOffer } from './offers.scoring.js';
 import { REQUIRED_TEXT_FIELDS, applyTypeRules, parseOfferPayload, publicationErrors, validateOfferState } from './offers.validation.js';
@@ -133,6 +137,11 @@ export async function updateOffer(userId, id, payload) {
   const current = await offersRepository.findOwned(id, organizationId);
   if (!current) throw notFound('No se encontró una oferta propia para actualizar.');
 
+  // La papelera tiene su propio flujo: cancelar guarda fecha, motivo y avisa a
+  // los candidatos; una oferta cancelada se restaura antes de editarla.
+  if (current.estado === 'CANCELADA') throw conflict('La oferta está en Canceladas. Restáurala para editarla.');
+  if (changes.estado === 'CANCELADA') throw badRequest('Para cancelar una oferta usa la opción Cancelar oferta.');
+
   if (changes.estado === 'PUBLICADA' && !current.fecha_publicacion && !changes.fecha_publicacion) {
     changes.fecha_publicacion = new Date().toISOString();
   }
@@ -153,9 +162,61 @@ export async function updateOffer(userId, id, payload) {
   return offersRepository.updateOwned(id, organizationId, changes);
 }
 
-export async function cancelOffer(userId, id) {
+// Papelera de ofertas. Cancelar no borra: la oferta pasa a "Canceladas" con la
+// fecha y el motivo, sale del catálogo y conserva sus postulaciones. Los
+// candidatos con postulaciones abiertas reciben un evento en su historial y un correo.
+export async function cancelOffer(userId, id, payload = {}) {
   const organizationId = await requireOrganization(userId, 'Solo una organización puede eliminar ofertas.');
-  const cancelled = await offersRepository.cancelOwned(id, organizationId);
-  if (!cancelled) throw notFound('No se encontró una oferta propia para cancelar.');
-  return Number(cancelled.id);
+  const raw = getBodyValue(payload, ['motivo', 'reason']);
+  const reason = raw === undefined ? null : String(raw).trim() || null;
+  if (reason && reason.length > MAX_CANCEL_REASON_LENGTH) {
+    throw badRequest(`El motivo admite como máximo ${MAX_CANCEL_REASON_LENGTH} caracteres.`);
+  }
+
+  const current = await offersRepository.findOwned(id, organizationId);
+  if (!current) throw notFound('No se encontró una oferta propia para cancelar.');
+  if (current.estado === 'CANCELADA') throw conflict('La oferta ya está en Canceladas.');
+
+  const { offer, notified } = await withTransaction(async (db) => {
+    const cancelled = await offersRepository.cancelOwned(db, id, organizationId, reason);
+    // Otra petición la canceló entre la consulta y esta transacción.
+    if (!cancelled) throw conflict('La oferta ya está en Canceladas.');
+    const events = await addOfferCancelledEvents(db, id, userId, reason);
+    return { offer: cancelled, notified: events.length };
+  });
+
+  if (notified > 0) {
+    await notifyCandidatesOfCancellation(id, reason)
+      .catch((error) => console.error('offer notifyCandidatesOfCancellation error:', error));
+  }
+  return { offer, notified };
+}
+
+// Saca la oferta de la papelera como borrador: la empresa la revisa (la fecha de
+// cierre pudo vencer) y la publica de nuevo desde el formulario.
+export async function restoreOffer(userId, id) {
+  const organizationId = await requireOrganization(userId, 'Solo una organización puede restaurar ofertas.');
+  const current = await offersRepository.findOwned(id, organizationId);
+  if (!current) throw notFound('No se encontró una oferta propia para restaurar.');
+  if (current.estado !== 'CANCELADA') throw conflict('Solo se pueden restaurar ofertas canceladas.');
+  const restored = await offersRepository.restoreOwned(id, organizationId);
+  if (!restored) throw conflict('Solo se pueden restaurar ofertas canceladas.');
+  return restored;
+}
+
+// Borrado definitivo desde la papelera. Una oferta con postulaciones no se
+// borra: el historial de esos candidatos (y sus hojas de vida enviadas) depende de ella.
+export async function deleteOfferPermanently(userId, id) {
+  const organizationId = await requireOrganization(userId, 'Solo una organización puede eliminar ofertas.');
+  const current = await offersRepository.findOwned(id, organizationId);
+  if (!current) throw notFound('No se encontró una oferta propia para eliminar.');
+  if (current.estado !== 'CANCELADA') throw conflict('Primero cancela la oferta; solo se eliminan definitivamente las ofertas de la papelera.');
+
+  const applications = await offersRepository.countApplications(id);
+  if (applications > 0) {
+    throw conflict(`La oferta tiene ${applications === 1 ? '1 postulación' : `${applications} postulaciones`}: se conserva en Canceladas para no borrar el historial de los candidatos.`);
+  }
+
+  await offersRepository.deleteOwned(id, organizationId);
+  return Number(id);
 }

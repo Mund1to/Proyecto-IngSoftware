@@ -228,7 +228,7 @@ function PasswordModal({ user, token, onClose, onDone }: { user: AdminUser; toke
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    if (!isStrongPassword(password)) return setError("La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.");
+    if (!isStrongPassword(password)) return setError("La contraseña debe tener entre 8 y 72 caracteres, una mayúscula y un número.");
     if (password !== confirm) return setError("Las contraseñas no coinciden.");
     setSaving(true);
     try {
