@@ -4,6 +4,7 @@ import NavBar from "../../app/NavBar";
 import ArdyMark from "../../shared/ui/ArdyMark";
 import TypeBadge from "./TypeBadge";
 import { IconBriefcase, IconCheck, IconClock, IconPlus, IconSearch, IconUser } from "../../shared/ui/icons";
+import { CancelOfferDialog, PurgeOfferDialog } from "./OfferTrashDialogs";
 import { offersApi } from "./offers.api";
 import { daysUntil, formatDate } from "../../shared/lib/format";
 import { toUiOffer, type Offer } from "./offers.model";
@@ -38,6 +39,15 @@ const toCompanyOffer = (offer: any): CompanyOffer => {
 
 const STATUS_LABELS: Record<string, string> = { PUBLICADA: "Publicada", BORRADOR: "Borrador", CANCELADA: "Cancelada", CERRADA: "Cerrada" };
 
+// Pestañas del panel. Las canceladas viven aparte (papelera) y no se mezclan con las activas.
+type OfferTab = "activas" | "borradores" | "canceladas";
+const TAB_OF: Record<string, OfferTab> = { PUBLICADA: "activas", CERRADA: "activas", BORRADOR: "borradores", CANCELADA: "canceladas" };
+const TABS: { id: OfferTab; label: string; heading: string; emptyTitle: string; emptyText: string }[] = [
+  { id: "activas", label: "Publicadas", heading: "Ofertas publicadas", emptyTitle: "No tienes ofertas publicadas", emptyText: "Publica tu primera vacante o práctica universitaria para comenzar a recibir candidatos." },
+  { id: "borradores", label: "Borradores", heading: "Borradores", emptyTitle: "No tienes borradores", emptyText: "Al guardar una oferta sin publicarla, o al restaurar una cancelada, aparece aquí." },
+  { id: "canceladas", label: "Canceladas", heading: "Ofertas canceladas", emptyTitle: "La papelera está vacía", emptyText: "Las ofertas que canceles llegarán aquí. Podrás restaurarlas o eliminarlas definitivamente." },
+];
+
 const OUTCOME_TEXT: Record<SaveOutcome, { title: string; text: string }> = {
   published: { title: "Oferta publicada", text: "Ya está visible para los candidatos. Te avisaremos en el panel cuando lleguen postulaciones." },
   updated: { title: "Cambios guardados", text: "Los candidatos ya ven la oferta actualizada." },
@@ -49,7 +59,13 @@ export default function CompanyDashboard({ state, navigate }: Props) {
   // null: panel; "new": creando; una oferta: editándola.
   const [form, setForm] = useState<null | "new" | CompanyOffer>(null);
   const [outcome, setOutcome] = useState<SaveOutcome | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [tab, setTab] = useState<OfferTab>("activas");
+  // Papelera: oferta a cancelar o a borrar definitivamente, y aviso de la última acción.
+  const [cancelling, setCancelling] = useState<CompanyOffer | null>(null);
+  const [purging, setPurging] = useState<CompanyOffer | null>(null);
+  const [trashBusy, setTrashBusy] = useState(false);
+  const [trashError, setTrashError] = useState("");
+  const [notice, setNotice] = useState("");
   const [offersError, setOffersError] = useState("");
   const offersListRef = useRef<HTMLDivElement>(null);
   const draftStorageKey = `sipu-offer-draft-${state.currentUser?.id ?? "anonymous"}`;
@@ -70,16 +86,50 @@ export default function CompanyDashboard({ state, navigate }: Props) {
   const organization = state.currentUser?.organizacionNombre ?? state.currentUser?.nombreCompleto ?? "tu organización";
   const verified = Boolean(state.currentUser?.organizacionVerificada);
 
-  const confirmDelete = async () => {
-    if (!deletingId || !state.token) return;
+  // Reemplaza la oferta con la fila que devolvió la API, conservando sus conteos.
+  const mergeOffer = (apiOffer: unknown) => {
+    const saved = toCompanyOffer(apiOffer);
+    setOffers((current) => current.map((offer) => offer.id === saved.id ? { ...saved, applicants: offer.applicants, stageCounts: offer.stageCounts, newThisWeek: offer.newThisWeek } : offer));
+  };
+
+  const runTrashAction = async (action: () => Promise<void>) => {
+    setTrashBusy(true);
+    setTrashError("");
+    setNotice("");
     try {
-      await offersApi.deleteOffer(deletingId, state.token);
-      setOffers((current) => current.map((o) => o.id === deletingId ? { ...o, status: "CANCELADA" } : o));
-      setDeletingId(null);
-    } catch (err) {
-      setOffersError(err instanceof Error ? err.message : "No se pudo cancelar la oferta.");
+      await action();
+    } catch (error) {
+      setTrashError(error instanceof Error ? error.message : "No se pudo completar la acción.");
+    } finally {
+      setTrashBusy(false);
     }
   };
+
+  const confirmCancel = (reason: string) => runTrashAction(async () => {
+    if (!cancelling || !state.token) return;
+    const response = await offersApi.cancelOffer(cancelling.id, state.token, reason || undefined);
+    mergeOffer(response.offer);
+    const notified = response.notifiedApplications ?? 0;
+    const warned = notified === 0 ? "" : ` Avisamos a ${notified === 1 ? "1 candidato" : `${notified} candidatos`}.`;
+    setNotice(`"${cancelling.title}" se movió a Canceladas.${warned}`);
+    setCancelling(null);
+  });
+
+  const restoreOffer = (offer: CompanyOffer) => runTrashAction(async () => {
+    if (!state.token) return;
+    const response = await offersApi.restoreOffer(offer.id, state.token);
+    mergeOffer(response.offer);
+    setNotice(`"${offer.title}" volvió como borrador. Revísala y publícala cuando esté lista.`);
+    setTab("borradores");
+  });
+
+  const confirmPurge = () => runTrashAction(async () => {
+    if (!purging || !state.token) return;
+    await offersApi.deleteOfferPermanently(purging.id, state.token);
+    setOffers((current) => current.filter((offer) => offer.id !== purging.id));
+    setNotice(`"${purging.title}" se eliminó definitivamente.`);
+    setPurging(null);
+  });
 
   const handleSaved = (apiOffer: unknown, result: SaveOutcome) => {
     const saved = toCompanyOffer(apiOffer);
@@ -131,19 +181,25 @@ export default function CompanyDashboard({ state, navigate }: Props) {
     );
   }
 
+  // Las ofertas canceladas quedan fuera de los indicadores: su proceso está en pausa.
+  const live = offers.filter((offer) => offer.status !== "CANCELADA");
   const activeOffers = offers.filter((offer) => offer.status === "PUBLICADA" && daysUntil(offer.closeDate) >= 0).length;
-  const totalApplicants = offers.reduce((total, offer) => total + (offer.applicants ?? 0), 0);
-  const openApplicants = offers.reduce((total, offer) => total + OPEN_STATUSES.reduce((sum, status) => sum + Number(offer.stageCounts?.[status] ?? 0), 0), 0);
-  const hasWeekData = offers.some((offer) => offer.newThisWeek !== undefined);
-  const newThisWeek = offers.reduce((total, offer) => total + (offer.newThisWeek ?? 0), 0);
+  const totalApplicants = live.reduce((total, offer) => total + (offer.applicants ?? 0), 0);
+  const openApplicants = live.reduce((total, offer) => total + OPEN_STATUSES.reduce((sum, status) => sum + Number(offer.stageCounts?.[status] ?? 0), 0), 0);
+  const hasWeekData = live.some((offer) => offer.newThisWeek !== undefined);
+  const newThisWeek = live.reduce((total, offer) => total + (offer.newThisWeek ?? 0), 0);
   const startCreate = () => setForm("new");
-  const reviewApplicants = (filter: NonNullable<AppState["applicantFilter"]>) => navigate("company-applicants", { selectedCompanyOffer: offers.find((offer) => offer.status === "PUBLICADA") ?? offers[0], applicantFilter: filter });
+  const reviewApplicants = (filter: NonNullable<AppState["applicantFilter"]>) => navigate("company-applicants", { selectedCompanyOffer: live.find((offer) => offer.status === "PUBLICADA") ?? live[0], applicantFilter: filter });
+  const tabOf = (offer: CompanyOffer) => TAB_OF[offer.status ?? "PUBLICADA"] ?? "activas";
+  const tabOffers = offers.filter((offer) => tabOf(offer) === tab);
+  const tabCount = (id: OfferTab) => offers.filter((offer) => tabOf(offer) === id).length;
+  const tabInfo = TABS.find((item) => item.id === tab)!;
 
   const metrics = [
-    { label: "Ofertas activas", value: activeOffers, icon: IconBriefcase, tone: "primary", onClick: () => offersListRef.current?.scrollIntoView({ behavior: "smooth" }), disabled: false },
-    { label: "Postulantes", value: totalApplicants, icon: IconUser, tone: "navy", onClick: () => reviewApplicants("Todos"), disabled: !offers[0] },
-    { label: "En proceso", value: openApplicants, icon: IconSearch, tone: "sky", onClick: () => reviewApplicants("En revisión"), disabled: !offers[0] },
-    { label: "Nuevos esta semana", value: hasWeekData ? newThisWeek : "—", icon: IconClock, tone: "amber", onClick: () => reviewApplicants("Todos"), disabled: !offers[0] },
+    { label: "Ofertas activas", value: activeOffers, icon: IconBriefcase, tone: "primary", onClick: () => { setTab("activas"); offersListRef.current?.scrollIntoView({ behavior: "smooth" }); }, disabled: false },
+    { label: "Postulantes", value: totalApplicants, icon: IconUser, tone: "navy", onClick: () => reviewApplicants("Todos"), disabled: !live[0] },
+    { label: "En proceso", value: openApplicants, icon: IconSearch, tone: "sky", onClick: () => reviewApplicants("En revisión"), disabled: !live[0] },
+    { label: "Nuevos esta semana", value: hasWeekData ? newThisWeek : "—", icon: IconClock, tone: "amber", onClick: () => reviewApplicants("Todos"), disabled: !live[0] },
   ];
 
   return (
@@ -169,7 +225,7 @@ export default function CompanyDashboard({ state, navigate }: Props) {
           </div>
           <div className="company-hero-actions">
             <button className="hero-button-light" onClick={startCreate}><IconPlus />Crear oferta</button>
-            <button className="hero-button-ghost" disabled={!offers[0]} onClick={() => reviewApplicants("Todos")}>Revisar postulantes</button>
+            <button className="hero-button-ghost" disabled={!live[0]} onClick={() => reviewApplicants("Todos")}>Revisar postulantes</button>
           </div>
         </section>
 
@@ -187,54 +243,115 @@ export default function CompanyDashboard({ state, navigate }: Props) {
         </div>
 
         <div className="company-list-head" ref={offersListRef}>
-          <div><p className="eyebrow">Tus publicaciones</p><h2>Ofertas publicadas</h2></div>
-          <ul className="stage-legend" aria-hidden="true">
-            {STAGES.map((stage) => <li key={stage.status}><span className={`stage-dot tone-${stage.tone}`} />{stage.legend}</li>)}
-          </ul>
+          <div><p className="eyebrow">Tus publicaciones</p><h2>{tabInfo.heading}</h2></div>
+          {tab === "activas" && (
+            <ul className="stage-legend" aria-hidden="true">
+              {STAGES.map((stage) => <li key={stage.status}><span className={`stage-dot tone-${stage.tone}`} />{stage.legend}</li>)}
+            </ul>
+          )}
         </div>
 
-        {offers.length === 0 && (
-          <div className="empty-vivo company-empty">
-            <ArdyMark className="empty-vivo-ardy" />
-            <h2>No tienes ofertas publicadas</h2>
-            <p>Publica tu primera vacante o práctica universitaria para comenzar a recibir candidatos.</p>
-            <button className="button primary" onClick={startCreate}>Publicar primera oferta</button>
-          </div>
-        )}
-        {offers.length > 0 && (
-          <div className="company-offer-grid">
-            {offers.map((offer) => (
-              <CompanyOfferCard
-                key={offer.id}
-                offer={offer}
-                onManage={() => navigate("company-applicants", { selectedCompanyOffer: offer, applicantFilter: "Todos" })}
-                onEdit={() => setForm(offer)}
-                onCancel={() => setDeletingId(offer.id)}
-              />
-            ))}
-            <button className="new-offer-card" onClick={startCreate}>
-              <span className="new-offer-plus" aria-hidden="true"><IconPlus size={26} /></span>
-              Publicar una nueva oferta
-              <small>Práctica, empleo o formación</small>
+        <div className="offer-tabs" role="tablist" aria-label="Tus ofertas">
+          {TABS.map((item) => (
+            <button key={item.id} type="button" role="tab" id={`offers-tab-${item.id}`} aria-selected={tab === item.id} aria-controls="offers-panel"
+              className={item.id === "canceladas" ? "is-trash" : ""} onClick={() => { setTab(item.id); setNotice(""); setTrashError(""); }}>
+              {item.label}<span className="offer-tabs-count">{tabCount(item.id)}</span>
             </button>
-          </div>
-        )}
+          ))}
+        </div>
+
+        {notice && <p className="offer-notice" role="status"><IconCheck size={16} />{notice}</p>}
+        {trashError && !cancelling && !purging && <div className="form-error" role="alert">{trashError}</div>}
+
+        <div id="offers-panel" role="tabpanel" aria-labelledby={`offers-tab-${tab}`}>
+          {tab === "canceladas" && tabOffers.length > 0 && (
+            <p className="trash-hint">Las ofertas canceladas no aparecen en el catálogo y su proceso de selección queda en pausa. Restáuralas como borrador para publicarlas de nuevo. Solo las que nunca recibieron postulaciones se pueden eliminar definitivamente.</p>
+          )}
+
+          {tabOffers.length === 0 && (
+            <div className="empty-vivo company-empty">
+              <ArdyMark className="empty-vivo-ardy" />
+              <h2>{tabInfo.emptyTitle}</h2>
+              <p>{tabInfo.emptyText}</p>
+              {tab !== "canceladas" && <button className="button primary" onClick={startCreate}>{offers.length === 0 ? "Publicar primera oferta" : "Crear oferta"}</button>}
+            </div>
+          )}
+
+          {tabOffers.length > 0 && (
+            <div className="company-offer-grid">
+              {tabOffers.map((offer) => offer.status === "CANCELADA" ? (
+                <TrashOfferCard
+                  key={offer.id}
+                  offer={offer}
+                  busy={trashBusy}
+                  onRestore={() => void restoreOffer(offer)}
+                  onView={() => navigate("company-applicants", { selectedCompanyOffer: offer, applicantFilter: "Todos" })}
+                  onPurge={() => { setTrashError(""); setPurging(offer); }}
+                />
+              ) : (
+                <CompanyOfferCard
+                  key={offer.id}
+                  offer={offer}
+                  onManage={() => navigate("company-applicants", { selectedCompanyOffer: offer, applicantFilter: "Todos" })}
+                  onEdit={() => setForm(offer)}
+                  onCancel={() => { setTrashError(""); setCancelling(offer); }}
+                />
+              ))}
+              {tab !== "canceladas" && (
+                <button className="new-offer-card" onClick={startCreate}>
+                  <span className="new-offer-plus" aria-hidden="true"><IconPlus size={26} /></span>
+                  Publicar una nueva oferta
+                  <small>Práctica, empleo o formación</small>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </main>
 
-      {deletingId && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setDeletingId(null)}>
-          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" onMouseDown={(e) => e.stopPropagation()}>
-            <p className="eyebrow">Confirmación</p>
-            <h2 id="delete-title">¿Cancelar esta oferta?</h2>
-            <p>La oferta dejará de aparecer en los catálogos. Se conservará el historial de postulaciones recibidas.</p>
-            <div className="modal-actions">
-              <button className="button secondary" onClick={() => setDeletingId(null)}>Cancelar</button>
-              <button className="button primary" style={{ backgroundColor: "#dc2626", borderColor: "#dc2626" }} onClick={() => void confirmDelete()}>Confirmar cancelación</button>
-            </div>
-          </section>
-        </div>
+      {cancelling && (
+        <CancelOfferDialog
+          title={cancelling.title}
+          isDraft={cancelling.status === "BORRADOR"}
+          openApplications={OPEN_STATUSES.reduce((sum, status) => sum + Number(cancelling.stageCounts?.[status] ?? 0), 0)}
+          busy={trashBusy}
+          error={trashError}
+          onCancel={() => setCancelling(null)}
+          onConfirm={(reason) => void confirmCancel(reason)}
+        />
+      )}
+      {purging && (
+        <PurgeOfferDialog title={purging.title} busy={trashBusy} error={trashError} onCancel={() => setPurging(null)} onConfirm={() => void confirmPurge()} />
       )}
     </div>
+  );
+}
+
+// Oferta en la papelera: cuándo y por qué se canceló, y qué se puede hacer con ella.
+function TrashOfferCard({ offer, busy, onRestore, onView, onPurge }: { offer: CompanyOffer; busy: boolean; onRestore: () => void; onView: () => void; onPurge: () => void }) {
+  const applicants = offer.applicants ?? 0;
+  return (
+    <article className="panel-card company-offer-card is-trashed" aria-label={`${offer.title}, cancelada`}>
+      <div className="company-offer-top">
+        <div className="company-offer-info">
+          <div className="company-offer-badges">
+            <TypeBadge type={offer.offerType} />
+            <span className="offer-status offer-status-cancelada">Cancelada</span>
+          </div>
+          <h3>{offer.title}</h3>
+          <p>{offer.cancelledAt ? `Cancelada el ${formatDate(offer.cancelledAt)}` : "Cancelada"} · {offer.city}</p>
+        </div>
+        <div className="company-offer-total"><strong>{applicants}</strong><small>{applicants === 1 ? "postulante" : "postulantes"}</small></div>
+      </div>
+      {offer.cancelReason && <p className="trash-reason"><strong>Motivo:</strong> {offer.cancelReason}</p>}
+      <div className="company-offer-actions">
+        <button className="button primary" disabled={busy} onClick={onRestore}>Restaurar como borrador</button>
+        {applicants > 0 && <button className="button secondary" onClick={onView}>Ver postulantes</button>}
+        {applicants === 0
+          ? <button className="danger-link" disabled={busy} onClick={onPurge}>Eliminar definitivamente</button>
+          : <small className="trash-keep">Se conserva para el historial de {applicants === 1 ? "su candidato" : `sus ${applicants} candidatos`}.</small>}
+      </div>
+    </article>
   );
 }
 
@@ -282,7 +399,7 @@ function CompanyOfferCard({ offer, onManage, onEdit, onCancel }: { offer: Compan
             {status !== "CANCELADA" && <button className="button secondary" onClick={onEdit}>Editar</button>}
           </>
         )}
-        {(status === "PUBLICADA" || isDraft) && <button className="danger-link" onClick={onCancel}>{isDraft ? "Descartar" : "Cancelar oferta"}</button>}
+        <button className="danger-link" onClick={onCancel}>{isDraft ? "Descartar" : "Cancelar oferta"}</button>
       </div>
     </article>
   );

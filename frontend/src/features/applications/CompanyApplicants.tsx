@@ -72,6 +72,8 @@ export default function CompanyApplicants({ state, navigate }: Props) {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   const training = isTrainingOffer(offer?.offerType);
+  // Oferta en la papelera: se consulta el historial, pero el proceso queda en pausa.
+  const paused = offer?.status === "CANCELADA";
   const offerSkills = offer?.skills ?? [];
   const vacancies = offer?.vacancies ?? 1;
 
@@ -143,6 +145,10 @@ export default function CompanyApplicants({ state, navigate }: Props) {
 
   // Pedir un cambio de etapa: algunas transiciones abren un diálogo con lo que necesitan.
   const requestMove = (applicant: Applicant, target: Stage) => {
+    if (paused) {
+      setToast({ text: "La oferta está cancelada. Restáurala desde tu panel para continuar con el proceso.", tone: "error" });
+      return;
+    }
     const blocked = transitionBlockedReason(applicant.status, target, offer?.offerType);
     if (blocked) {
       setToast({ text: blocked, tone: "error" });
@@ -226,6 +232,9 @@ export default function CompanyApplicants({ state, navigate }: Props) {
         </section>
 
         {loadError && <div className="form-error" role="alert">{loadError}</div>}
+        {paused && (
+          <p className="applicants-paused" role="status">Esta oferta está en <strong>Canceladas</strong>. Su proceso está en pausa: puedes revisar a los candidatos y su historial, pero no moverlos de etapa. Restáurala desde tu panel para continuar.</p>
+        )}
 
         <div className="applicants-toolbar">
           <label className="applicants-search">
@@ -283,6 +292,7 @@ export default function CompanyApplicants({ state, navigate }: Props) {
                             training={training}
                             offerType={offer.offerType}
                             dragging={dragging === item.id}
+                            locked={paused}
                             onOpen={() => setOpenId(item.id)}
                             onMove={(target) => requestMove(item, target)}
                             onDragStart={(event) => { event.dataTransfer.setData("text/plain", String(item.id)); event.dataTransfer.effectAllowed = "move"; setDragging(item.id); }}
@@ -302,7 +312,7 @@ export default function CompanyApplicants({ state, navigate }: Props) {
           <ul className="applicants-list">
             {visible.map((item) => (
               <li key={item.id}>
-                <ApplicantCard applicant={item} offerSkills={offerSkills} training={training} offerType={offer.offerType} wide
+                <ApplicantCard applicant={item} offerSkills={offerSkills} training={training} offerType={offer.offerType} wide locked={paused}
                   onOpen={() => setOpenId(item.id)} onMove={(target) => requestMove(item, target)} />
               </li>
             ))}
@@ -320,6 +330,7 @@ export default function CompanyApplicants({ state, navigate }: Props) {
           token={state.token}
           authorName={state.currentUser?.nombreCompleto ?? company}
           onClose={() => setOpenId(null)}
+          locked={paused}
           onMove={(target) => requestMove(openApplicant, target)}
           onChanged={(changes) => replaceApplicant(openApplicant.id, changes)}
           onError={(text) => setToast({ text, tone: "error" })}
@@ -354,6 +365,8 @@ type CardProps = {
   training: boolean;
   offerType?: string;
   wide?: boolean;
+  // Sin menú ni arrastre (oferta cancelada).
+  locked?: boolean;
   dragging?: boolean;
   onOpen: () => void;
   onMove: (target: Stage) => void;
@@ -361,12 +374,12 @@ type CardProps = {
   onDragEnd?: () => void;
 };
 
-function ApplicantCard({ applicant, offerSkills, training, offerType, wide, dragging, onOpen, onMove, onDragStart, onDragEnd }: CardProps) {
+function ApplicantCard({ applicant, offerSkills, training, offerType, wide, locked, dragging, onOpen, onMove, onDragStart, onDragEnd }: CardProps) {
   const match = skillMatch(applicant.skills, offerSkills);
-  const options = allowedTransitions(applicant.status, offerType).filter((target) => target !== "PRESELECCIONADA" || applicant.status !== "PRESELECCIONADA");
+  const options = locked ? [] : allowedTransitions(applicant.status, offerType).filter((target) => target !== "PRESELECCIONADA" || applicant.status !== "PRESELECCIONADA");
   return (
     <article className={`applicant-card ${wide ? "is-wide" : ""} ${dragging ? "is-dragging" : ""} ${applicant.status === "RETIRADA" ? "is-withdrawn" : ""}`}
-      draggable={Boolean(onDragStart) && applicant.status !== "RETIRADA"} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      draggable={Boolean(onDragStart) && !locked && applicant.status !== "RETIRADA"} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="applicant-card-head">
         <span className="applicant-avatar" aria-hidden="true">{initials(applicant.name)}</span>
         <div className="applicant-card-id">
@@ -411,9 +424,10 @@ type DrawerProps = {
   onMove: (target: Stage) => void;
   onChanged: (changes: Partial<Applicant>) => void;
   onError: (text: string) => void;
+  locked?: boolean;
 };
 
-function ApplicantDrawer({ applicant, offerSkills, training, offerType, token, authorName, onClose, onMove, onChanged, onError }: DrawerProps) {
+function ApplicantDrawer({ applicant, offerSkills, training, offerType, token, authorName, onClose, onMove, onChanged, onError, locked }: DrawerProps) {
   const [tab, setTab] = useState<"cv" | "activity">("cv");
   const [note, setNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
@@ -494,7 +508,9 @@ function ApplicantDrawer({ applicant, offerSkills, training, offerType, token, a
           </div>
         )}
 
-        {applicant.status === "RETIRADA" ? (
+        {locked ? (
+          <p className="drawer-note">La oferta está cancelada: el proceso está en pausa. Puedes consultar la hoja de vida, el historial y agregar notas.</p>
+        ) : applicant.status === "RETIRADA" ? (
           <p className="drawer-note">El candidato retiró su postulación. Su historial se conserva.</p>
         ) : (
           <div className="drawer-actions">

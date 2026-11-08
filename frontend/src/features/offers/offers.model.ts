@@ -144,6 +144,9 @@ export type Offer = {
   workSchedule?: WorkSchedule | null;
   benefits?: string[];
   vacancies?: number;
+  // Papelera: cuándo y por qué se canceló (solo ofertas canceladas).
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
 };
 
 // Las recomendaciones traen `affinity` (0 a 100); el catálogo público no.
@@ -191,10 +194,13 @@ export const toUiOffer = (offer: any): CatalogOffer => ({
   requirements: Array.isArray(offer.requisitos) ? offer.requisitos : Array.isArray(offer.requirements) ? offer.requirements : [],
   applicants: Number(offer.postulantes ?? offer.applicants ?? 0),
   offerType: offer.tipo,
+  ...(offer.estado ? { status: offer.estado } : {}),
   verified: Boolean(offer.verificada),
   duration: offer.duracion,
   schedule: offer.horario,
   contactEmail: offer.contacto_email,
+  cancelledAt: offer.cancelada_at ?? null,
+  cancelReason: offer.motivo_cancelacion ?? null,
   salaryMin: offer.remuneracion == null ? null : toNumberOrZero(offer.remuneracion),
   salaryMax: offer.remuneracion_maxima == null ? null : toNumberOrZero(offer.remuneracion_maxima),
   ...structuredFields(offer),
