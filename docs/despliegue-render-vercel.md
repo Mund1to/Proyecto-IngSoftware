@@ -69,10 +69,28 @@ La URL debe apuntar al servicio backend de Render, no a PostgreSQL. No pongas co
 
 1. Abra las herramientas del navegador (F12) y revise la consola. Desde la Fase 5, un error de una pantalla muestra el aviso "Algo salió mal al mostrar esta pantalla" en lugar de una página en blanco.
 2. Compruebe `https://<api-render>/api/health`. En el plan gratuito, Render suspende la API y la primera petición puede tardar cerca de un minuto; la pantalla de login lo indica.
-3. Verifique que las peticiones van a Render y no a `localhost`. Sin `VITE_API_URL`, el build usa `https://proyecto-ingsoftware.onrender.com/api`.
+3. Verifique que las peticiones van a Render y no a `localhost`. Sin `VITE_API_URL`, el build usa `https://proyecto-ingsoftware-m4f3.onrender.com/api`.
 4. Los despliegues de Vercel con protección (SSO) solo los abre quien tenga sesión en Vercel; use el dominio de producción para compartir.
 
 El fallo de octubre de 2026 (pantalla en blanco tras el login del candidato externo) se debía a una oferta con la modalidad mal codificada; el detalle está en [`informe-fase-5-calidad.md`](informe-fase-5-calidad.md).
+
+## Cambiar de base de datos o de cuenta de Render
+
+La base gratuita de Render vence a los 30 días. Una base vencida o suspendida corta las conexiones con `SSL connection has been closed unexpectedly` y ya no se puede respaldar, así que haga la copia antes:
+
+```bash
+pg_dump --no-owner --no-acl -Fc "<External URL vieja>" -f sipu-respaldo.dump
+pg_restore --no-owner --no-acl --clean --if-exists -d "<External URL nueva>" sipu-respaldo.dump
+```
+
+El respaldo incluye los archivos, porque se guardan en la base como `BYTEA`. Después:
+
+1. Ponga la `Internal Database URL` nueva en `DATABASE_URL` de la API y redespliegue. La API crea el esquema si la base está vacía y aplica las migraciones pendientes.
+2. Compruebe `/api/db-check`. Si responde `getaddrinfo ENOTFOUND`, `DATABASE_URL` no tiene una URL válida.
+3. Si la URL de la API cambió, actualice `VITE_API_URL` en Vercel (y haga Redeploy) y `PRODUCTION_API_URL` en `frontend/src/shared/api/client.ts`.
+4. Si la base empezó vacía, vuelva a crear el primer administrador.
+
+En noviembre de 2026 la base original venció sin respaldo y se reemplazó por una base vacía en una cuenta nueva; la API pasó a `https://proyecto-ingsoftware-m4f3.onrender.com/api`.
 
 ## Seguridad y mantenimiento
 

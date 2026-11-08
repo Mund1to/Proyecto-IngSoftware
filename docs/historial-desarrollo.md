@@ -595,6 +595,14 @@ Rama: `feature/fase-8-ofertas-seleccion`, creada sobre `main`.
 
 El detalle está en [`informe-fase-8-ofertas-seleccion.md`](informe-fase-8-ofertas-seleccion.md).
 
-## 24. Regla para mantener la documentación
+## 24. Entrega final: guía de instalación, arquitectura y nueva base en Render (8 de noviembre de 2026)
+
+- **Nueva base de datos:** la base gratuita de Render venció y dejó de aceptar conexiones (`SSL connection has been closed unexpectedly`), así que no se pudo respaldar. Se creó una base y un Web Service nuevos en Render. La API creó el esquema y aplicó las 10 migraciones al arrancar. La URL de la API pasó a `https://proyecto-ingsoftware-m4f3.onrender.com/api` y se actualizó `PRODUCTION_API_URL` en `frontend/src/shared/api/client.ts`.
+- **Guía de instalación:** el README explica cómo correr el proyecto en un computador nuevo, paso a paso y para Windows, macOS y Linux, con problemas frecuentes.
+- **Diagramas de arquitectura:** `docs/arquitectura.md` y el README incluyen diagramas Mermaid de despliegue y de una petición.
+- **Despliegue:** `docs/despliegue-render-vercel.md` explica cómo cambiar de base de datos o de cuenta de Render sin perder los datos.
+- **Wiki:** páginas nuevas de Arquitectura, Guía de instalación, Despliegue, Pruebas y Documentación técnica.
+
+## 25. Regla para mantener la documentación
 
 Cada fase o cambio importante debe actualizar la documentación correspondiente. Si se modifica la forma de arrancar el proyecto, actualice los README. Si cambia el modelo de datos, actualice `database-schema.md` y añada una migración idempotente en `backend/database/migrations/`. Desde la Fase 5, `backend/database/schema.sql` es solo el esquema inicial. Si cambia la estrategia de ramas o una decisión técnica, registre el cambio en este historial.

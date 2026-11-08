@@ -29,28 +29,113 @@ La verificación real devolvió respuestas `ok: true` y confirmación de creaci�
 └── .gitattributes        # Finales de línea LF en todos los sistemas
 ```
 
-## Requisitos
+## Producto desplegado
 
-- Node.js 20 o superior.
-- npm 10 o superior.
-- PostgreSQL 15 o superior para crear la base de datos local.
+| Componente | Servicio | URL |
+| --- | --- | --- |
+| Aplicación web | Vercel | URL_VERCEL |
+| API REST | Render (Web Service) | https://proyecto-ingsoftware-m4f3.onrender.com/api |
+| Base de datos | Render (PostgreSQL) | Privada, solo la usa la API |
 
-## Inicio rápido
+Para comprobar el despliegue:
 
-Abra dos terminales desde la raíz del repositorio.
+- `https://proyecto-ingsoftware-m4f3.onrender.com/api/health` responde `{"service":"sipu-backend","status":"ok"}`.
+- `https://proyecto-ingsoftware-m4f3.onrender.com/api/db-check` responde `{"ok":true,...}` cuando la API llega a la base.
 
-### API
+El plan gratuito de Render apaga la API tras 15 minutos sin uso; la primera petición después tarda cerca de un minuto. La guía de despliegue está en [`docs/despliegue-render-vercel.md`](docs/despliegue-render-vercel.md).
+
+## Arquitectura
+
+```mermaid
+flowchart LR
+    U[Usuario] -->|HTTPS| FE["Frontend React + Vite<br/>(Vercel)"]
+    FE -->|"JSON /api/* + JWT"| API["API Express<br/>(Render)"]
+    API -->|pg| DB[("PostgreSQL<br/>(Render)")]
+    API -->|correos| MAIL[Resend]
+    GH[GitHub] -->|deploy de main| FE
+    GH -->|deploy de main| API
+    GH -->|pruebas en cada push y PR| CI[GitHub Actions]
+```
+
+El diagrama completo, las capas de cada lado y las reglas entre ellas están en [`docs/arquitectura.md`](docs/arquitectura.md).
+
+## Instalación en un computador nuevo
+
+Esta guía deja la aplicación funcionando en local, con su propia base de datos.
+
+### 1. Instalar las herramientas
+
+| Herramienta | Versión | Para qué |
+| --- | --- | --- |
+| [Git](https://git-scm.com/downloads) | cualquiera reciente | Descargar el código |
+| [Node.js](https://nodejs.org/) (incluye npm) | 20 o superior (npm 10 o superior) | Ejecutar la API y el frontend |
+| [PostgreSQL](https://www.postgresql.org/download/) | 15 o superior | Base de datos. Anote la contraseña del usuario `postgres` que pide el instalador. |
+| pgAdmin (opcional) | viene con el instalador de PostgreSQL en Windows | Ver las tablas con interfaz gráfica |
+
+Compruebe las versiones en una terminal:
+
+```bash
+git --version
+node --version
+npm --version
+psql --version
+```
+
+En Windows, si `psql` no se reconoce, agregue `C:\Program Files\PostgreSQL\<versión>\bin` a la variable `Path` o use pgAdmin en el paso 3.
+
+### 2. Descargar el código
+
+```bash
+git clone https://github.com/Mund1to/Proyecto-IngSoftware.git
+cd Proyecto-IngSoftware
+```
+
+### 3. Crear la base de datos
+
+Cree una base vacía llamada `sipu`:
+
+```bash
+psql -U postgres -c "CREATE DATABASE sipu;"
+```
+
+Con pgAdmin: clic derecho en **Databases** → **Create** → **Database...** → nombre `sipu`.
+
+No hace falta crear tablas: la API crea el esquema y aplica las migraciones la primera vez que arranca.
+
+### 4. Configurar la API
+
+Copie el archivo de variables de ejemplo:
 
 ```bash
 cd backend
-copy .env.example .env
+cp .env.example .env              # macOS, Linux o Git Bash
+copy .env.example .env            # Windows (cmd)
+Copy-Item .env.example .env       # Windows (PowerShell)
+```
+
+Abra `backend/.env` y ajuste al menos estas dos variables:
+
+| Variable | Valor |
+| --- | --- |
+| `DATABASE_URL` | `postgresql://postgres:<su-contraseña>@localhost:5432/sipu` |
+| `JWT_SECRET` | Cualquier texto largo y aleatorio. Para generarlo: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+
+Las demás pueden quedar como están. Sin `RESEND_API_KEY` no se envían correos: el enlace de recuperación de contraseña se muestra en la consola de la API. La tabla completa de variables está en [`backend/README.md`](backend/README.md).
+
+### 5. Iniciar la API
+
+En la misma terminal, dentro de `backend`:
+
+```bash
 npm install
 npm run dev
 ```
 
-La verificación de salud queda disponible en `http://localhost:3000/api/health`.
+La consola debe mostrar `Schema created successfully` la primera vez y luego `SIPU backend listening on port 3000`. Compruébelo en `http://localhost:3000/api/health` y `http://localhost:3000/api/db-check`.
 
-### Aplicación web
+### 6. Iniciar el frontend
+
+Abra una segunda terminal desde la raíz del repositorio:
 
 ```bash
 cd frontend
@@ -58,46 +143,50 @@ npm install
 npm run dev
 ```
 
-Vite mostrará la URL local, normalmente `http://localhost:5173`.
+Abra la URL que muestra Vite, normalmente `http://localhost:5173`. En desarrollo el frontend usa `http://localhost:3000/api`; para apuntar a otra API, cree `frontend/.env.local` con `VITE_API_URL=<url-de-la-api>/api`.
 
-### Pruebas
+### 7. Crear el primer administrador
 
-```bash
-cd backend
-npm test        # API contra una base PostgreSQL aislada <base>_test
-
-cd ../frontend
-npm test        # Vitest + Testing Library, incluidas las pruebas de arquitectura y de contrato
-```
-
-Las pruebas del backend crean y borran una base cuyo nombre termina en `_test`; nunca tocan la base de desarrollo. GitHub Actions (`.github/workflows/ci.yml`) ejecuta estas pruebas, el typecheck y el build en cada push a `main` o `develop` y en cada pull request.
-
-### Primer administrador
-
-El registro público solo otorga el rol `USUARIO`. Para crear el primer administrador, registre la cuenta desde la aplicación y ejecute:
+El registro público solo otorga el rol `USUARIO`. Registre una cuenta desde la aplicación y, en la carpeta `backend`, ejecute:
 
 ```bash
-cd backend
 npm run grant-role -- correo@dominio.com ADMINISTRADOR
 ```
 
-Después, el administrador gestiona los roles desde la pantalla **Usuarios**.
+Cierre sesión y vuelva a entrar. Desde la pantalla **Usuarios**, el administrador asigna los demás roles.
 
-### Base de datos
+### 8. Ejecutar las pruebas
 
-1. Cree una base de datos PostgreSQL llamada `sipu`.
-2. Ajuste `DATABASE_URL` en `backend/.env`.
-3. La API crea el esquema y aplica las migraciones al arrancar. Para hacerlo a mano:
+```bash
+cd backend
+npm test        # 150 pruebas de la API contra PostgreSQL
 
-   ```bash
-   psql -U postgres -d sipu -f backend/database/schema.sql
-   ```
+cd ../frontend
+npm run typecheck
+npm test        # 103 pruebas con Vitest y Testing Library, incluidas las de arquitectura y contrato
+```
 
-Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y las decisiones de diseño.
+Las pruebas del backend crean solas una base aparte cuyo nombre termina en `_test` (por defecto `sipu_test`) y la vacían en cada ejecución; nunca tocan la base `sipu`. Para usar otra, defina `TEST_DATABASE_URL` en `backend/.env`. GitHub Actions (`.github/workflows/ci.yml`) ejecuta estas pruebas, el typecheck y el build en cada push a `main` o `develop` y en cada pull request.
+
+### Problemas frecuentes
+
+| Síntoma | Causa y solución |
+| --- | --- |
+| `password authentication failed for user "postgres"` | La contraseña de `DATABASE_URL` no coincide con la de PostgreSQL. |
+| `database "sipu" does not exist` | Falta el paso 3. |
+| `ECONNREFUSED 127.0.0.1:5432` | PostgreSQL no está encendido. En Windows, inicie el servicio `postgresql-x64-<versión>` desde **Servicios**. |
+| `EADDRINUSE :::3000` | Otro proceso usa el puerto 3000. Ciérrelo o cambie `PORT` en `.env`. |
+| El frontend muestra "No se pudo conectar con el servidor" | La API no está corriendo o `VITE_API_URL` apunta a otra dirección. |
+| No llega el correo de recuperación | Sin `RESEND_API_KEY` el enlace aparece en la consola de la API. |
+
+### Estructura de la base de datos
+
+Consulte [`docs/database-schema.md`](docs/database-schema.md) para el modelo y las decisiones de diseño. Las tablas se crean desde `backend/database/schema.sql`, y los cambios posteriores van en migraciones idempotentes en `backend/database/migrations/`.
 
 ## Documentación
 
-- [`docs/arquitectura.md`](docs/arquitectura.md): estructura, reglas entre capas y qué tocar para cambiar de tecnología.
+- [Wiki del proyecto](https://github.com/Mund1to/Proyecto-IngSoftware/wiki): historias de usuario, requerimientos, diagramas, riesgos, arquitectura, instalación, despliegue y pruebas.
+- [`docs/arquitectura.md`](docs/arquitectura.md): diagramas de despliegue y de una petición, estructura, reglas entre capas y qué tocar para cambiar de tecnología.
 - [`frontend/README.md`](frontend/README.md): comandos y estructura del cliente web.
 - [`backend/README.md`](backend/README.md): ejecución de la API y endpoint de salud.
 - [`docs/historial-desarrollo.md`](docs/historial-desarrollo.md): guía paso a paso de lo realizado y cómo continuar.
